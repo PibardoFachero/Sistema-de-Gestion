@@ -1,29 +1,31 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-
-import { AppHeader } from '@/components/layout/AppHeader';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 
 import './globals.css';
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta-sans',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'Aula — Aprendizaje y productividad',
+  title: 'Komorebi Study Studio',
   description: 'Proyecto universitario colaborativo de aprendizaje y productividad académica.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="es">
-      <body className="min-h-screen antialiased">
+    <html lang="es" className={plusJakartaSans.variable}>
+      <body className="min-h-screen antialiased bg-background text-on-background font-sans selection:bg-accent-amber/20 selection:text-primary">
         <a
           href="#contenido"
           className="sr-only rounded bg-white p-3 focus:not-sr-only focus:absolute focus:z-10"
         >
           Saltar al contenido
         </a>
-        <AppHeader />
-        <main id="contenido" className="mx-auto max-w-5xl px-6 py-16">
-          {children}
-        </main>
+        {children}
       </body>
     </html>
   );

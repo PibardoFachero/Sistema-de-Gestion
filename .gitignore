@@ -36,3 +36,6 @@ Desktop.ini
 # Future test artifacts
 /playwright-report/
 /test-results/
+
+# Diseños (Local only)
+/docs/disenos/
