@@ -1,0 +1,42 @@
+{
+  "name": "aula-academica",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Base del proyecto universitario de aprendizaje y productividad academica",
+  "engines": {
+    "node": ">=22.18.0 <23",
+    "npm": ">=10 <11"
+  },
+  "packageManager": "npm@10.9.3",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.116.0",
+    "lucide-react": "1.47.0",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.5",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.7",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,38 @@
+# Dependencies
+/node_modules/
+
+# Next.js and build output
+/.next/
+/out/
+/build/
+/dist/
+/coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment and credentials (only the empty example is versioned)
+.env*
+!.env.example
+*.pem
+*.key
+
+# Local tooling and logs
+.vercel/
+.supabase/
+supabase/.temp/
+supabase/.branches/
+.vscode/
+.idea/
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Future test artifacts
+/playwright-report/
+/test-results/
