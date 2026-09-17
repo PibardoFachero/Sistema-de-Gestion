@@ -19,18 +19,18 @@ Las versiones exactas están en `package.json` y `package-lock.json`. Este últi
 
 - Node.js 22.18 o una revisión posterior de la rama 22; versión de referencia en `.nvmrc`.
 - npm 10 (entorno inicial: 10.9.3).
-- Git y acceso al futuro repositorio del equipo.
+- Git y acceso al [repositorio del equipo](https://github.com/ingsamuell/Sistema-de-Gestion).
 - No se necesita una cuenta de Supabase para ver la página inicial.
 
 No instalar dependencias globales para ejecutar la aplicación.
 
 ## Instalación
 
-Sustituye la URL de ejemplo por la URL real cuando se cree el repositorio:
+Clona el repositorio del equipo:
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <CARPETA_DEL_REPOSITORIO>
+git clone https://github.com/ingsamuell/Sistema-de-Gestion.git
+cd Sistema-de-Gestion
 npm install
 ```
 
@@ -111,7 +111,7 @@ Las 13 features están reservadas con `.gitkeep`, sin lógica ni subcarpetas art
 
 `main` debe ser estable. Cada tarea se desarrolla en una rama `feature/*`, `fix/*`, `docs/*` o `refactor/*` y se integra mediante Pull Request revisado. Los commits siguen Conventional Commits.
 
-El workflow de GitHub Actions ejecuta instalación reproducible, formato, lint, typecheck y build. Un administrador deberá crear/conectar el repositorio y activar las reglas de protección de `main`; los archivos locales no activan esas reglas automáticamente.
+El workflow de GitHub Actions ejecuta instalación reproducible, formato, lint, typecheck y build. Un administrador deberá activar las reglas de protección de `main` en GitHub; los archivos locales no activan esas reglas automáticamente.
 
 ## Documentación
 
@@ -122,7 +122,7 @@ El workflow de GitHub Actions ejecuta instalación reproducible, formato, lint, 
 
 ## Pendiente de decisión del equipo
 
-Nombre definitivo, repositorio y permisos, responsables por módulo, modelo de datos normalizado, políticas RLS, método de autenticación, diseños de Google Stitch, despliegue y cuentas de servicios externos.
+Nombre definitivo, permisos de colaboradores, responsables por módulo, modelo de datos normalizado, políticas RLS, método de autenticación, diseños de Google Stitch, despliegue y cuentas de servicios externos.
 
 No se implementaron login, dashboards, tareas, calendarios, IA, workflows, gamificación ni tablas definitivas.
 

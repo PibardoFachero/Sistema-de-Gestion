@@ -2,11 +2,11 @@
 
 ## Incorporación
 
-Pide acceso al repositorio real y una Issue. Instala Node.js 22.18+ de la rama 22, npm 10 y Git. `.nvmrc` indica la versión de referencia; un gestor de versiones es opcional.
+Pide acceso al [repositorio del equipo](https://github.com/ingsamuell/Sistema-de-Gestion) y una Issue. Instala Node.js 22.18+ de la rama 22, npm 10 y Git. `.nvmrc` indica la versión de referencia; un gestor de versiones es opcional.
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <CARPETA_DEL_REPOSITORIO>
+git clone https://github.com/ingsamuell/Sistema-de-Gestion.git
+cd Sistema-de-Gestion
 npm install
 ```
 

@@ -11,7 +11,7 @@
 | Documentación   | `docs/nombre-cambio`           | `docs/database-design`                                                                 |
 | Refactorización | `refactor/nombre`              | `refactor/project-service`                                                             |
 
-La preparación inicial se entrega en `feature/project-foundation`. Como excepción de arranque de un repositorio vacío, el primer commit verificado también será la base de `main`; a partir de ahí, toda tarea requiere rama y PR. Un administrador debe acordar la publicación del historial y establecer `main` como rama predeterminada en GitHub. No hay un remoto inventado ni un push automático.
+El repositorio del equipo es [ingsamuell/Sistema-de-Gestion](https://github.com/ingsamuell/Sistema-de-Gestion). La preparación inicial se conserva en `feature/project-foundation`. Como excepción de arranque de un repositorio vacío, la base técnica verificada se publica inicialmente en `main`; a partir de ahí, toda tarea requiere rama y PR. La publicación inicial fue solicitada por el responsable del proyecto. No hay despliegue automático configurado.
 
 ## Trabajo diario
 
@@ -48,7 +48,7 @@ Evitar mensajes como “cambios”, “prueba”, “cosas” o “update”. Ma
 
 ## Protección de main en GitHub
 
-Pendiente de activar por un administrador cuando exista el repositorio:
+Pendiente de activar por un administrador en el repositorio de GitHub:
 
 - Pull Request obligatorio y al menos una aprobación de otra persona.
 - Checks obligatorios del workflow `CI`, job `quality`.
