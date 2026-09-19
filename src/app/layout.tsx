@@ -1,12 +1,19 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans, Caveat } from 'next/font/google';
 
 import './globals.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-plus-jakarta-sans',
+  display: 'swap',
+});
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  variable: '--font-handwriting',
+  weight: ['400', '600', '700'],
   display: 'swap',
 });
 
@@ -17,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="es" className={plusJakartaSans.variable}>
+    <html lang="es" className={`${plusJakartaSans.variable} ${caveat.variable}`}>
       <body className="min-h-screen antialiased bg-background text-on-background font-sans selection:bg-accent-amber/20 selection:text-primary">
         <a
           href="#contenido"

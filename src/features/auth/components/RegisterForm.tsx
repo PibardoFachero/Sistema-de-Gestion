@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FolderKanban, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { registerUser } from '@/features/auth/actions/registerAction';
@@ -78,12 +79,12 @@ export function RegisterForm() {
         return;
       }
 
-      // Registro exitoso
+      // Registro exitoso -> Redirigir a la encuesta de bienvenida (onboarding)
       setIsSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        router.push('/onboarding');
         router.refresh();
-      }, 1200);
+      }, 1000);
     } catch {
       setGeneralError('Ocurrió un error inesperado. Por favor intenta de nuevo.');
       setIsLoading(false);
@@ -99,7 +100,7 @@ export function RegisterForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback?next=/onboarding`,
         },
       });
 
@@ -114,16 +115,22 @@ export function RegisterForm() {
   };
 
   return (
-    <Card className="w-full max-w-lg p-8 sm:p-10 shadow-[0_4px_24px_-2px_rgba(74,53,37,0.06),0_2px_8px_-1px_rgba(74,53,37,0.03)] border-outline-variant/40">
+    <Card className="w-full p-8 sm:p-10 bg-surface-container-lowest border-outline-variant/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       {/* Encabezado e Ícono */}
-      <div className="flex flex-col items-center text-center mb-6">
-        <div className="bg-primary/10 p-3 rounded-xl text-primary mb-4 flex items-center justify-center">
-          <FolderKanban className="size-8" />
+      <div className="flex flex-col items-center text-center mb-8">
+        <div className="lg:hidden mb-4 relative h-16 w-16">
+          <Image
+            src="/images/mascot/chigui-focus.png"
+            alt="Chigüi Focus"
+            fill
+            sizes="64px"
+            className="object-contain drop-shadow-sm"
+          />
         </div>
         <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">
           Crear una cuenta
         </h1>
-        <p className="text-sm text-on-surface-variant max-w-sm">
+        <p className="text-sm text-on-surface-variant font-medium max-w-sm">
           Completa tus datos para registrarte en Komorebi Study Studio
         </p>
       </div>
@@ -140,16 +147,16 @@ export function RegisterForm() {
       {isSuccess && (
         <div className="mb-4 flex items-center gap-3 rounded-xl bg-status-success-bg p-4 text-status-success text-sm font-medium animate-in fade-in">
           <CheckCircle2 className="size-5 shrink-0" />
-          <span>¡Cuenta creada con éxito! Redirigiendo al panel...</span>
+          <span>¡Cuenta creada con éxito! Redirigiendo a tu encuesta inicial...</span>
         </div>
       )}
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="relative z-10 space-y-4">
         {/* Nombre y Apellido (Grid de 2 columnas) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface" htmlFor="firstName">
+            <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="firstName">
               Nombre
             </label>
             <input
@@ -161,18 +168,17 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-                fieldErrors.firstName
-                  ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                  : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-              }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.firstName
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                }`}
             />
             {fieldErrors.firstName && (
-              <p className="text-xs text-error mt-1">{fieldErrors.firstName}</p>
+              <p className="text-xs text-error mt-1 ml-1">{fieldErrors.firstName}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface" htmlFor="lastName">
+            <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="lastName">
               Apellido
             </label>
             <input
@@ -184,21 +190,20 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-                fieldErrors.lastName
-                  ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                  : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-              }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.lastName
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                }`}
             />
             {fieldErrors.lastName && (
-              <p className="text-xs text-error mt-1">{fieldErrors.lastName}</p>
+              <p className="text-xs text-error mt-1 ml-1">{fieldErrors.lastName}</p>
             )}
           </div>
         </div>
 
         {/* Nombre de usuario */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface" htmlFor="username">
+          <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="username">
             Nombre de usuario
           </label>
           <input
@@ -210,20 +215,19 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-              fieldErrors.username
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-            }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.username
+              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
           />
           {fieldErrors.username && (
-            <p className="text-xs text-error mt-1">{fieldErrors.username}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.username}</p>
           )}
         </div>
 
         {/* Correo electrónico */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface" htmlFor="email">
+          <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="email">
             Correo electrónico
           </label>
           <input
@@ -235,20 +239,19 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-              fieldErrors.email
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-            }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.email
+              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
           />
           {fieldErrors.email && (
-            <p className="text-xs text-error mt-1">{fieldErrors.email}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>
           )}
         </div>
 
         {/* Contraseña */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface" htmlFor="password">
+          <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="password">
             Contraseña
           </label>
           <input
@@ -260,20 +263,19 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-              fieldErrors.password
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-            }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.password
+              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
           />
           {fieldErrors.password && (
-            <p className="text-xs text-error mt-1">{fieldErrors.password}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
         </div>
 
         {/* Confirmación de contraseña */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface" htmlFor="confirmPassword">
+          <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="confirmPassword">
             Confirmación de contraseña
           </label>
           <input
@@ -285,24 +287,23 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
-              fieldErrors.confirmPassword
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
-            }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.confirmPassword
+              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
           />
           {fieldErrors.confirmPassword && (
-            <p className="text-xs text-error mt-1">{fieldErrors.confirmPassword}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.confirmPassword}</p>
           )}
         </div>
 
         {/* Botón Principal */}
-        <div className="pt-2">
+        <div className="pt-4">
           <Button
             type="submit"
             variant="primary"
             disabled={isLoading || isSuccess}
-            className="w-full h-11 rounded-[25px] font-semibold text-sm shadow-sm hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -316,9 +317,9 @@ export function RegisterForm() {
         </div>
 
         {/* Separador */}
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="border-t border-outline-variant/40 w-full" />
-          <span className="bg-surface-container-lowest px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium">
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="border-t border-outline-variant/30 w-full" />
+          <span className="bg-surface/80 backdrop-blur-sm px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium rounded-full">
             o
           </span>
         </div>
@@ -329,7 +330,7 @@ export function RegisterForm() {
           variant="secondary"
           disabled={isLoading || isSuccess || isGoogleLoading}
           onClick={handleGoogleSignIn}
-          className="w-full h-11 rounded-[25px] flex items-center justify-center gap-2.5 bg-surface-dim hover:bg-surface-variant text-on-surface border border-outline-variant/60 font-medium text-sm transition-all"
+          className="w-full h-11 flex items-center justify-center gap-2.5 rounded-xl bg-surface hover:bg-surface-dim border border-outline-variant/60 shadow-sm transition-all text-on-surface font-bold text-sm"
         >
           {isGoogleLoading ? (
             <>
@@ -363,9 +364,9 @@ export function RegisterForm() {
       </form>
 
       {/* Enlace inferior */}
-      <div className="mt-8 text-center text-xs text-on-surface-variant">
+      <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿Ya tienes una cuenta?{' '}
-        <Link href="/login" className="text-primary font-semibold hover:underline">
+        <Link href="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">
           Inicia sesión
         </Link>
       </div>

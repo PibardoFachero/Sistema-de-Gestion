@@ -6,6 +6,13 @@
 -- en Supabase Auth, se cree automáticamente su fila correspondiente en 'profiles'.
 -- ==============================================================================
 
+-- 0. Asegurar columnas base en public.profiles
+alter table public.profiles add column if not exists fecha_registro timestamptz default now();
+alter table public.profiles add column if not exists created_at timestamptz default now();
+alter table public.profiles add column if not exists updated_at timestamptz default now();
+alter table public.profiles add column if not exists racha_activa integer default 0;
+alter table public.profiles add column if not exists racha_maxima integer default 0;
+
 -- 1. Función que inserta automáticamente el perfil del nuevo usuario
 create or replace function public.handle_new_user()
 returns trigger
@@ -18,8 +25,7 @@ begin
     nombre_usuario,
     fecha_registro,
     racha_activa,
-    racha_maxima,
-    notificaciones_activas
+    racha_maxima
   )
   values (
     new.id,
@@ -30,8 +36,7 @@ begin
     ),
     now(),
     0,
-    0,
-    true
+    0
   )
   on conflict (id) do update set
     nombre_usuario = coalesce(excluded.nombre_usuario, public.profiles.nombre_usuario);

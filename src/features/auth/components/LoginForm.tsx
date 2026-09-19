@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FolderKanban, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
 import { loginUser } from '@/features/auth/actions/loginAction';
 import { createClient } from '@/lib/supabase/client';
 import type { LoginFormData } from '@/features/auth/types/auth.types';
@@ -70,7 +71,7 @@ export function LoginForm() {
         return;
       }
 
-      // Inicio de sesión exitoso -> Redirigir a la página principal
+      // Inicio de sesión exitoso -> Redirigir a la página principal con sesión fresca
       router.push('/');
       router.refresh();
     } catch {
@@ -105,15 +106,16 @@ export function LoginForm() {
   const isAnyLoading = isLoading || isGoogleLoading;
 
   return (
-    <Card className="w-full max-w-md p-8 sm:p-10 shadow-[0_4px_24px_-2px_rgba(74,53,37,0.06),0_2px_8px_-1px_rgba(74,53,37,0.03)] border-outline-variant/40">
+    <Card className="w-full p-8 sm:p-10 bg-surface-container-lowest border-outline-variant/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       <div className="flex flex-col items-center text-center mb-8">
-        <div className="bg-primary/10 p-3 rounded-xl text-primary mb-4 flex items-center justify-center">
-          <FolderKanban className="size-8" />
-        </div>
-        <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">
+        <ChiguiGreeting
+          priority
+          className="mb-4 h-24 w-24 object-contain motion-safe:animate-[chigui-float_4s_ease-in-out_infinite] lg:hidden"
+        />
+        <h1 className="text-2xl font-bold text-primary mb-1.5 tracking-tight">
           Bienvenido de vuelta
         </h1>
-        <p className="text-sm text-on-surface-variant">
+        <p className="text-sm text-on-surface-variant font-medium">
           Inicia sesión para continuar en Komorebi Study Studio
         </p>
       </div>
@@ -125,9 +127,9 @@ export function LoginForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="relative z-10 space-y-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface" htmlFor="email">
+          <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="email">
             Correo electrónico
           </label>
           <input
@@ -139,23 +141,23 @@ export function LoginForm() {
             onChange={handleChange}
             disabled={isAnyLoading}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
               fieldErrors.email
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
             }`}
           />
           {fieldErrors.email && (
-            <p className="text-xs text-error mt-1">{fieldErrors.email}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>
           )}
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between ml-1">
             <label className="text-sm font-semibold text-on-surface" htmlFor="password">
               Contraseña
             </label>
-            <span className="text-xs text-accent-amber font-medium cursor-pointer hover:underline">
+            <span className="text-xs text-accent-amber font-semibold cursor-pointer hover:underline">
               ¿Olvidaste tu contraseña?
             </span>
           </div>
@@ -168,23 +170,23 @@ export function LoginForm() {
             onChange={handleChange}
             disabled={isAnyLoading}
             required
-            className={`w-full rounded-xl border bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:outline-none transition-colors ${
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
               fieldErrors.password
-                ? 'border-error focus:border-error focus:ring-1 focus:ring-error'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary'
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
             }`}
           />
           {fieldErrors.password && (
-            <p className="text-xs text-error mt-1">{fieldErrors.password}</p>
+            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
         </div>
 
-        <div className="pt-2">
+        <div className="pt-4">
           <Button
             type="submit"
             variant="primary"
             disabled={isAnyLoading}
-            className="w-full h-11 rounded-[25px] font-semibold text-sm shadow-sm hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -197,9 +199,9 @@ export function LoginForm() {
           </Button>
         </div>
 
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="border-t border-outline-variant/40 w-full" />
-          <span className="bg-surface-container-lowest px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium">
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="border-t border-outline-variant/30 w-full" />
+          <span className="bg-surface/80 backdrop-blur-sm px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium rounded-full">
             o
           </span>
         </div>
@@ -209,7 +211,7 @@ export function LoginForm() {
           variant="secondary"
           disabled={isAnyLoading}
           onClick={handleGoogleSignIn}
-          className="w-full h-11 rounded-[25px] flex items-center justify-center gap-2.5 bg-surface-dim hover:bg-surface-variant text-on-surface border border-outline-variant/60 font-medium text-sm transition-all"
+          className="w-full h-11 flex items-center justify-center gap-2.5 rounded-xl bg-surface hover:bg-surface-dim border border-outline-variant/60 shadow-sm transition-all text-on-surface font-bold text-sm"
         >
           {isGoogleLoading ? (
             <>
@@ -242,9 +244,9 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="mt-8 text-center text-xs text-on-surface-variant">
+      <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿No tienes una cuenta?{' '}
-        <Link href="/register" className="text-primary font-semibold hover:underline">
+        <Link href="/register" className="text-primary font-bold hover:text-primary/80 transition-colors">
           Regístrate
         </Link>
       </div>

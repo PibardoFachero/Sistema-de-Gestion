@@ -18,9 +18,10 @@ export default async function HomePage() {
 
   const displayName =
     user.user_metadata?.first_name ||
+    user.user_metadata?.username ||
+    user.user_metadata?.nombre_usuario ||
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
-    user.user_metadata?.nombre_usuario ||
     user.email?.split('@')[0] ||
     'Estudiante';
 

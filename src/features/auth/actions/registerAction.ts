@@ -57,6 +57,20 @@ export async function registerUser(formData: RegisterFormData): Promise<Register
       };
     }
 
+    // Si Supabase no adjuntó sesión en signUp (p. ej. en auto-confirmación sin auto-session),
+    // iniciamos sesión para garantizar que se emitan las cookies de sesión
+    if (!data.session) {
+      try {
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+      } catch {
+        // Si el proyecto requiere confirmación por email, fallará y el usuario
+        // será guiado a verificar su correo según la configuración de Supabase
+      }
+    }
+
     return {
       success: true,
     };
