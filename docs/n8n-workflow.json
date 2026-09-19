@@ -1,0 +1,467 @@
+{
+    "name": "Web Chatbot Core",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "chatbot-web",
+                "responseMode": "responseNode",
+                "options": {
+                    "allowedOrigins": "*"
+                }
+            },
+            "id": "016955c0-1b5f-4770-9693-bfce40253c07",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1168,
+                496
+            ],
+            "webhookId": "chatbot-web-core"
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "profiles",
+                "limit": 1,
+                "matchType": "allFilters",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $json.body.user_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "46501f46-955c-4d70-9ac7-88b64c3ab64c",
+            "name": "Supabase",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                -944,
+                496
+            ],
+            "alwaysOutputData": true,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "1i9RoYiI3BTMaziC",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1000001-0000-4000-8000-000000000001",
+                            "leftValue": "={{ Object.keys($json).length > 0 }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "be49c028-cb11-49b9-98fb-d58d5d182397",
+            "name": "¿Perfil existe?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -736,
+                496
+            ]
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Webhook').item.json.body.message }}",
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "=Eres un tutor y planificador de estudio para una plataforma educativa. Siempre respondes en español, con un tono cercano, motivador y claro.\n\nPERFIL DEL ESTUDIANTE (datos de la base de datos, en JSON):\n{{ JSON.stringify($('Supabase').item.json) }}\n\nFECHA Y HORA ACTUAL: {{ $now.toISO() }}\n\nREGLAS:\n1. Usa el nivel, las metas de estudio y la disponibilidad del perfil para personalizar tus respuestas. No inventes datos que no estén en el perfil; si falta algo importante, pregúntalo.\n2. Si el estudiante pide planificar, organizar su estudio o recibir actividades, genera tareas concretas y realistas que respeten su disponibilidad y su nivel.\n3. Si el estudiante solo conversa o hace una pregunta, responde de forma útil y devuelve \"tasks\" como arreglo vacío [].\n4. Genera como máximo 10 tareas por respuesta. Cada tarea debe tener: title (corto y accionable), description (qué hacer exactamente), due_date (formato YYYY-MM-DD, nunca en el pasado), duration_minutes (número entero) y priority (\"low\", \"medium\" o \"high\").\n5. No repitas tareas que ya generaste antes en esta conversación.\n6. En \"reply\" resume en pocas líneas lo que planificaste o responde la consulta. No copies la lista completa de tareas dentro de \"reply\".\n7. Tu salida debe respetar exactamente el formato estructurado solicitado."
+                }
+            },
+            "id": "f672cc6d-e2cd-4deb-9765-7168232b1009",
+            "name": "AI Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                -512,
+                384
+            ]
+        },
+        {
+            "parameters": {
+                "modelName": "models/gemini-3.6-flash",
+                "options": {
+                    "temperature": 0.4
+                }
+            },
+            "id": "a2210072-3b67-4b88-a113-f46149d85f0f",
+            "name": "Google Gemini Chat Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+                -560,
+                624
+            ],
+            "credentials": {
+                "googlePalmApi": {
+                    "id": "dNDQFqt2zUskbyIa",
+                    "name": "Google Gemini(PaLM) Api account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "sessionIdType": "customKey",
+                "sessionKey": "={{ $('Webhook').item.json.body.user_id }}",
+                "contextWindowLength": 10
+            },
+            "id": "6e30bdc4-8e8c-4a19-9cf1-daf53814f9ef",
+            "name": "Window Buffer Memory",
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                -464,
+                624
+            ]
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Respuesta conversacional para el estudiante, en español.\"\n    },\n    \"tasks\": {\n      \"type\": \"array\",\n      \"description\": \"Lista de tareas planificadas. Vacía si no se pidió planificar.\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"title\": {\n            \"type\": \"string\"\n          },\n          \"description\": {\n            \"type\": \"string\"\n          },\n          \"due_date\": {\n            \"type\": \"string\",\n            \"description\": \"Formato YYYY-MM-DD\"\n          },\n          \"duration_minutes\": {\n            \"type\": \"integer\"\n          },\n          \"priority\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"low\",\n              \"medium\",\n              \"high\"\n            ]\n          }\n        },\n        \"required\": [\n          \"title\",\n          \"description\",\n          \"due_date\",\n          \"duration_minutes\",\n          \"priority\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"reply\",\n    \"tasks\"\n  ]\n}"
+            },
+            "id": "80105119-7400-4551-8811-605bd7977b02",
+            "name": "Structured Output Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.2,
+            "position": [
+                -336,
+                624
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "loose",
+                        "version": 1
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1000001-0000-4000-8000-000000000002",
+                            "leftValue": "={{ ($json.output.tasks || []).length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "cf0b22fe-9a61-46e4-888c-8d2e74dd3143",
+            "name": "¿Hay tareas?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -128,
+                384
+            ]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "output.tasks",
+                "options": {}
+            },
+            "id": "ec9dbeb4-298f-4058-9876-ee453656b89d",
+            "name": "Split Out Tasks",
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                96,
+                288
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "tasks",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "user_id",
+                            "fieldValue": "={{ $('Webhook').item.json.body.user_id }}"
+                        },
+                        {
+                            "fieldId": "titulo",
+                            "fieldValue": "={{ $json.title }}"
+                        },
+                        {
+                            "fieldId": "descripcion",
+                            "fieldValue": "={{ $json.description }}"
+                        },
+                        {
+                            "fieldId": "vencimiento",
+                            "fieldValue": "={{ $json.due_date }}"
+                        },
+                        {
+                            "fieldId": "duracion_min",
+                            "fieldValue": "={{ $json.duration_minutes }}"
+                        },
+                        {
+                            "fieldId": "prioridad",
+                            "fieldValue": "={{ $json.priority }}"
+                        }
+                    ]
+                }
+            },
+            "id": "8f602620-52b7-484b-a1c6-04fae67dbd4c",
+            "name": "Supabase1",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                320,
+                288
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "1i9RoYiI3BTMaziC",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "aggregate": "aggregateAllItemData",
+                "destinationFieldName": "inserted",
+                "options": {}
+            },
+            "id": "de91b0e2-03f6-4177-953d-caa741e344bc",
+            "name": "Aggregate",
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                544,
+                288
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ { reply: $('AI Agent').first().json.output.reply, tasks: $('AI Agent').first().json.output.tasks } }}",
+                "options": {
+                    "responseCode": 200
+                }
+            },
+            "id": "b5a9362a-bb44-43e6-9d95-2eed41669366",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                752,
+                432
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ { error: 'Perfil no encontrado', user_id: $('Webhook').item.json.body.user_id } }}",
+                "options": {
+                    "responseCode": 404
+                }
+            },
+            "id": "2404eefe-a1da-4b61-b708-6a741e377840",
+            "name": "Respond 404",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -736,
+                656
+            ]
+        }
+    ],
+    "pinData": {
+        "Webhook": [
+            {
+                "json": {
+                    "headers": {},
+                    "query": {},
+                    "params": {},
+                    "body": {
+                        "user_id": "e0695fee-8650-43a3-a55c-fbc7fb0ed47a",
+                        "message": "Hola, crea una tarea, puede ser a tu gusto"
+                    }
+                }
+            }
+        ]
+    },
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "¿Perfil existe?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "¿Perfil existe?": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 404",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [
+                    {
+                        "node": "¿Hay tareas?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Window Buffer Memory": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "¿Hay tareas?": {
+            "main": [
+                [
+                    {
+                        "node": "Split Out Tasks",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Out Tasks": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase1": {
+            "main": [
+                [
+                    {
+                        "node": "Aggregate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Aggregate": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate"
+    },
+    "versionId": "14fae6d8-5a14-4e4e-b56f-fc979cf4a56b",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "07f65b02ac0c2470133111bf45637d6bcad137b665347603f45652bce681f38a"
+    },
+    "nodeGroups": [],
+    "id": "lRh531zmZGsYwgXi",
+    "tags": []
+}

@@ -1,11 +1,26 @@
-'use client';
+import React from 'react';
+import { FolderKanban, PanelLeftClose } from 'lucide-react';
+import type { User } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
+import { SidebarNav } from '@/components/layout/SidebarNav';
+import { UserProfileButton } from '@/components/layout/UserProfileButton';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LogOut, PanelLeftClose, LibraryBig } from 'lucide-react';
+interface SidebarProps {
+  initialUser?: User | null;
+}
 
-export function Sidebar() {
-  const pathname = usePathname();
+export async function Sidebar({ initialUser }: SidebarProps) {
+  let user = initialUser;
+
+  if (user === undefined) {
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch {
+      user = null;
+    }
+  }
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r border-outline-variant/30 bg-surface h-screen sticky top-0 left-0">
@@ -19,63 +34,16 @@ export function Sidebar() {
             <p className="text-[10px] uppercase font-semibold text-accent-amber tracking-wider">Study Studio</p>
           </div>
         </div>
-        <button className="text-outline hover:text-primary transition-colors">
+        <button className="text-outline hover:text-primary transition-colors cursor-pointer" aria-label="Colapsar menú">
           <PanelLeftClose className="size-5" />
         </button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1 mt-4">
-        <SidebarItem href="/" icon={<Home className="size-5" />} label="Inicio" active={pathname === '/'} />
-        <SidebarItem href="/proyectos" icon={<FolderKanban className="size-5" />} label="Proyectos" active={pathname.startsWith('/proyectos')} />
-        <div className="pl-11 pr-4 py-2 space-y-3">
-          <SubItem label="Aprender Python" />
-          <SubItem label="Backend" />
-          <SubItem label="Japonés" />
-        </div>
-        <SidebarItem href="/temas" icon={<LibraryBig className="size-5" />} label="Temas" active={pathname.startsWith('/temas')} />
-        <SidebarItem href="/calendario" icon={<Calendar className="size-5" />} label="Calendario" active={pathname.startsWith('/calendario')} />
-        <SidebarItem href="/analitica" icon={<BarChart2 className="size-5" />} label="Analítica" active={pathname.startsWith('/analitica')} />
-        <SidebarItem href="/ia" icon={<Sparkles className="size-5" />} label="Asistente IA" active={pathname.startsWith('/ia')} />
-      </nav>
+      <SidebarNav />
 
       <div className="p-4 mt-auto">
-        <div className="bg-surface-container rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:bg-surface-container-high transition-colors">
-          <div className="size-10 rounded-full bg-surface-tint/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
-             {/* Profile image placeholder */}
-             <span className="text-primary font-bold text-sm">SO</span>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-semibold text-on-surface truncate">Sofía</p>
-            <p className="text-xs text-on-surface-variant truncate">Estudiante</p>
-          </div>
-          <LogOut className="size-4 text-outline" />
-        </div>
+        <UserProfileButton initialUser={user} />
       </div>
     </aside>
-  );
-}
-
-function SidebarItem({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
-  return (
-    <Link 
-      href={href} 
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-        active 
-          ? 'bg-surface-container-high text-primary font-semibold' 
-          : 'text-on-surface hover:bg-surface-container text-on-surface'
-      }`}
-    >
-      <div className={active ? 'text-primary' : 'text-outline'}>{icon}</div>
-      {label}
-    </Link>
-  );
-}
-
-function SubItem({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
-      <div className="size-1.5 rounded-full bg-accent-amber/50" />
-      {label}
-    </div>
   );
 }
