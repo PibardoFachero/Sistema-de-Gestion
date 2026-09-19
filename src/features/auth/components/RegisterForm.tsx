@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { registerUser } from '@/features/auth/actions/registerAction';
@@ -42,10 +42,43 @@ export function RegisterForm() {
     }
   };
 
+  const passwordCriteria = [
+    {
+      id: 'length',
+      label: 'Mínimo 6 caracteres',
+      met: formData.password.length >= 6,
+    },
+    {
+      id: 'uppercase',
+      label: 'Mínimo 1 letra mayúscula',
+      met: /[A-Z\p{Lu}]/u.test(formData.password),
+    },
+    {
+      id: 'number',
+      label: 'Mínimo 1 número',
+      met: /[0-9]/.test(formData.password),
+    },
+    {
+      id: 'special',
+      label: 'Mínimo 1 carácter especial (ej. !@#$%^&*)',
+      met: /[^a-zA-Z0-9\s\p{L}]/u.test(formData.password),
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setGeneralError(null);
     setFieldErrors({});
+
+    // Validación de requisitos de seguridad de la contraseña
+    const isPasswordValid = passwordCriteria.every((criterion) => criterion.met);
+    if (!isPasswordValid) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: 'La contraseña debe cumplir con todos los requisitos de seguridad',
+      }));
+      return;
+    }
 
     // Validación rápida en frontend de coincidencia de contraseñas
     if (formData.password !== formData.confirmPassword) {
@@ -271,6 +304,32 @@ export function RegisterForm() {
           {fieldErrors.password && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
+
+          {/* Recuadro de requisitos de seguridad de la contraseña */}
+          <div className="mt-2 rounded-xl border border-outline-variant/40 bg-surface-container-low/60 p-3.5 space-y-2 transition-all">
+            <p className="text-xs font-semibold text-on-surface-variant/90">
+              Requisitos para la contraseña:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {passwordCriteria.map((criterion) => (
+                <div
+                  key={criterion.id}
+                  className={`flex items-center gap-2 text-xs transition-colors duration-200 ${
+                    criterion.met
+                      ? 'text-status-success font-medium'
+                      : 'text-outline font-normal'
+                  }`}
+                >
+                  {criterion.met ? (
+                    <CheckCircle2 className="size-3.5 shrink-0 text-status-success" />
+                  ) : (
+                    <Circle className="size-3.5 shrink-0 text-outline/50" />
+                  )}
+                  <span>{criterion.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Confirmación de contraseña */}
