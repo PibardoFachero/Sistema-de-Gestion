@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogOut, Loader2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -107,7 +108,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-surface-container rounded-full pl-1.5 pr-3 py-1 border border-outline-variant/30">
+        <Link href="/perfil" className="flex min-w-0 items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container py-1 pl-1.5 pr-3 transition-colors hover:bg-surface-container-high">
           <div className="size-7 rounded-full bg-surface-tint/20 flex items-center justify-center overflow-hidden flex-shrink-0">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -119,7 +120,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
           <span className="text-xs font-semibold text-on-surface max-w-[110px] truncate" title={username}>
             {username}
           </span>
-        </div>
+        </Link>
         <button
           type="button"
           onClick={handleLogout}
@@ -140,6 +141,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
 
   return (
     <div className="bg-surface-container rounded-2xl p-3 flex items-center gap-3 hover:bg-surface-container-high transition-colors group">
+      <Link href="/perfil" className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-colors group-hover:text-primary">
       <div className="size-10 rounded-full bg-surface-tint/20 flex-shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant/20">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -148,7 +150,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
           <span className="text-primary font-bold text-sm select-none">{initials}</span>
         )}
       </div>
-      <div className="flex-1 min-w-0 overflow-hidden text-left">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <p className="text-sm font-semibold text-on-surface truncate" title={username}>
           {username}
         </p>
@@ -156,6 +158,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
           {fullName && fullName !== username ? fullName : 'Estudiante'}
         </p>
       </div>
+      </Link>
       <button
         type="button"
         onClick={handleLogout}
