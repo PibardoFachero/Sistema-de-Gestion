@@ -73,3 +73,14 @@ body {
   background-color: var(--color-background);
   color: var(--color-on-background);
 }
+
+@keyframes chigui-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}

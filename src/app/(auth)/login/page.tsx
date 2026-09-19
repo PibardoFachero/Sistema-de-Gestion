@@ -1,13 +1,30 @@
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
 import { FolderKanban } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface p-4 animate-in fade-in duration-500">
+    <div className="flex min-h-screen items-center justify-center gap-6 overflow-hidden bg-surface p-4 animate-in fade-in duration-500 lg:gap-10 lg:p-8">
+      <div className="hidden w-[min(38vw,28rem)] shrink-0 flex-col items-center text-center lg:flex">
+        <div className="relative mb-3 h-[min(62vh,38rem)] w-full">
+          <ChiguiGreeting
+            priority
+            className="h-full w-full origin-center object-contain transition-transform duration-500 hover:scale-[1.03] motion-safe:animate-[chigui-float_4s_ease-in-out_infinite]"
+          />
+        </div>
+        <p className="max-w-56 text-sm leading-6 text-on-surface-variant">
+          Chigüi está listo para acompañarte en tu próximo momento de estudio.
+        </p>
+      </div>
+
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center text-center mb-8">
+          <ChiguiGreeting
+            priority
+            className="mb-3 h-28 w-28 object-contain motion-safe:animate-[chigui-float_4s_ease-in-out_infinite] lg:hidden"
+          />
           <div className="bg-primary/10 p-3 rounded-xl text-primary mb-4">
             <FolderKanban className="size-8" />
           </div>
