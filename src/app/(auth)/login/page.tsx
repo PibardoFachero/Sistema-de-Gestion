@@ -8,13 +8,22 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center gap-6 overflow-hidden bg-surface p-4 animate-in fade-in duration-500 lg:gap-10 lg:p-8">
       <div className="hidden w-[min(38vw,28rem)] shrink-0 flex-col items-center text-center lg:flex">
-        <div className="relative mb-3 h-[min(62vh,38rem)] w-full">
-          <ChiguiGreeting
-            priority
-            className="h-full w-full origin-center object-contain transition-transform duration-500 hover:scale-[1.03] motion-safe:animate-[chigui-float_4s_ease-in-out_infinite]"
-          />
+        <div className="relative mb-6 flex items-center justify-center">
+          <div className="chigui-video-frame">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full object-cover"
+            >
+              <source src="/videoMrChiwi.mp4" type="video/mp4" />
+              <source src="/images/mascot/videoMrChiwi.mp4" type="video/mp4" />
+              Tu navegador no soporta reproducción de video.
+            </video>
+          </div>
         </div>
-        <p className="max-w-56 text-sm leading-6 text-on-surface-variant">
+        <p className="max-w-xs text-sm leading-6 text-on-surface-variant font-medium">
           Chigüi está listo para acompañarte en tu próximo momento de estudio.
         </p>
       </div>
@@ -60,7 +69,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <Link href="/" className="block mt-6">
+          <Link href="/onboarding" className="block mt-6">
             <Button variant="primary" className="w-full">
               Iniciar Sesión (Demo)
             </Button>

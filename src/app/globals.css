@@ -84,3 +84,68 @@ body {
     transform: translateY(-8px) rotate(1deg);
   }
 }
+
+@keyframes morph {
+  0%,
+  100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  25% {
+    border-radius: 45% 55% 65% 35% / 40% 65% 35% 60%;
+  }
+  50% {
+    border-radius: 35% 65% 55% 45% / 55% 35% 65% 45%;
+  }
+  75% {
+    border-radius: 65% 35% 40% 60% / 45% 60% 40% 55%;
+  }
+}
+
+@keyframes pastelGlow {
+  0%,
+  100% {
+    border-color: #e8b4b8;
+    box-shadow: 0 0 25px rgba(232, 180, 184, 0.65), 0 0 10px rgba(232, 180, 184, 0.35);
+  }
+  25% {
+    border-color: #c8d6af;
+    box-shadow: 0 0 25px rgba(200, 214, 175, 0.65), 0 0 10px rgba(200, 214, 175, 0.35);
+  }
+  50% {
+    border-color: #d8c4e0;
+    box-shadow: 0 0 25px rgba(216, 196, 224, 0.65), 0 0 10px rgba(216, 196, 224, 0.35);
+  }
+  75% {
+    border-color: #f7d6bf;
+    box-shadow: 0 0 25px rgba(247, 214, 191, 0.65), 0 0 10px rgba(247, 214, 191, 0.35);
+  }
+}
+
+.chigui-video-frame {
+  width: 370px;
+  height: 370px;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #e8b4b8;
+  animation: morph 8s ease-in-out infinite, pastelGlow 11s ease-in-out infinite;
+  box-shadow: 0 0 25px rgba(232, 180, 184, 0.65);
+  transform: translateZ(0);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  isolation: isolate;
+}
+
+.font-handwriting {
+  font-family: var(--font-handwriting), 'Patrick Hand', 'Caveat', 'Comic Neue', cursive;
+}
+
+.thought-bubble {
+  position: relative;
+  background-color: #ffffff;
+  border: 2px solid #1a1a1a;
+  border-radius: 28px;
+  box-shadow: 4px 4px 0px #1a1a1a;
+}
+
