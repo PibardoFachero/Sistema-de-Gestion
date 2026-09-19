@@ -1,15 +1,26 @@
 import { RegisterForm } from '@/features/auth/components/RegisterForm';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
-import { FolderKanban, Rocket, Timer, BarChart3 } from 'lucide-react';
+import { Rocket, Timer, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Crear una cuenta | Komorebi Study Studio',
   description: 'Regístrate en Komorebi Study Studio para gestionar tus proyectos académicos y hábitos de estudio.',
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/');
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-surface">
       {/* Lado Izquierdo: Marca, Mascota y Propuesta de Valor */}
@@ -22,11 +33,11 @@ export default function RegisterPage() {
 
         {/* Logo superior */}
         <div className="relative z-10 flex items-center gap-3">
-          <Image 
-            src="/images/mascot/chigui-focus.png" 
-            alt="Logo Komorebi" 
-            width={36} 
-            height={36} 
+          <Image
+            src="/images/mascot/chigui-focus.png"
+            alt="Logo Komorebi"
+            width={36}
+            height={36}
             className="object-contain drop-shadow-sm"
           />
           <span className="text-xl font-bold tracking-tight">Komorebi Studio</span>
@@ -40,7 +51,7 @@ export default function RegisterPage() {
               className="h-full w-full origin-bottom object-contain transition-transform duration-500 hover:scale-[1.05] motion-safe:animate-[chigui-float_4s_ease-in-out_infinite]"
             />
           </div>
-          
+
           <h2 className="text-3xl font-bold mb-4 tracking-tight">Transforma tu forma de estudiar.</h2>
           <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-10 leading-relaxed font-medium">
             Únete a Komorebi y descubre el sistema definitivo para organizar tu vida universitaria y vencer la procrastinación.

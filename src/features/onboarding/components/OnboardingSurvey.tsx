@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { saveOnboardingAnswers } from '@/features/onboarding/actions/saveOnboardingAction';
 
 export interface OnboardingQuestion {
   id: number;
@@ -96,12 +97,15 @@ export function OnboardingSurvey() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const totalSteps = onboardingData.length;
   const currentQuestion = onboardingData[currentStep];
   const selectedAnswer = answers[currentQuestion.id];
   const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
 
   const handleSelectOption = (option: string) => {
+    if (saveError) setSaveError(null);
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: option
@@ -122,15 +126,38 @@ export function OnboardingSurvey() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    setSaveError(null);
     setIsFinishing(true);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('komorebi_onboarding_answers', JSON.stringify(answers));
-      localStorage.setItem('komorebi_onboarding_completed', 'true');
-    }
-    setTimeout(() => {
+
+    try {
+      const response = await saveOnboardingAnswers({
+        rol_condicion: answers[1] || '',
+        edad: answers[2] || '',
+        situacion_laboral: answers[3] || '',
+        jornada_horarios: answers[4] || '',
+        tiempo_diario_min: answers[5] || '',
+        metodologia: answers[6] || '',
+        experiencia: answers[7] || '',
+      });
+
+      if (!response.success) {
+        setSaveError(response.error || 'Ocurrió un error al guardar tus respuestas.');
+        setIsFinishing(false);
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('komorebi_onboarding_answers', JSON.stringify(answers));
+        localStorage.setItem('komorebi_onboarding_completed', 'true');
+      }
+
       router.push('/');
-    }, 800);
+      router.refresh();
+    } catch {
+      setSaveError('Error inesperado al conectar con el servidor. Inténtalo de nuevo.');
+      setIsFinishing(false);
+    }
   };
 
   return (
@@ -226,6 +253,14 @@ export function OnboardingSurvey() {
               </div>
             </div>
 
+            {/* Alerta de Error al Guardar */}
+            {saveError && (
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 p-3 text-red-800 text-xs sm:text-sm animate-in fade-in">
+                <AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
+                <span className="leading-snug">{saveError}</span>
+              </div>
+            )}
+
             {/* Pregunta Actual */}
             <div className="mb-5">
               <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight">
@@ -282,7 +317,10 @@ export function OnboardingSurvey() {
                 className="rounded-[25px] bg-[#2C1F14] hover:bg-[#433022] text-white px-6 py-2.5 font-semibold text-xs sm:text-sm shadow-sm transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5"
               >
                 {isFinishing ? (
-                  <span>Guardando...</span>
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
                 ) : currentStep === totalSteps - 1 ? (
                   <>
                     <span>Finalizar</span>
