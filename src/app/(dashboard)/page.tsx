@@ -3,13 +3,32 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Coffee, Play } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  const displayName =
+    user.user_metadata?.first_name ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.user_metadata?.nombre_usuario ||
+    user.email?.split('@')[0] ||
+    'Estudiante';
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <header>
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">¡Buenos días, Sofía!</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">¡Buenos días, {displayName}!</h1>
           <Coffee className="size-8 text-outline" />
         </div>
         <p className="mt-2 text-on-surface-variant max-w-2xl">
@@ -25,7 +44,7 @@ export default function HomePage() {
           </div>
           <p className="text-xs text-on-surface-variant">Hábito consolidado</p>
         </Card>
-        
+
         <Card className="p-4 flex flex-col gap-2">
           <Badge className="self-start">Esta semana</Badge>
           <div className="mt-2">
@@ -73,9 +92,9 @@ export default function HomePage() {
                 </div>
                 <span className="text-xs font-semibold text-accent-amber">Siguiente turno</span>
               </div>
-              
+
               <h3 className="text-lg font-bold">Ejercicios prácticos de Listas y Diccionarios</h3>
-              
+
               <div className="flex items-center gap-4 mt-4 text-sm text-on-surface-variant">
                 <span className="flex items-center gap-1.5"><span className="font-semibold text-on-surface">10:30 AM</span></span>
                 <span className="flex items-center gap-1.5">45 min</span>
