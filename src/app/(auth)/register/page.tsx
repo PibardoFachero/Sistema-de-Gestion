@@ -27,7 +27,7 @@ export default function RegisterPage() {
             alt="Logo Komorebi" 
             width={36} 
             height={36} 
-            className="object-contain drop-shadow-sm"
+            className="w-auto h-auto object-contain drop-shadow-sm"
           />
           <span className="text-xl font-bold tracking-tight">Komorebi Studio</span>
         </div>

@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
-import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LogOut, PanelLeftClose } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LogOut, PanelLeftClose, LibraryBig } from 'lucide-react';
 
 export function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <aside className="hidden md:flex w-64 flex-col border-r border-outline-variant/30 bg-surface h-screen sticky top-0 left-0">
       <div className="p-6 flex items-center justify-between">
@@ -20,16 +25,17 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 space-y-1 mt-4">
-        <SidebarItem href="/" icon={<Home className="size-5" />} label="Inicio" />
-        <SidebarItem href="/proyectos" icon={<FolderKanban className="size-5" />} label="Proyectos" active />
+        <SidebarItem href="/" icon={<Home className="size-5" />} label="Inicio" active={pathname === '/'} />
+        <SidebarItem href="/proyectos" icon={<FolderKanban className="size-5" />} label="Proyectos" active={pathname.startsWith('/proyectos')} />
         <div className="pl-11 pr-4 py-2 space-y-3">
           <SubItem label="Aprender Python" />
           <SubItem label="Backend" />
           <SubItem label="Japonés" />
         </div>
-        <SidebarItem href="/calendario" icon={<Calendar className="size-5" />} label="Calendario" />
-        <SidebarItem href="/analitica" icon={<BarChart2 className="size-5" />} label="Analítica" />
-        <SidebarItem href="/ia" icon={<Sparkles className="size-5" />} label="Asistente IA" />
+        <SidebarItem href="/temas" icon={<LibraryBig className="size-5" />} label="Temas" active={pathname.startsWith('/temas')} />
+        <SidebarItem href="/calendario" icon={<Calendar className="size-5" />} label="Calendario" active={pathname.startsWith('/calendario')} />
+        <SidebarItem href="/analitica" icon={<BarChart2 className="size-5" />} label="Analítica" active={pathname.startsWith('/analitica')} />
+        <SidebarItem href="/ia" icon={<Sparkles className="size-5" />} label="Asistente IA" active={pathname.startsWith('/ia')} />
       </nav>
 
       <div className="p-4 mt-auto">
