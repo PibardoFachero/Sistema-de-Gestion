@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { FolderKanban } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -12,26 +12,32 @@ export function RegisterForm() {
   };
 
   return (
-    <Card className="w-full max-w-lg p-8 sm:p-10 shadow-[0_4px_24px_-2px_rgba(74,53,37,0.06),0_2px_8px_-1px_rgba(74,53,37,0.03)] border-outline-variant/40">
+    <Card className="w-full p-8 sm:p-10 bg-surface-container-lowest border-outline-variant/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       {/* Encabezado e Ícono */}
       <div className="flex flex-col items-center text-center mb-8">
-        <div className="bg-primary/10 p-3 rounded-xl text-primary mb-4 flex items-center justify-center">
-          <FolderKanban className="size-8" />
+        <div className="lg:hidden mb-4 relative h-16 w-16">
+          <Image 
+            src="/images/mascot/chigui-focus.png" 
+            alt="Chigüi Focus" 
+            fill
+            sizes="64px"
+            className="object-contain drop-shadow-sm"
+          />
         </div>
         <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">
           Crear una cuenta
         </h1>
-        <p className="text-sm text-on-surface-variant max-w-sm">
+        <p className="text-sm text-on-surface-variant font-medium max-w-sm">
           Completa tus datos para registrarte en Komorebi Study Studio
         </p>
       </div>
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="relative z-10 space-y-4">
         {/* Nombre y Apellido (Grid de 2 columnas) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">
+            <label className="text-sm font-semibold text-on-surface ml-1">
               Nombre
             </label>
             <input
@@ -39,11 +45,11 @@ export function RegisterForm() {
               name="firstName"
               placeholder="Ej. Juan"
               required
-              className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">
+            <label className="text-sm font-semibold text-on-surface ml-1">
               Apellido
             </label>
             <input
@@ -51,14 +57,14 @@ export function RegisterForm() {
               name="lastName"
               placeholder="Ej. Pérez"
               required
-              className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
             />
           </div>
         </div>
 
         {/* Nombre de usuario */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface">
+          <label className="text-sm font-semibold text-on-surface ml-1">
             Nombre de usuario
           </label>
           <input
@@ -66,13 +72,13 @@ export function RegisterForm() {
             name="username"
             placeholder="ej. juanperez"
             required
-            className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
 
         {/* Correo electrónico */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface">
+          <label className="text-sm font-semibold text-on-surface ml-1">
             Correo electrónico
           </label>
           <input
@@ -80,13 +86,13 @@ export function RegisterForm() {
             name="email"
             placeholder="tu@correo.universidad.edu"
             required
-            className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
 
         {/* Contraseña */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface">
+          <label className="text-sm font-semibold text-on-surface ml-1">
             Contraseña
           </label>
           <input
@@ -94,13 +100,13 @@ export function RegisterForm() {
             name="password"
             placeholder="••••••••"
             required
-            className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
 
         {/* Confirmación de contraseña */}
         <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-on-surface">
+          <label className="text-sm font-semibold text-on-surface ml-1">
             Confirmación de contraseña
           </label>
           <input
@@ -108,25 +114,25 @@ export function RegisterForm() {
             name="confirmPassword"
             placeholder="••••••••"
             required
-            className="w-full rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            className="w-full rounded-xl border border-outline-variant/50 bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
 
         {/* Botón Principal */}
-        <div className="pt-2">
+        <div className="pt-4">
           <Button
             type="submit"
             variant="primary"
-            className="w-full h-11 rounded-[25px] font-semibold text-sm shadow-sm hover:brightness-110 active:scale-[0.99] transition-all"
+            className="w-full h-11 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm"
           >
             Registrarse
           </Button>
         </div>
 
         {/* Separador */}
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="border-t border-outline-variant/40 w-full" />
-          <span className="bg-surface-container-lowest px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium">
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="border-t border-outline-variant/30 w-full" />
+          <span className="bg-surface/80 backdrop-blur-sm px-3 text-xs text-on-surface-variant uppercase tracking-wider absolute font-medium rounded-full">
             o
           </span>
         </div>
@@ -135,7 +141,7 @@ export function RegisterForm() {
         <Button
           type="button"
           variant="secondary"
-          className="w-full h-11 rounded-[25px] flex items-center justify-center gap-2.5 bg-surface-dim hover:bg-surface-variant text-on-surface border border-outline-variant/60 font-medium text-sm transition-all"
+          className="w-full h-11 flex items-center justify-center gap-2.5 rounded-xl bg-surface hover:bg-surface-dim border border-outline-variant/60 shadow-sm transition-all text-on-surface font-bold text-sm"
         >
           <svg className="size-4 shrink-0" viewBox="0 0 24 24">
             <path
@@ -160,9 +166,9 @@ export function RegisterForm() {
       </form>
 
       {/* Enlace inferior */}
-      <div className="mt-8 text-center text-xs text-on-surface-variant">
+      <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿Ya tienes una cuenta?{' '}
-        <Link href="/login" className="text-primary font-semibold hover:underline">
+        <Link href="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">
           Inicia sesión
         </Link>
       </div>
