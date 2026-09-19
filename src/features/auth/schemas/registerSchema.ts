@@ -24,7 +24,16 @@ export const registerSchema = z
       .email({ message: 'Ingresa un correo electrónico válido' }),
     password: z
       .string()
-      .min(6, { message: 'La contraseña debe tener al menos 6 caracteres' }),
+      .min(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+      .regex(/[A-Z\p{Lu}]/u, {
+        message: 'La contraseña debe contener al menos una letra mayúscula',
+      })
+      .regex(/[0-9]/, {
+        message: 'La contraseña debe contener al menos un número',
+      })
+      .regex(/[^a-zA-Z0-9\s\p{L}]/u, {
+        message: 'La contraseña debe contener al menos un carácter especial',
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
