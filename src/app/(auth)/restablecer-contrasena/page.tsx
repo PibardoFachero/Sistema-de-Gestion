@@ -1,30 +1,18 @@
-import { LoginForm } from '@/features/auth/components/LoginForm';
+import { ResetPasswordForm } from '@/features/auth/components/ResetPasswordForm';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
-import { Target, Flame, Leaf } from 'lucide-react';
+import { ShieldCheck, KeyRound, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
-import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Iniciar Sesión | Komorebi Study Studio',
-  description:
-    'Inicia sesión en Komorebi Study Studio para continuar con tus sesiones y proyectos de estudio.',
+  title: 'Restablecer Contraseña | Komorebi Study Studio',
+  description: 'Crea una nueva contraseña segura para tu cuenta en Komorebi Study Studio.',
 };
 
-export default async function LoginPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/');
-  }
+export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen w-full bg-surface">
-      {/* Lado Izquierdo: Marca, Mascota y Propuesta de Valor */}
+      {/* Lado Izquierdo: Marca, Mascota y Seguridad */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-12 text-on-primary lg:flex xl:w-[45%]">
         {/* Fondo Animado de Aurora Exclusivo del Panel Izquierdo */}
         <div className="pointer-events-none absolute inset-0 z-0 bg-noise mix-blend-overlay opacity-30" />
@@ -44,7 +32,7 @@ export default async function LoginPage() {
           <span className="text-xl font-bold tracking-tight">Komorebi Studio</span>
         </div>
 
-        {/* Contenido Central: Mascota y Features */}
+        {/* Contenido Central: Mascota y Tips de Seguridad */}
         <div className="relative z-10 flex flex-col items-center text-center mt-8">
           <div className="relative mb-8 h-64 w-full max-w-xs">
             <ChiguiGreeting
@@ -53,44 +41,42 @@ export default async function LoginPage() {
             />
           </div>
 
-          <h2 className="text-3xl font-bold mb-4 tracking-tight">Tu zona de estudio te espera.</h2>
+          <h2 className="text-3xl font-bold mb-4 tracking-tight">Tu seguridad es lo primero.</h2>
           <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-10 leading-relaxed font-medium">
-            Chigüi te estaba esperando. Prepara tu café, silencia las notificaciones y prepárate
-            para una sesión productiva.
+            Protege tus notas, proyectos y progreso académico eligiendo una contraseña robusta y
+            única.
           </p>
 
           <div className="grid grid-cols-1 gap-6 w-full max-w-sm text-left">
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-accent-amber/20 p-2.5 rounded-xl">
-                <Target className="size-5 text-accent-amber" />
+                <ShieldCheck className="size-5 text-accent-amber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Retoma tus proyectos</h3>
+                <h3 className="font-bold text-sm">Protección de datos</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Continúa justo donde lo dejaste ayer
+                  Tus credenciales se almacenan encriptadas
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-accent-umber/20 p-2.5 rounded-xl">
-                <Flame className="size-5 text-accent-umber" />
+                <KeyRound className="size-5 text-accent-umber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Mantén tu racha</h3>
+                <h3 className="font-bold text-sm">Contraseña segura</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Cada día de enfoque cuenta para tus metas
+                  Combina letras, números y símbolos
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-secondary/30 p-2.5 rounded-xl">
-                <Leaf className="size-5 text-accent-amber" />
+                <Sparkles className="size-5 text-accent-amber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Estudio sin distracciones</h3>
-                <p className="text-xs text-white/60 font-medium">
-                  Un entorno libre de notificaciones
-                </p>
+                <h3 className="font-bold text-sm">Acceso inmediato</h3>
+                <p className="text-xs text-white/60 font-medium">Vuelve a tu estudio al instante</p>
               </div>
             </div>
           </div>
@@ -102,12 +88,10 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      {/* Lado Derecho: Formulario de Login */}
+      {/* Lado Derecho: Formulario de Restablecer Contraseña */}
       <div className="relative flex w-full items-center justify-center p-6 lg:w-1/2 xl:w-[55%] animate-in fade-in slide-in-from-right-8 duration-700">
         <div className="w-full max-w-md">
-          <Suspense fallback={null}>
-            <LoginForm />
-          </Suspense>
+          <ResetPasswordForm />
         </div>
       </div>
     </div>

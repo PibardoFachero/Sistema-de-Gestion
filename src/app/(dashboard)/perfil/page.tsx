@@ -86,6 +86,18 @@ export default async function PerfilPage() {
       .filter(Boolean);
   }
 
+  // Detección de método de autenticación y presencia de contraseña
+  const providers = (user.app_metadata?.providers as string[] | undefined) || [];
+  const identities = user.identities || [];
+  const hasPassword =
+    Boolean(user.user_metadata?.has_password) ||
+    providers.includes('email') ||
+    identities.some((identity) => identity.provider === 'email');
+  const isGoogleUser =
+    providers.includes('google') ||
+    user.app_metadata?.provider === 'google' ||
+    identities.some((identity) => identity.provider === 'google');
+
   const dashboardProfile: ProfileDashboardData = {
     firstName,
     lastName,
@@ -111,6 +123,8 @@ export default async function PerfilPage() {
     currentStreak: typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0,
     bestStreak: typeof profile?.racha_maxima === 'number' ? profile.racha_maxima : 0,
     lastSignInAt: user.last_sign_in_at,
+    hasPassword,
+    isGoogleUser,
   };
 
   return <ProfileDashboard profile={dashboardProfile} />;

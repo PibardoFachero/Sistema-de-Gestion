@@ -2,17 +2,19 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
 import { loginUser } from '@/features/auth/actions/loginAction';
 import { createClient } from '@/lib/supabase/client';
+import { ForgotPasswordModal } from '@/features/auth/components/ForgotPasswordModal';
 import type { LoginFormData } from '@/features/auth/types/auth.types';
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -20,17 +22,29 @@ export function LoginForm() {
   });
 
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
-  const [generalError, setGeneralError] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('error') === 'oauth_error') {
-        return 'No se pudo iniciar sesión con Google. Por favor intenta nuevamente.';
-      }
-    }
-    return null;
-  });
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [isUrlErrorDismissed, setIsUrlErrorDismissed] = useState(false);
+  const [isSuccessDismissed, setIsSuccessDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const urlError = !isUrlErrorDismissed ? searchParams.get('error') : null;
+  const urlReset = !isSuccessDismissed ? searchParams.get('reset') : null;
+
+  const displayError =
+    generalError ||
+    (urlError === 'oauth_error'
+      ? 'No se pudo iniciar sesión con Google. Por favor intenta nuevamente.'
+      : urlError === 'reset_link_expired'
+        ? 'El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo.'
+        : null);
+
+  const displaySuccess =
+    urlReset === 'success'
+      ? '¡Tu contraseña ha sido restablecida exitosamente! Ya puedes iniciar sesión.'
+      : null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -42,11 +56,19 @@ export function LoginForm() {
     if (generalError) {
       setGeneralError(null);
     }
+    if (!isUrlErrorDismissed) {
+      setIsUrlErrorDismissed(true);
+    }
+    if (!isSuccessDismissed) {
+      setIsSuccessDismissed(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setGeneralError(null);
+    setIsUrlErrorDismissed(true);
+    setIsSuccessDismissed(true);
     setFieldErrors({});
     setIsLoading(true);
 
@@ -120,10 +142,17 @@ export function LoginForm() {
         </p>
       </div>
 
-      {generalError && (
+      {displaySuccess && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl bg-status-success-bg p-3.5 text-status-success text-xs sm:text-sm animate-in fade-in border border-status-success/25">
+          <CheckCircle2 className="size-5 shrink-0 text-status-success mt-0.5" />
+          <p className="leading-snug font-medium">{displaySuccess}</p>
+        </div>
+      )}
+
+      {displayError && (
         <div className="mb-4 flex items-start gap-3 rounded-xl bg-error-container p-3.5 text-on-error-container text-xs sm:text-sm animate-in fade-in">
           <AlertCircle className="size-5 shrink-0 text-error mt-0.5" />
-          <p className="leading-snug">{generalError}</p>
+          <p className="leading-snug">{displayError}</p>
         </div>
       )}
 
@@ -147,9 +176,7 @@ export function LoginForm() {
                 : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
             }`}
           />
-          {fieldErrors.email && (
-            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>
-          )}
+          {fieldErrors.email && <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -157,25 +184,39 @@ export function LoginForm() {
             <label className="text-sm font-semibold text-on-surface" htmlFor="password">
               Contraseña
             </label>
-            <span className="text-xs text-accent-amber font-semibold cursor-pointer hover:underline">
+            <button
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(true)}
+              className="text-xs text-accent-amber font-semibold hover:underline focus:outline-none focus:ring-1 focus:ring-accent-amber/40 rounded transition-all"
+            >
               ¿Olvidaste tu contraseña?
-            </span>
+            </button>
           </div>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isAnyLoading}
-            required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
-              fieldErrors.password
-                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-            }`}
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={isAnyLoading}
+              required
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 pr-11 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.password
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {fieldErrors.password && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
@@ -246,10 +287,21 @@ export function LoginForm() {
 
       <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿No tienes una cuenta?{' '}
-        <Link href="/register" className="text-primary font-bold hover:text-primary/80 transition-colors">
+        <Link
+          href="/register"
+          className="text-primary font-bold hover:text-primary/80 transition-colors"
+        >
           Regístrate
         </Link>
       </div>
+
+      {isForgotPasswordOpen && (
+        <ForgotPasswordModal
+          isOpen={isForgotPasswordOpen}
+          onClose={() => setIsForgotPasswordOpen(false)}
+          defaultEmail={formData.email}
+        />
+      )}
     </Card>
   );
 }
