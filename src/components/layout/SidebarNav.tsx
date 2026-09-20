@@ -17,17 +17,24 @@ export function SidebarNav() {
     { href: '/ia', icon: Sparkles, label: 'Asistente IA' },
   ];
 
-  const [sidebarProjects, setSidebarProjects] = React.useState<{id: string, name: string}[]>([]);
+  const [sidebarProjects, setSidebarProjects] = React.useState<{id: string, name: string, importance?: string}[]>([]);
 
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('komorebi_projects');
-      if (saved) {
-        setSidebarProjects(JSON.parse(saved));
+    const loadProjects = () => {
+      try {
+        const saved = localStorage.getItem('komorebi_projects');
+        if (saved) {
+          setSidebarProjects(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+    
+    loadProjects();
+    
+    window.addEventListener('projects_updated', loadProjects);
+    return () => window.removeEventListener('projects_updated', loadProjects);
   }, []);
 
   return (
@@ -54,7 +61,16 @@ export function SidebarNav() {
 
             {item.href === '/proyectos' && isActive && sidebarProjects.length > 0 && (
               <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
-                {sidebarProjects.slice(0, 5).map(p => (
+                {sidebarProjects
+                  .sort((a, b) => {
+                    const isAHigh = ['obligatorio', 'prioritario'].includes((a.importance || '').toLowerCase());
+                    const isBHigh = ['obligatorio', 'prioritario'].includes((b.importance || '').toLowerCase());
+                    if (isAHigh && !isBHigh) return -1;
+                    if (!isAHigh && isBHigh) return 1;
+                    return 0;
+                  })
+                  .slice(0, 3)
+                  .map(p => (
                   <SubItem key={p.id} label={p.name} href={`/proyectos/${p.id}`} />
                 ))}
               </div>

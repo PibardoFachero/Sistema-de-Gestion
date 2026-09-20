@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, ExternalLink, Play, Check } from 'lucide-react';
+import { Clock, ExternalLink, Play, Check, Trash2 } from 'lucide-react';
 import { toggleTaskStatus } from '@/services/proyectoServices';
 
 export interface Task {
@@ -20,9 +20,10 @@ interface TaskItemCardProps {
   projectName: string;
   projectPriority: string;
   onToggleComplete: (id: string, newStatus: boolean) => void;
+  onDeleteTask?: (id: string) => void;
 }
 
-export function TaskItemCard({ task, projectName, projectPriority, onToggleComplete }: TaskItemCardProps) {
+export function TaskItemCard({ task, projectName, projectPriority, onToggleComplete, onDeleteTask }: TaskItemCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.isCompleted);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -125,13 +126,22 @@ export function TaskItemCard({ task, projectName, projectPriority, onToggleCompl
       </div>
 
       {/* 3. Lado Derecho (Acción) */}
-      <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+      <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0 flex gap-2">
         <button 
           className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-on-surface px-5 py-2.5 text-sm font-bold text-surface transition-transform hover:scale-105 hover:bg-[#333] active:scale-95"
         >
           {isCompleted ? 'Ver más' : 'Iniciar tarea'}
           {!isCompleted && <Play className="size-4" fill="currentColor" />}
         </button>
+        {onDeleteTask && (
+          <button
+            onClick={() => onDeleteTask(task.id)}
+            className="w-10 h-10 sm:w-auto sm:px-3 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100"
+            aria-label="Eliminar tarea"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
       </div>
 
     </div>

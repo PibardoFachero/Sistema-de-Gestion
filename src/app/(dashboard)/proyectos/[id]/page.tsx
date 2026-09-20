@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard';
 
 // 4. CONTRATO DE DATOS MOCK
@@ -38,6 +39,7 @@ const mockProjectDetail = {
 };
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const [project, setProject] = useState(mockProjectDetail);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -57,6 +59,26 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       );
       return { ...prev, tasks: updatedTasks };
     });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setProject(prev => ({
+      ...prev,
+      tasks: prev.tasks.filter(t => t.id !== taskId)
+    }));
+  };
+
+  const handleDeleteProject = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('komorebi_projects');
+      if (saved) {
+        const projects = JSON.parse(saved);
+        const updated = projects.filter((p: any) => p.id !== project.id);
+        localStorage.setItem('komorebi_projects', JSON.stringify(updated));
+        window.dispatchEvent(new Event('projects_updated'));
+      }
+    }
+    router.push('/proyectos');
   };
 
   const handleAddTask = (e: React.FormEvent) => {
@@ -83,12 +105,20 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   return (
     <div className="flex h-full min-h-[80vh] flex-col animate-in fade-in duration-500 pb-20">
       
-      {/* Back button */}
-      <div className="mb-4">
+      {/* Back button and Actions */}
+      <div className="mb-4 flex justify-between items-center">
         <Link href="/proyectos" className="inline-flex items-center gap-2 text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors">
           <ArrowLeft className="size-4" />
           Volver a Proyectos
         </Link>
+        
+        <button 
+          onClick={handleDeleteProject}
+          className="inline-flex items-center gap-2 text-sm font-bold text-red-500 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg"
+        >
+          <Trash2 className="size-4" />
+          Eliminar Proyecto
+        </button>
       </div>
 
       {/* 1. CABECERA Y MÉTRICAS DEL PROYECTO */}
@@ -164,6 +194,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             projectName={project.title}
             projectPriority={project.priority}
             onToggleComplete={handleToggleTask}
+            onDeleteTask={handleDeleteTask}
           />
         ))}
       </div>

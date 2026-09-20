@@ -32,6 +32,7 @@ export default function ProyectosPage() {
     setProyectos(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem('komorebi_projects', JSON.stringify(updated));
+      window.dispatchEvent(new Event('projects_updated'));
     }
   };
 
@@ -46,13 +47,7 @@ export default function ProyectosPage() {
   return (
     <div className="flex h-full min-h-[80vh] flex-col animate-in fade-in duration-500">
       
-      {/* Botón superior izquierdo */}
-      <div className="mb-8 flex items-start">
-        <Link href="/proyectos/nuevo" className="flex items-center gap-2 rounded-2xl bg-surface-container-high px-5 py-2.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-surface-container-highest">
-          <Plus className="size-4" />
-          Crear Proyecto
-        </Link>
-      </div>
+      {/* Se eliminó el botón superior izquierdo para unificar la creación en el grid */}
 
       {proyectos.length === 0 ? (
         /* ============================
@@ -74,6 +69,13 @@ export default function ProyectosPage() {
           <p className="max-w-md text-on-surface-variant">
             Crea tu primer espacio de estudio o trabajo y organiza todas tus tareas de forma sencilla.
           </p>
+          <Link 
+            href="/proyectos/nuevo"
+            className="mt-8 flex items-center justify-center gap-2 rounded-full bg-[#f5e5d9] px-6 py-3 text-[15px] font-bold text-[#845326] shadow-sm transition-all hover:-translate-y-[2px] hover:bg-[#E8DCD1] hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="size-5" />
+            Crear mi primer proyecto
+          </Link>
         </div>
       ) : (
         /* ============================
@@ -81,16 +83,6 @@ export default function ProyectosPage() {
            ============================ */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
           
-          {/* Tarjeta de Agregar Proyecto Rápido */}
-          <Link href="/proyectos/nuevo" className="group flex flex-col items-center justify-center bg-transparent rounded-[20px] border-2 border-dashed border-[#d2c4bb] hover:border-[#845326] hover:bg-[#FDFBF9] transition-all min-h-[250px] cursor-pointer">
-            <div className="w-14 h-14 rounded-full bg-[#f5e5d9] group-hover:bg-[#E8DCD1] text-[#845326] flex items-center justify-center mb-4 transition-colors">
-              <Plus className="size-6" />
-            </div>
-            <span className="font-bold text-[#845326] group-hover:text-[#433022] transition-colors">
-              Nuevo Proyecto
-            </span>
-          </Link>
-
           {/* Tarjetas de Proyectos Creados */}
           {proyectos.map((proyecto, index) => (
             <ProjectCard 
@@ -100,6 +92,16 @@ export default function ProyectosPage() {
               onDelete={handleDeleteProject}
             />
           ))}
+
+          {/* Tarjeta de Agregar Proyecto Rápido */}
+          <Link href="/proyectos/nuevo" className="group flex flex-col items-center justify-center bg-transparent rounded-[20px] border-2 border-dashed border-[#d2c4bb] hover:border-[#845326] hover:bg-[#FDFBF9] transition-all min-h-[250px] cursor-pointer">
+            <div className="w-14 h-14 rounded-full bg-[#f5e5d9] group-hover:bg-[#E8DCD1] text-[#845326] flex items-center justify-center mb-4 transition-colors">
+              <Plus className="size-6" />
+            </div>
+            <span className="font-bold text-[#845326] group-hover:text-[#433022] transition-colors">
+              Nuevo Proyecto
+            </span>
+          </Link>
 
         </div>
       )}

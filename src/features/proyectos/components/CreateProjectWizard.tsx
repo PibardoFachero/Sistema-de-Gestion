@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as LinkIcon, X } from 'lucide-react';
 
 export function CreateProjectWizard() {
   const router = useRouter();
@@ -83,6 +83,7 @@ export function CreateProjectWizard() {
           createdAt: newProjectData.createdAt,
         });
         localStorage.setItem('komorebi_projects', JSON.stringify(projects));
+        window.dispatchEvent(new Event('projects_updated'));
       }
 
       router.push(`/proyectos/${projectId}`);
@@ -397,7 +398,17 @@ export function CreateProjectWizard() {
 
         {/* COLUMNA DERECHA: Formulario / Preguntas */}
         <div className="w-full flex justify-center">
-          <div className="w-full max-w-[480px] bg-white border border-[#EAE3DC] rounded-[20px] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all">
+          <div className="w-full max-w-[480px] bg-white border border-[#EAE3DC] rounded-[20px] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all relative">
+            
+            {/* Botón Cerrar */}
+            <button
+              type="button"
+              onClick={() => router.push('/proyectos')}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Cerrar y volver a proyectos"
+            >
+              <X className="size-5" />
+            </button>
             
             {/* Encabezado e Indicador de Progreso */}
             <div className="space-y-2.5 mb-6">
