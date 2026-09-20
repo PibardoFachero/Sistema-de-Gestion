@@ -1,5 +1,6 @@
 import React from 'react';
-import { FolderKanban, PanelLeftClose } from 'lucide-react';
+import { PanelLeftClose } from 'lucide-react';
+import Image from 'next/image';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { SidebarNav } from '@/components/layout/SidebarNav';
@@ -26,8 +27,13 @@ export async function Sidebar({ initialUser }: SidebarProps) {
     <aside className="hidden md:flex w-64 flex-col border-r border-outline-variant/30 bg-surface h-screen sticky top-0 left-0">
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg text-primary">
-            <FolderKanban className="size-5" />
+          <div className="bg-primary/10 p-1 rounded-lg text-primary flex items-center justify-center w-10 h-10 relative">
+            <Image 
+              src="/images/mascot/chigui-focus.png" 
+              alt="Logo" 
+              fill 
+              className="object-contain p-0.5"
+            />
           </div>
           <div>
             <h2 className="font-bold text-primary tracking-tight leading-tight">Komorebi</h2>
