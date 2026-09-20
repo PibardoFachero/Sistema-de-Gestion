@@ -51,7 +51,15 @@ export function CreateProjectWizard() {
     
     try {
       const { createProject } = await import('@/services/proyectoServices');
+      const { createClient } = await import('@/lib/supabase/client');
       
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const configuredTime = answers[6] 
+        ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim() 
+        : '30';
+
       const newProjectData = {
         id: Date.now().toString(),
         projectName: answers[0] || 'Proyecto Sin Nombre',
@@ -60,11 +68,25 @@ export function CreateProjectWizard() {
         priority: answers[3] || 'Normal',
         knowledge: answers[4] || '',
         materials: answers[5] || {},
-        dailyMinutes: 30, // Default u obtener de answers[6]
+        dailyMinutes: configuredTime,
         tasksCount: 0,
         progress: 0,
         createdAt: new Date().toISOString(),
       };
+
+      // Llamada webhook n8n usando la Ruta API local (no bloqueante, evita CORS)
+      fetch('/api/webhooks/n8n', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user?.id || 'usuario_no_autenticado',
+          nombre_proyecto: newProjectData.projectName,
+          meta: newProjectData.objective,
+          fecha_limite: newProjectData.deadline,
+          prioridad: newProjectData.priority,
+          horario_configurado: newProjectData.dailyMinutes,
+        })
+      }).catch(err => console.error('Error enviando webhook n8n:', err));
       
       // Llamada al servicio simulado
       const result = await createProject(newProjectData);
@@ -389,6 +411,7 @@ export function CreateProjectWizard() {
                 src="/images/mascot/imagendechiwiconcafe.png"
                 alt="Mr. Chiwi con Café"
                 fill
+                sizes="(max-width: 768px) 224px, 256px"
                 priority
                 className="object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
               />

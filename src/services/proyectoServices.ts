@@ -2,7 +2,7 @@ export interface ProjectData {
   projectName: string;
   deadline?: string;
   priority: string;
-  dailyMinutes: number;
+  dailyMinutes: number | string;
   [key: string]: any; // Allow other fields from the 7 steps
 }
 

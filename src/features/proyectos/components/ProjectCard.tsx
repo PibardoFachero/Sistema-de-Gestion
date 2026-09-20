@@ -77,6 +77,7 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
             src={`/images/mascot/${CHIGUI_IMAGES[index % CHIGUI_IMAGES.length]}`}
             alt="Ilustración de proyecto"
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-contain"
           />
         </div>
