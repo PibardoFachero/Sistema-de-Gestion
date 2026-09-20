@@ -116,12 +116,11 @@ export function RegisterForm() {
         return;
       }
 
-      // Registro exitoso -> Redirigir a la encuesta de bienvenida (onboarding)
+      // Registro exitoso -> Redirigir a la pantalla de verificación de correo
       setIsSuccess(true);
       setTimeout(() => {
-        router.push('/onboarding');
-        router.refresh();
-      }, 1000);
+        router.push(`/verificar-correo?email=${encodeURIComponent(formData.email)}`);
+      }, 1200);
     } catch {
       setGeneralError('Ocurrió un error inesperado. Por favor intenta de nuevo.');
       setIsLoading(false);
@@ -182,7 +181,7 @@ export function RegisterForm() {
       {isSuccess && (
         <div className="mb-4 flex items-center gap-3 rounded-xl bg-status-success-bg p-4 text-status-success text-sm font-medium animate-in fade-in">
           <CheckCircle2 className="size-5 shrink-0" />
-          <span>¡Cuenta creada con éxito! Redirigiendo a tu encuesta inicial...</span>
+          <span>¡Cuenta creada con éxito! Redirigiendo para verificar tu correo...</span>
         </div>
       )}
 

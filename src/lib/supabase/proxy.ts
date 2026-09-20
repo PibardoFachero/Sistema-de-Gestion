@@ -43,9 +43,24 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/recuperar-contrasena');
+    pathname.startsWith('/recuperar-contrasena') ||
+    pathname.startsWith('/verificar-correo');
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
   const isPasswordResetRoute = pathname.startsWith('/restablecer-contrasena');
+
+  const isRegisteredRecently = Boolean(request.cookies.get('just_registered_email')?.value);
+  const isPendingVerification = (user && !user.email_confirmed_at) || isRegisteredRecently;
+
+  // La página de confirmación ÚNICAMENTE debe ser visible tras registrar un correo
+  if (pathname.startsWith('/verificar-correo') && !isPendingVerification && !isServerAction) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/register';
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
+  }
 
   // Si no está autenticado y no es una ruta de autenticación/callback/restablecimiento ni una Server Action:
   // Siempre redirigir al login
@@ -59,11 +74,38 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse;
   }
 
-  // Si ya está autenticado e intenta navegar a /login o /register (y no es una Server Action):
-  // Redirigir al inicio del panel
-  if (user && isAuthRoute && !isServerAction) {
+  // Si está autenticado pero NO ha confirmado su correo electrónico:
+  // Bloquear acceso a onboarding, dashboard u otras rutas protegidas y dirigir a /verificar-correo
+  if (
+    user &&
+    !user.email_confirmed_at &&
+    !pathname.startsWith('/verificar-correo') &&
+    !isAuthCallback &&
+    !isServerAction
+  ) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/verificar-correo';
+    if (user.email) {
+      url.searchParams.set('email', user.email);
+    }
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
+  }
+
+  // Si ya está autenticado con correo confirmado e intenta navegar a rutas de autenticación:
+  // Redirigir a /onboarding (si no ha completado la encuesta) o al dashboard (/)
+  if (user && user.email_confirmed_at && isAuthRoute && !isServerAction) {
+    // Si acaba de registrarse, permitirle ver la pantalla de confirmación
+    if (pathname.startsWith('/verificar-correo') && isRegisteredRecently) {
+      return supabaseResponse;
+    }
+
+    const url = request.nextUrl.clone();
+    const hasCompletedOnboarding = Boolean(user.user_metadata?.onboarding_completed);
+    url.pathname = hasCompletedOnboarding ? '/' : '/onboarding';
     const redirectResponse = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value);
