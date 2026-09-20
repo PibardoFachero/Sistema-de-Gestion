@@ -23,3 +23,10 @@ create policy "Los usuarios pueden ver su propio perfil"
   on public.profiles for select
   to authenticated
   using (auth.uid() = id);
+
+drop policy if exists "Los usuarios pueden insertar su propio perfil" on public.profiles;
+create policy "Los usuarios pueden insertar su propio perfil"
+  on public.profiles for insert
+  to authenticated
+  with check (auth.uid() = id);
+

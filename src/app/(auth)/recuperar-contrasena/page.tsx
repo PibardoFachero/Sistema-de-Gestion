@@ -1,19 +1,18 @@
-import { LoginForm } from '@/features/auth/components/LoginForm';
+import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
-import { Target, Flame, Leaf } from 'lucide-react';
+import { KeyRound, ShieldAlert, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Iniciar Sesión | Komorebi Study Studio',
+  title: 'Recuperar Contraseña | Komorebi Study Studio',
   description:
-    'Inicia sesión en Komorebi Study Studio para continuar con tus sesiones y proyectos de estudio.',
+    'Recupera el acceso a tu cuenta de Komorebi Study Studio mediante un correo de restablecimiento seguro.',
 };
 
-export default async function LoginPage() {
+export default async function ForgotPasswordPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,11 +21,12 @@ export default async function LoginPage() {
   if (user) {
     redirect('/');
   }
+
   return (
     <div className="flex min-h-screen w-full bg-surface">
-      {/* Lado Izquierdo: Marca, Mascota y Propuesta de Valor */}
+      {/* Lado Izquierdo: Marca y Mascota */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-12 text-on-primary lg:flex xl:w-[45%]">
-        {/* Fondo Animado de Aurora Exclusivo del Panel Izquierdo */}
+        {/* Fondo Animado de Aurora */}
         <div className="pointer-events-none absolute inset-0 z-0 bg-noise mix-blend-overlay opacity-30" />
         <div className="pointer-events-none absolute -left-[20%] -top-[10%] h-[40vw] w-[40vw] rounded-full bg-accent-amber/30 blur-[120px] animate-blob" />
         <div className="pointer-events-none absolute -bottom-[10%] -right-[10%] h-[50vw] w-[50vw] rounded-full bg-secondary/40 blur-[120px] animate-blob animation-delay-2000" />
@@ -44,7 +44,7 @@ export default async function LoginPage() {
           <span className="text-xl font-bold tracking-tight">Komorebi Studio</span>
         </div>
 
-        {/* Contenido Central: Mascota y Features */}
+        {/* Contenido Central */}
         <div className="relative z-10 flex flex-col items-center text-center mt-8">
           <div className="relative mb-8 h-64 w-full max-w-xs">
             <ChiguiGreeting
@@ -53,43 +53,43 @@ export default async function LoginPage() {
             />
           </div>
 
-          <h2 className="text-3xl font-bold mb-4 tracking-tight">Tu zona de estudio te espera.</h2>
+          <h2 className="text-3xl font-bold mb-4 tracking-tight">Recupera tu acceso.</h2>
           <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-10 leading-relaxed font-medium">
-            Chigüi te estaba esperando. Prepara tu café, silencia las notificaciones y prepárate
-            para una sesión productiva.
+            No te preocupes si has olvidado tu clave. Te ayudaremos a restablecerla para que puedas
+            seguir enfocado en tus metas.
           </p>
 
           <div className="grid grid-cols-1 gap-6 w-full max-w-sm text-left">
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-accent-amber/20 p-2.5 rounded-xl">
-                <Target className="size-5 text-accent-amber" />
+                <KeyRound className="size-5 text-accent-amber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Retoma tus proyectos</h3>
+                <h3 className="font-bold text-sm">Enlace seguro</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Continúa justo donde lo dejaste ayer
+                  Recibirás un acceso cifrado y único
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-accent-umber/20 p-2.5 rounded-xl">
-                <Flame className="size-5 text-accent-umber" />
+                <ShieldAlert className="size-5 text-accent-umber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Mantén tu racha</h3>
+                <h3 className="font-bold text-sm">Protección contra spam</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Cada día de enfoque cuenta para tus metas
+                  Límites de seguridad para resguardar tu cuenta
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-secondary/30 p-2.5 rounded-xl">
-                <Leaf className="size-5 text-accent-amber" />
+                <Sparkles className="size-5 text-accent-amber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Estudio sin distracciones</h3>
+                <h3 className="font-bold text-sm">Rápido y sencillo</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Un entorno libre de notificaciones
+                  En pocos pasos estarás de vuelta
                 </p>
               </div>
             </div>
@@ -102,12 +102,10 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      {/* Lado Derecho: Formulario de Login */}
+      {/* Lado Derecho: Formulario */}
       <div className="relative flex w-full items-center justify-center p-6 lg:w-1/2 xl:w-[55%] animate-in fade-in slide-in-from-right-8 duration-700">
         <div className="w-full max-w-md">
-          <Suspense fallback={null}>
-            <LoginForm />
-          </Suspense>
+          <ForgotPasswordForm />
         </div>
       </div>
     </div>

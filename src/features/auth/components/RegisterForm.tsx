@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { registerUser } from '@/features/auth/actions/registerAction';
@@ -23,11 +23,15 @@ export function RegisterForm() {
     confirmPassword: '',
   });
 
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>(
+    {},
+  );
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -160,9 +164,7 @@ export function RegisterForm() {
             className="object-contain drop-shadow-sm"
           />
         </div>
-        <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">
-          Crear una cuenta
-        </h1>
+        <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">Crear una cuenta</h1>
         <p className="text-sm text-on-surface-variant font-medium max-w-sm">
           Completa tus datos para registrarte en Komorebi Study Studio
         </p>
@@ -201,10 +203,11 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.firstName
-                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.firstName
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
             />
             {fieldErrors.firstName && (
               <p className="text-xs text-error mt-1 ml-1">{fieldErrors.firstName}</p>
@@ -223,10 +226,11 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.lastName
-                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.lastName
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
             />
             {fieldErrors.lastName && (
               <p className="text-xs text-error mt-1 ml-1">{fieldErrors.lastName}</p>
@@ -248,10 +252,11 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.username
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-              }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+              fieldErrors.username
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+            }`}
           />
           {fieldErrors.username && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.username}</p>
@@ -272,14 +277,13 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.email
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-              }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+              fieldErrors.email
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+            }`}
           />
-          {fieldErrors.email && (
-            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>
-          )}
+          {fieldErrors.email && <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>}
         </div>
 
         {/* Contraseña */}
@@ -287,20 +291,31 @@ export function RegisterForm() {
           <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="password">
             Contraseña
           </label>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isLoading || isSuccess}
-            required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.password
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={isLoading || isSuccess}
+              required
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 pr-11 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.password
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
               }`}
-          />
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {fieldErrors.password && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
@@ -315,9 +330,7 @@ export function RegisterForm() {
                 <div
                   key={criterion.id}
                   className={`flex items-center gap-2 text-xs transition-colors duration-200 ${
-                    criterion.met
-                      ? 'text-status-success font-medium'
-                      : 'text-outline font-normal'
+                    criterion.met ? 'text-status-success font-medium' : 'text-outline font-normal'
                   }`}
                 >
                   {criterion.met ? (
@@ -337,20 +350,31 @@ export function RegisterForm() {
           <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="confirmPassword">
             Confirmación de contraseña
           </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            name="confirmPassword"
-            placeholder="••••••••"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            disabled={isLoading || isSuccess}
-            required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.confirmPassword
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              name="confirmPassword"
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              disabled={isLoading || isSuccess}
+              required
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 pr-11 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.confirmPassword
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
               }`}
-          />
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            >
+              {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {fieldErrors.confirmPassword && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.confirmPassword}</p>
           )}
@@ -425,7 +449,10 @@ export function RegisterForm() {
       {/* Enlace inferior */}
       <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿Ya tienes una cuenta?{' '}
-        <Link href="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">
+        <Link
+          href="/login"
+          className="text-primary font-bold hover:text-primary/80 transition-colors"
+        >
           Inicia sesión
         </Link>
       </div>

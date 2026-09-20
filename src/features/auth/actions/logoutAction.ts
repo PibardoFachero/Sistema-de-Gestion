@@ -48,7 +48,10 @@ export async function logoutUser(): Promise<LogoutResponse> {
         });
 
         if (insertError) {
-          console.error('Error al insertar fila con ultima_sesion en profiles:', insertError.message);
+          console.error(
+            'Error al insertar fila con ultima_sesion en profiles:',
+            insertError.message,
+          );
         }
       }
     }

@@ -383,8 +383,8 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                                 type="button"
                                 onClick={() => setAvatarPreview(url)}
                                 className={`group relative size-16 overflow-hidden rounded-2xl border-2 transition-all cursor-pointer ${isSelected
-                                    ? 'border-primary shadow-md ring-2 ring-primary/30'
-                                    : 'border-outline-variant hover:border-primary/50'
+                                  ? 'border-primary shadow-md ring-2 ring-primary/30'
+                                  : 'border-outline-variant hover:border-primary/50'
                                   }`}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -817,15 +817,15 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                             type="button"
                             onClick={() => toggleDifficulty(diff)}
                             className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${isSelected
-                                ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
-                                : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
+                              ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
+                              : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
                               }`}
                           >
                             <span className="leading-snug">{diff}</span>
                             <div
                               className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${isSelected
-                                  ? 'border-primary bg-primary text-surface'
-                                  : 'border-outline-variant'
+                                ? 'border-primary bg-primary text-surface'
+                                : 'border-outline-variant'
                                 }`}
                             >
                               {isSelected && <Check className="size-3.5 stroke-[3]" />}
@@ -854,15 +854,15 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                             type="button"
                             onClick={() => togglePriorityArea(area)}
                             className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${isSelected
-                                ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
-                                : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
+                              ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
+                              : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
                               }`}
                           >
                             <span className="leading-snug">{area}</span>
                             <div
                               className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${isSelected
-                                  ? 'border-primary bg-primary text-surface'
-                                  : 'border-outline-variant'
+                                ? 'border-primary bg-primary text-surface'
+                                : 'border-outline-variant'
                                 }`}
                             >
                               {isSelected && <Check className="size-3.5 stroke-[3]" />}
@@ -1151,8 +1151,8 @@ function AnswerPicker({
                   setIsOpen(false);
                 }}
                 className={`flex w-full min-h-10 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs leading-snug transition-colors cursor-pointer ${isSelected
-                    ? 'bg-primary/10 font-semibold text-primary'
-                    : 'text-on-surface hover:bg-surface-container-low'
+                  ? 'bg-primary/10 font-semibold text-primary'
+                  : 'text-on-surface hover:bg-surface-container-low'
                   }`}
               >
                 <span>{option}</span>

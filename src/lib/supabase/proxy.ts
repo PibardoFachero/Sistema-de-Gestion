@@ -40,12 +40,16 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isServerAction = request.headers.has('next-action');
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isAuthRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/recuperar-contrasena');
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
+  const isPasswordResetRoute = pathname.startsWith('/restablecer-contrasena');
 
-  // Si no está autenticado y no es una ruta de autenticación/callback ni una Server Action:
+  // Si no está autenticado y no es una ruta de autenticación/callback/restablecimiento ni una Server Action:
   // Siempre redirigir al login
-  if (!user && !isAuthRoute && !isAuthCallback && !isServerAction) {
+  if (!user && !isAuthRoute && !isAuthCallback && !isPasswordResetRoute && !isServerAction) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     const redirectResponse = NextResponse.redirect(url);

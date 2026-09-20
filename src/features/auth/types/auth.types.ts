@@ -23,3 +23,24 @@ export interface LoginActionResponse {
   error?: string;
   fieldErrors?: Partial<Record<keyof LoginFormData, string[]>>;
 }
+
+export interface ForgotPasswordFormData {
+  email: string;
+}
+
+export interface ForgotPasswordActionResponse {
+  success: boolean;
+  error?: string;
+  fieldErrors?: Partial<Record<keyof ForgotPasswordFormData, string[]>>;
+}
+
+export interface ResetPasswordFormData {
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordActionResponse {
+  success: boolean;
+  error?: string;
+  fieldErrors?: Partial<Record<keyof ResetPasswordFormData, string[]>>;
+}
