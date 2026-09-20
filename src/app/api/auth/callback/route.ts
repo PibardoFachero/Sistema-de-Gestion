@@ -24,6 +24,9 @@ export async function GET(request: Request) {
     }
   }
 
-  // Si ocurre un error, redirigir al login con un parámetro de error
-  return NextResponse.redirect(`${origin}/login?error=oauth_error`);
+  // Si ocurre un error, redirigir al login con el parámetro de error correspondiente
+  const isResetFlow = next.includes('restablecer');
+  const errorParam = isResetFlow ? 'reset_link_expired' : 'oauth_error';
+
+  return NextResponse.redirect(`${origin}/login?error=${errorParam}`);
 }

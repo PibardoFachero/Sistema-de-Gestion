@@ -6,9 +6,7 @@
                 "httpMethod": "POST",
                 "path": "chatbot-web",
                 "responseMode": "responseNode",
-                "options": {
-                    "allowedOrigins": "*"
-                }
+                "options": {}
             },
             "id": "016955c0-1b5f-4770-9693-bfce40253c07",
             "name": "Webhook",
@@ -92,7 +90,7 @@
                 "text": "={{ $('Webhook').item.json.body.message }}",
                 "hasOutputParser": true,
                 "options": {
-                    "systemMessage": "=Eres un tutor y planificador de estudio para una plataforma educativa. Siempre respondes en español, con un tono cercano, motivador y claro.\n\nPERFIL DEL ESTUDIANTE (datos de la base de datos, en JSON):\n{{ JSON.stringify($('Supabase').item.json) }}\n\nFECHA Y HORA ACTUAL: {{ $now.toISO() }}\n\nREGLAS:\n1. Usa el nivel, las metas de estudio y la disponibilidad del perfil para personalizar tus respuestas. No inventes datos que no estén en el perfil; si falta algo importante, pregúntalo.\n2. Si el estudiante pide planificar, organizar su estudio o recibir actividades, genera tareas concretas y realistas que respeten su disponibilidad y su nivel.\n3. Si el estudiante solo conversa o hace una pregunta, responde de forma útil y devuelve \"tasks\" como arreglo vacío [].\n4. Genera como máximo 10 tareas por respuesta. Cada tarea debe tener: title (corto y accionable), description (qué hacer exactamente), due_date (formato YYYY-MM-DD, nunca en el pasado), duration_minutes (número entero) y priority (\"low\", \"medium\" o \"high\").\n5. No repitas tareas que ya generaste antes en esta conversación.\n6. En \"reply\" resume en pocas líneas lo que planificaste o responde la consulta. No copies la lista completa de tareas dentro de \"reply\".\n7. Tu salida debe respetar exactamente el formato estructurado solicitado."
+                    "systemMessage": "=Eres un tutor y planificador de estudio para una plataforma educativa. Siempre respondes en español, con un tono cercano, motivador y claro.\n\nPERFIL DEL ESTUDIANTE (datos de la base de datos, en JSON):\n{{ JSON.stringify($('Supabase').item.json) }}\n\nFECHA Y HORA ACTUAL: {{ $now.toISO() }}\n\nREGLAS:\n1. Usa el nivel, las metas de estudio y la disponibilidad del perfil para personalizar tus respuestas. No inventes datos que no estén en el perfil; si falta algo importante, pregúntalo.\n2. Si el estudiante pide planificar, organizar su estudio o recibir actividades, genera tareas concretas y realistas que respeten su disponibilidad y su nivel.\n3. Si el estudiante solo conversa o hace una pregunta, responde de forma útil y devuelve \"tasks\" como arreglo vacío [].\n4. Genera como máximo 10 tareas por respuesta. CADA TAREA DEBE CONTENER OBLIGATORIAMENTE: title (un título corto y accionable), description (qué hacer exactamente), due_date (formato YYYY-MM-DD, nunca en el pasado), duration_minutes (número entero) y priority (\"low\", \"medium\" o \"high\")\n5. No repitas tareas que ya generaste antes en esta conversación.\n6. En \"reply\" resume en pocas líneas lo que planificaste o responde la consulta. No copies la lista completa de tareas dentro de \"reply\".\n7. Tu salida debe respetar exactamente el formato estructurado solicitado.\n\n8. FORMATO DE SALIDA: devuelve directamente un objeto JSON con las claves \"reply\" y \"tasks\" en el nivel superior. NUNCA lo envuelvas dentro de otra clave como \"output\". Sin texto antes ni después y sin bloques de markdown.\n\"No envuelvas la respuesta en ningún objeto raíz ni uses claves como 'output'. Devuelve estrictamente un objeto JSON plano que comience de inmediato con 'reply' y 'tasks'.\""
                 }
             },
             "id": "f672cc6d-e2cd-4deb-9765-7168232b1009",
@@ -137,22 +135,23 @@
             "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
             "typeVersion": 1.3,
             "position": [
-                -464,
-                624
+                -416,
+                544
             ]
         },
         {
             "parameters": {
                 "schemaType": "manual",
-                "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Respuesta conversacional para el estudiante, en español.\"\n    },\n    \"tasks\": {\n      \"type\": \"array\",\n      \"description\": \"Lista de tareas planificadas. Vacía si no se pidió planificar.\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"title\": {\n            \"type\": \"string\"\n          },\n          \"description\": {\n            \"type\": \"string\"\n          },\n          \"due_date\": {\n            \"type\": \"string\",\n            \"description\": \"Formato YYYY-MM-DD\"\n          },\n          \"duration_minutes\": {\n            \"type\": \"integer\"\n          },\n          \"priority\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"low\",\n              \"medium\",\n              \"high\"\n            ]\n          }\n        },\n        \"required\": [\n          \"title\",\n          \"description\",\n          \"due_date\",\n          \"duration_minutes\",\n          \"priority\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"reply\",\n    \"tasks\"\n  ]\n}"
+                "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"reply\": {\n      \"type\": \"string\",\n      \"description\": \"Respuesta conversacional para el estudiante, en español.\"\n    },\n    \"tasks\": {\n      \"type\": \"array\",\n      \"description\": \"Lista de tareas planificadas. Vacía si no se pidió planificar.\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"title\": {\n            \"type\": \"string\"\n          },\n          \"description\": {\n            \"type\": \"string\"\n          },\n          \"due_date\": {\n            \"type\": \"string\",\n            \"description\": \"Formato YYYY-MM-DD\"\n          },\n          \"duration_minutes\": {\n            \"type\": \"integer\"\n          },\n          \"priority\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"low\",\n              \"medium\",\n              \"high\"\n            ]\n          }\n        },\n        \"required\": [\n          \"title\",\n          \"description\",\n          \"due_date\",\n          \"duration_minutes\",\n          \"priority\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"reply\",\n    \"tasks\"\n  ]\n}",
+                "autoFix": true
             },
             "id": "80105119-7400-4551-8811-605bd7977b02",
             "name": "Structured Output Parser",
             "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
             "typeVersion": 1.2,
             "position": [
-                -336,
-                624
+                -304,
+                640
             ]
         },
         {
@@ -277,8 +276,8 @@
             "type": "n8n-nodes-base.respondToWebhook",
             "typeVersion": 1.1,
             "position": [
-                752,
-                432
+                768,
+                448
             ]
         },
         {
@@ -294,8 +293,8 @@
             "type": "n8n-nodes-base.respondToWebhook",
             "typeVersion": 1.1,
             "position": [
-                -736,
-                656
+                -800,
+                768
             ]
         }
     ],
@@ -308,7 +307,7 @@
                     "params": {},
                     "body": {
                         "user_id": "e0695fee-8650-43a3-a55c-fbc7fb0ed47a",
-                        "message": "Hola, crea una tarea, puede ser a tu gusto"
+                        "message": "Hola, crea una tarea sobre deportes"
                     }
                 }
             }
@@ -371,6 +370,11 @@
                 [
                     {
                         "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    },
+                    {
+                        "node": "Structured Output Parser",
                         "type": "ai_languageModel",
                         "index": 0
                     }
@@ -451,12 +455,12 @@
             ]
         }
     },
-    "active": false,
+    "active": true,
     "settings": {
         "executionOrder": "v1",
         "binaryMode": "separate"
     },
-    "versionId": "14fae6d8-5a14-4e4e-b56f-fc979cf4a56b",
+    "versionId": "3f3e1c8d-8a7d-40b1-9dec-5e6e6aaf57e2",
     "meta": {
         "templateCredsSetupCompleted": true,
         "instanceId": "07f65b02ac0c2470133111bf45637d6bcad137b665347603f45652bce681f38a"

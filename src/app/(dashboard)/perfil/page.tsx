@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 
 type ProfileRecord = {
   nombre_usuario?: string | null;
+  nombre_completo?: string | null;
+  descripcion?: string | null;
+  contexto_personal?: string | null;
+  avatar_url?: string | null;
+  avatares_subidos?: string[] | null;
   rol_condicion?: string | null;
   edad?: string | null;
   situacion_laboral?: string | null;
@@ -11,41 +16,98 @@ type ProfileRecord = {
   jornada_horarios?: string | null;
   metodologia?: string | null;
   experiencia?: string | null;
-  contexto_personal?: string | null;
+  objetivo?: string | null;
+  ritmo?: string | null;
+  dificultades?: string[] | string | null;
+  area_prioritaria?: string[] | string | null;
   racha_activa?: number | null;
   racha_maxima?: number | null;
+  telefono?: string | null;
 };
 
 export default async function PerfilPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  // Lectura completa de public.profiles
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nombre_usuario, rol_condicion, edad, situacion_laboral, tiempo_diario_min, jornada_horarios, metodologia, experiencia, racha_activa, racha_maxima')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle<ProfileRecord>();
 
-  // La lectura independiente permite que la pantalla siga funcionando mientras
-  // la migración de contexto_personal llega al entorno compartido.
-  const { data: personalProfile } = await supabase
-    .from('profiles')
-    .select('contexto_personal')
-    .eq('id', user.id)
-    .maybeSingle<{ contexto_personal?: string | null }>();
+  const meta = user.user_metadata || {};
+  const username =
+    profile?.nombre_usuario ||
+    meta.username ||
+    meta.nombre_usuario ||
+    user.email?.split('@')[0] ||
+    'estudiante';
 
-  const meta = user.user_metadata;
-  const username = profile?.nombre_usuario || meta.username || meta.nombre_usuario || user.email?.split('@')[0] || 'estudiante';
-  const name = meta.full_name || [meta.first_name, meta.last_name].filter(Boolean).join(' ') || username;
+  // Extraer nombre y apellido separados
+  let firstName = meta.first_name || '';
+  let lastName = meta.last_name || '';
+
+  if (!firstName && !lastName && profile?.nombre_completo) {
+    const parts = profile.nombre_completo.trim().split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  } else if (!firstName && !lastName && meta.full_name) {
+    const parts = meta.full_name.trim().split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  }
+
+  const name = [firstName, lastName].filter(Boolean).join(' ') || username;
   const initials = getInitials(name, username);
+  const avatarUrl = profile?.avatar_url || meta.avatar_url || meta.picture || undefined;
+
+  // Normalizar dificultades en array de strings
+  let difficulties: string[] = [];
+  if (Array.isArray(profile?.dificultades)) {
+    difficulties = profile.dificultades;
+  } else if (typeof profile?.dificultades === 'string' && profile.dificultades.trim()) {
+    difficulties = profile.dificultades
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  // Normalizar áreas prioritarias en array de strings
+  let priorityAreas: string[] = [];
+  if (Array.isArray(profile?.area_prioritaria)) {
+    priorityAreas = profile.area_prioritaria;
+  } else if (typeof profile?.area_prioritaria === 'string' && profile.area_prioritaria.trim()) {
+    priorityAreas = profile.area_prioritaria
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  // Detección de método de autenticación y presencia de contraseña
+  const providers = (user.app_metadata?.providers as string[] | undefined) || [];
+  const identities = user.identities || [];
+  const hasPassword =
+    Boolean(user.user_metadata?.has_password) ||
+    providers.includes('email') ||
+    identities.some((identity) => identity.provider === 'email');
+  const isGoogleUser =
+    providers.includes('google') ||
+    user.app_metadata?.provider === 'google' ||
+    identities.some((identity) => identity.provider === 'google');
 
   const dashboardProfile: ProfileDashboardData = {
+    firstName,
+    lastName,
     name,
     username,
     email: user.email ?? 'Correo no disponible',
     initials,
-    avatarUrl: meta.avatar_url || meta.picture || undefined,
+    avatarUrl,
+    uploadedAvatars: profile?.avatares_subidos || (avatarUrl ? [avatarUrl] : []),
     role: profile?.rol_condicion,
     age: profile?.edad,
     workSituation: profile?.situacion_laboral,
@@ -53,10 +115,18 @@ export default async function PerfilPage() {
     schedule: profile?.jornada_horarios,
     methodology: profile?.metodologia,
     experience: profile?.experiencia,
-    personalContext: personalProfile?.contexto_personal,
-    currentStreak: profile?.racha_activa,
-    bestStreak: profile?.racha_maxima,
+    personalContext: profile?.contexto_personal || profile?.descripcion || '',
+    description: profile?.descripcion || profile?.contexto_personal || '',
+    phone: profile?.telefono ?? (meta.phone || meta.telefono || null),
+    objective: profile?.objetivo || '',
+    pace: profile?.ritmo || '',
+    difficulties,
+    priorityAreas,
+    currentStreak: typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0,
+    bestStreak: typeof profile?.racha_maxima === 'number' ? profile.racha_maxima : 0,
     lastSignInAt: user.last_sign_in_at,
+    hasPassword,
+    isGoogleUser,
   };
 
   return <ProfileDashboard profile={dashboardProfile} />;

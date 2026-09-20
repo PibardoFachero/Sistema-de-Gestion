@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { registerUser } from '@/features/auth/actions/registerAction';
@@ -23,11 +23,15 @@ export function RegisterForm() {
     confirmPassword: '',
   });
 
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>(
+    {},
+  );
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -42,10 +46,43 @@ export function RegisterForm() {
     }
   };
 
+  const passwordCriteria = [
+    {
+      id: 'length',
+      label: 'Mínimo 6 caracteres',
+      met: formData.password.length >= 6,
+    },
+    {
+      id: 'uppercase',
+      label: 'Mínimo 1 letra mayúscula',
+      met: /[A-Z\p{Lu}]/u.test(formData.password),
+    },
+    {
+      id: 'number',
+      label: 'Mínimo 1 número',
+      met: /[0-9]/.test(formData.password),
+    },
+    {
+      id: 'special',
+      label: 'Mínimo 1 carácter especial (ej. !@#$%^&*)',
+      met: /[^a-zA-Z0-9\s\p{L}]/u.test(formData.password),
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setGeneralError(null);
     setFieldErrors({});
+
+    // Validación de requisitos de seguridad de la contraseña
+    const isPasswordValid = passwordCriteria.every((criterion) => criterion.met);
+    if (!isPasswordValid) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: 'La contraseña debe cumplir con todos los requisitos de seguridad',
+      }));
+      return;
+    }
 
     // Validación rápida en frontend de coincidencia de contraseñas
     if (formData.password !== formData.confirmPassword) {
@@ -127,9 +164,7 @@ export function RegisterForm() {
             className="object-contain drop-shadow-sm"
           />
         </div>
-        <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">
-          Crear una cuenta
-        </h1>
+        <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">Crear una cuenta</h1>
         <p className="text-sm text-on-surface-variant font-medium max-w-sm">
           Completa tus datos para registrarte en Komorebi Study Studio
         </p>
@@ -168,10 +203,11 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.firstName
-                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.firstName
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
             />
             {fieldErrors.firstName && (
               <p className="text-xs text-error mt-1 ml-1">{fieldErrors.firstName}</p>
@@ -190,10 +226,11 @@ export function RegisterForm() {
               onChange={handleChange}
               disabled={isLoading || isSuccess}
               required
-              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.lastName
-                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                }`}
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.lastName
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+              }`}
             />
             {fieldErrors.lastName && (
               <p className="text-xs text-error mt-1 ml-1">{fieldErrors.lastName}</p>
@@ -215,10 +252,11 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.username
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-              }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+              fieldErrors.username
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+            }`}
           />
           {fieldErrors.username && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.username}</p>
@@ -239,14 +277,13 @@ export function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading || isSuccess}
             required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.email
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
-              }`}
+            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+              fieldErrors.email
+                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+            }`}
           />
-          {fieldErrors.email && (
-            <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>
-          )}
+          {fieldErrors.email && <p className="text-xs text-error mt-1 ml-1">{fieldErrors.email}</p>}
         </div>
 
         {/* Contraseña */}
@@ -254,23 +291,58 @@ export function RegisterForm() {
           <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="password">
             Contraseña
           </label>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isLoading || isSuccess}
-            required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.password
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={isLoading || isSuccess}
+              required
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 pr-11 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.password
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
               }`}
-          />
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {fieldErrors.password && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.password}</p>
           )}
+
+          {/* Recuadro de requisitos de seguridad de la contraseña */}
+          <div className="mt-2 rounded-xl border border-outline-variant/40 bg-surface-container-low/60 p-3.5 space-y-2 transition-all">
+            <p className="text-xs font-semibold text-on-surface-variant/90">
+              Requisitos para la contraseña:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {passwordCriteria.map((criterion) => (
+                <div
+                  key={criterion.id}
+                  className={`flex items-center gap-2 text-xs transition-colors duration-200 ${
+                    criterion.met ? 'text-status-success font-medium' : 'text-outline font-normal'
+                  }`}
+                >
+                  {criterion.met ? (
+                    <CheckCircle2 className="size-3.5 shrink-0 text-status-success" />
+                  ) : (
+                    <Circle className="size-3.5 shrink-0 text-outline/50" />
+                  )}
+                  <span>{criterion.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Confirmación de contraseña */}
@@ -278,20 +350,31 @@ export function RegisterForm() {
           <label className="text-sm font-semibold text-on-surface ml-1" htmlFor="confirmPassword">
             Confirmación de contraseña
           </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            name="confirmPassword"
-            placeholder="••••••••"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            disabled={isLoading || isSuccess}
-            required
-            className={`w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${fieldErrors.confirmPassword
-              ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-              : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              name="confirmPassword"
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              disabled={isLoading || isSuccess}
+              required
+              className={`w-full rounded-xl border bg-surface px-4 py-2.5 pr-11 text-sm text-on-surface placeholder:text-outline/60 focus:bg-surface-container-lowest focus:outline-none transition-all shadow-sm ${
+                fieldErrors.confirmPassword
+                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                  : 'border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20'
               }`}
-          />
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            >
+              {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {fieldErrors.confirmPassword && (
             <p className="text-xs text-error mt-1 ml-1">{fieldErrors.confirmPassword}</p>
           )}
@@ -366,7 +449,10 @@ export function RegisterForm() {
       {/* Enlace inferior */}
       <div className="relative z-10 mt-8 text-center text-sm text-on-surface-variant font-medium">
         ¿Ya tienes una cuenta?{' '}
-        <Link href="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">
+        <Link
+          href="/login"
+          className="text-primary font-bold hover:text-primary/80 transition-colors"
+        >
           Inicia sesión
         </Link>
       </div>

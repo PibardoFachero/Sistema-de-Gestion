@@ -67,3 +67,11 @@ create policy "Los usuarios pueden actualizar su propio perfil"
   on public.profiles for update
   to authenticated
   using (auth.uid() = id);
+
+-- Política de inserción: cada usuario autenticado puede insertar su propio perfil
+drop policy if exists "Los usuarios pueden insertar su propio perfil" on public.profiles;
+create policy "Los usuarios pueden insertar su propio perfil"
+  on public.profiles for insert
+  to authenticated
+  with check (auth.uid() = id);
+
