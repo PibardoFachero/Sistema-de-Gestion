@@ -9,9 +9,9 @@
   },
   "packageManager": "npm@10.9.3",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --max-http-header-size=65536 ./node_modules/next/dist/bin/next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node --max-http-header-size=65536 ./node_modules/next/dist/bin/next start",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

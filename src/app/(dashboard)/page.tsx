@@ -16,6 +16,14 @@ export default async function HomePage() {
     redirect('/login');
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('racha_activa, racha_maxima')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const rachaActiva = typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0;
+
   const displayName =
     user.user_metadata?.first_name ||
     user.user_metadata?.username ||
@@ -29,19 +37,26 @@ export default async function HomePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <header>
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">¡Buenos días, {displayName}!</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            ¡Buenos días, {displayName}!
+          </h1>
           <Coffee className="size-8 text-outline" />
         </div>
         <p className="mt-2 text-on-surface-variant max-w-2xl">
-          Martes, 24 de Octubre de 2024 · Tienes 3 sesiones planificadas para hoy. Respeta tus ritmos y tiempos de descanso.
+          Martes, 24 de Octubre de 2024 · Tienes 3 sesiones planificadas para hoy. Respeta tus
+          ritmos y tiempos de descanso.
         </p>
       </header>
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="streak" className="self-start">Racha</Badge>
+          <Badge variant="streak" className="self-start">
+            Racha
+          </Badge>
           <div className="mt-2">
-            <span className="text-3xl font-bold">12 días</span>
+            <span className="text-3xl font-bold">
+              {rachaActiva} {rachaActiva === 1 ? 'día' : 'días'}
+            </span>
           </div>
           <p className="text-xs text-on-surface-variant">Hábito consolidado</p>
         </Card>
@@ -53,12 +68,16 @@ export default async function HomePage() {
           </div>
           <div className="flex items-center gap-2 mt-auto">
             <ProgressBar progress={79} height="sm" />
-            <span className="text-[10px] text-on-surface-variant font-medium whitespace-nowrap">Meta 18h</span>
+            <span className="text-[10px] text-on-surface-variant font-medium whitespace-nowrap">
+              Meta 18h
+            </span>
           </div>
         </Card>
 
         <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="success" className="self-start">Progreso hoy</Badge>
+          <Badge variant="success" className="self-start">
+            Progreso hoy
+          </Badge>
           <div className="mt-2">
             <span className="text-3xl font-bold">2 / 5</span>
           </div>
@@ -97,7 +116,9 @@ export default async function HomePage() {
               <h3 className="text-lg font-bold">Ejercicios prácticos de Listas y Diccionarios</h3>
 
               <div className="flex items-center gap-4 mt-4 text-sm text-on-surface-variant">
-                <span className="flex items-center gap-1.5"><span className="font-semibold text-on-surface">10:30 AM</span></span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-semibold text-on-surface">10:30 AM</span>
+                </span>
                 <span className="flex items-center gap-1.5">45 min</span>
               </div>
 
