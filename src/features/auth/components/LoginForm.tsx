@@ -39,7 +39,9 @@ export function LoginForm() {
       ? 'No se pudo iniciar sesión con Google. Por favor intenta nuevamente.'
       : urlError === 'reset_link_expired'
         ? 'El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo.'
-        : null);
+        : urlError === 'verification_link_expired'
+          ? 'El enlace de verificación ha expirado o es inválido. Por favor solicita uno nuevo.'
+          : null);
 
   const displaySuccess =
     urlReset === 'success'

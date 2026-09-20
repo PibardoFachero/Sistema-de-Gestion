@@ -49,8 +49,9 @@ export function AddPasswordModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Limpiar campos al reabrir
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setPassword('');
       setConfirmPassword('');
@@ -59,7 +60,7 @@ export function AddPasswordModal({
       setGeneralError(null);
       setIsSuccess(false);
     }
-  }, [isOpen]);
+  }
 
   if (!isOpen) return null;
 
