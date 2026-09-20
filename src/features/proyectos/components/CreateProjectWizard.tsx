@@ -51,8 +51,27 @@ export function CreateProjectWizard() {
     // Simular guardado
     await new Promise((resolve) => setTimeout(resolve, 1000));
     
-    // Aquí iría la lógica para guardar el proyecto en Supabase
-    console.log('Proyecto a crear:', answers);
+    // Crear el objeto del nuevo proyecto
+    const newProject = {
+      id: Date.now().toString(),
+      name: answers[0] || 'Proyecto Sin Nombre',
+      objective: answers[1] || '',
+      deadline: answers[2] || '',
+      importance: answers[3] || 'Normal',
+      knowledge: answers[4] || '',
+      materials: answers[5] || {},
+      time: answers[6] || {},
+      tasksCount: 0,
+      progress: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (typeof window !== 'undefined') {
+      const existing = localStorage.getItem('komorebi_projects');
+      const projects = existing ? JSON.parse(existing) : [];
+      projects.push(newProject);
+      localStorage.setItem('komorebi_projects', JSON.stringify(projects));
+    }
     
     router.push('/proyectos');
     router.refresh();
