@@ -15,15 +15,19 @@ import {
   GraduationCap,
   ImagePlus,
   Images,
+  KeyRound,
   Layers,
   Loader2,
   Mail,
   Phone,
+  PlusCircle,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Target,
 } from 'lucide-react';
+import { ChangePasswordModal } from '@/components/profile/ChangePasswordModal';
+import { AddPasswordModal } from '@/components/profile/AddPasswordModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { onboardingQuestions } from '@/features/onboarding/data/questions';
@@ -68,6 +72,8 @@ export type ProfileDashboardData = {
   currentStreak?: number | null;
   bestStreak?: number | null;
   lastSignInAt?: string | null;
+  hasPassword?: boolean;
+  isGoogleUser?: boolean;
 };
 
 type EditableSection = 'identity' | 'learning' | null;
@@ -75,6 +81,11 @@ type EditableSection = 'identity' | 'learning' | null;
 export function ProfileDashboard({ profile }: { profile: ProfileDashboardData }) {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<EditableSection>(null);
+
+  // Estados de Contraseña y Seguridad
+  const [hasPassword, setHasPassword] = useState(profile.hasPassword ?? true);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isAddPasswordModalOpen, setIsAddPasswordModalOpen] = useState(false);
 
   // Estados de Identidad
   const [firstName, setFirstName] = useState(profile.firstName || '');
@@ -608,6 +619,65 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                 </div>
               </div>
 
+              {/* Seguridad y acceso de la cuenta en edición */}
+              <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <KeyRound className="size-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-on-surface">
+                          {hasPassword ? 'Contraseña y seguridad' : 'Contraseña no configurada'}
+                        </h4>
+                        {hasPassword ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2.5 py-0.5 text-[11px] font-semibold text-status-success">
+                            <CheckCircle2 className="size-3" />
+                            Configurada
+                          </span>
+                        ) : profile.isGoogleUser ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent-amber/15 px-2.5 py-0.5 text-[11px] font-semibold text-accent-amber">
+                            Acceso con Google
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-on-surface-variant max-w-md">
+                        {hasPassword
+                          ? 'Tu cuenta tiene una contraseña activa. Puedes solicitar un enlace a tu correo para cambiarla cuando lo necesites.'
+                          : 'Iniciaste sesión con Google y aún no tienes una contraseña asignada. Puedes agregar una para acceder también con tu correo y contraseña.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 self-end sm:self-center">
+                    {hasPassword ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setIsChangePasswordModalOpen(true)}
+                        className="min-h-10 gap-2 cursor-pointer font-medium"
+                      >
+                        <KeyRound className="size-4" />
+                        Cambiar contraseña
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setIsAddPasswordModalOpen(true)}
+                        className="min-h-10 gap-2 cursor-pointer font-semibold shadow-sm"
+                      >
+                        <PlusCircle className="size-4" />
+                        Agregar contraseña
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {identityError && (
                 <p
                   role="alert"
@@ -1086,6 +1156,24 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           </div>
         </WideSection>
       </div>
+
+      {/* Modal para cambiar contraseña */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        email={profile.email}
+        isGoogleUser={profile.isGoogleUser}
+      />
+
+      {/* Modal para agregar contraseña (usuarios de Google sin contraseña) */}
+      <AddPasswordModal
+        isOpen={isAddPasswordModalOpen}
+        onClose={() => setIsAddPasswordModalOpen(false)}
+        email={profile.email}
+        onPasswordAdded={() => {
+          setHasPassword(true);
+        }}
+      />
     </div>
   );
 }

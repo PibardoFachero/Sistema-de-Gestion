@@ -140,16 +140,13 @@ export function ResetPasswordForm() {
         }
       }
 
-      // Cerrar la sesión de recuperación temporal para que al redirigir al login no sea rebotado por el proxy
-      const supabase = createClient();
-      await supabase.auth.signOut();
-
+      // Mantener la sesión activa sin cerrar sesión
       setIsSuccess(true);
       setIsSubmitting(false);
 
-      // Redirigir al login después de 2 segundos con confirmación
+      // Redirigir al perfil después de 2 segundos con confirmación
       setTimeout(() => {
-        router.push('/login?reset=success');
+        router.push('/perfil');
       }, 2000);
     } catch {
       setGeneralError('Ocurrió un error inesperado al actualizar la contraseña.');
@@ -224,12 +221,11 @@ export function ResetPasswordForm() {
           </div>
           <h2 className="text-xl font-bold text-primary mb-2">¡Contraseña actualizada!</h2>
           <p className="text-sm text-on-surface-variant mb-6 max-w-sm">
-            Tu contraseña ha sido modificada con éxito. Te redirigiremos al inicio de sesión en unos
-            instantes...
+            Tu contraseña ha sido modificada con éxito. Tu sesión se mantendrá abierta y te redirigiremos a tu perfil en unos instantes...
           </p>
-          <Link href="/login?reset=success" className="w-full">
+          <Link href="/perfil" className="w-full">
             <Button variant="primary" className="w-full h-11 rounded-xl font-semibold text-sm">
-              Iniciar sesión ahora
+              Continuar a mi perfil
             </Button>
           </Link>
         </div>

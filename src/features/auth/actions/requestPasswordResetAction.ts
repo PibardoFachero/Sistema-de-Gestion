@@ -45,6 +45,11 @@ export async function requestPasswordReset(
       siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     }
 
+    // Si la URL detectada es una IP de red local (ej. 172.x, 192.168.x), priorizar localhost o NEXT_PUBLIC_SITE_URL
+    if (siteUrl && (siteUrl.includes('172.') || siteUrl.includes('192.168.') || siteUrl.includes('10.'))) {
+      siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    }
+
     if (!siteUrl) {
       siteUrl = 'http://localhost:3000';
     }
@@ -65,6 +70,14 @@ export async function requestPasswordReset(
           success: false,
           error:
             'Por motivos de seguridad, debes esperar un momento antes de solicitar otro correo.',
+        };
+      }
+
+      if (lower.includes('error sending recovery email')) {
+        return {
+          success: false,
+          error:
+            'No se pudo enviar el correo en este momento (límite de envíos alcanzado en Supabase o restricciones de proveedor). Puedes cambiar tu contraseña directamente ingresándola en el formulario.',
         };
       }
 
