@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
 
 export interface Project {
@@ -48,12 +49,16 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
   }
 
   return (
-    <div className="group relative flex flex-col bg-white rounded-[20px] border border-[#EAE3DC] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-200 ease-in-out hover:-translate-y-[3px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] cursor-pointer">
+    <Link 
+      href={`/proyectos/${project.id}`}
+      className="group relative flex flex-col bg-white rounded-[20px] border border-[#EAE3DC] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-200 ease-in-out hover:-translate-y-[3px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] block"
+    >
       
       {/* Botón de Eliminación (Hover) */}
       <button
         type="button"
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           if (onDelete) onDelete(project.id);
         }}
@@ -115,6 +120,6 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
         </div>
         
       </div>
-    </div>
+    </Link>
   );
 }

@@ -48,33 +48,48 @@ export function CreateProjectWizard() {
 
   const handleComplete = async () => {
     setIsFinishing(true);
-    // Simular guardado
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     
-    // Crear el objeto del nuevo proyecto
-    const newProject = {
-      id: Date.now().toString(),
-      name: answers[0] || 'Proyecto Sin Nombre',
-      objective: answers[1] || '',
-      deadline: answers[2] || '',
-      importance: answers[3] || 'Normal',
-      knowledge: answers[4] || '',
-      materials: answers[5] || {},
-      time: answers[6] || {},
-      tasksCount: 0,
-      progress: 0,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const { createProject } = await import('@/services/proyectoServices');
+      
+      const newProjectData = {
+        id: Date.now().toString(),
+        projectName: answers[0] || 'Proyecto Sin Nombre',
+        objective: answers[1] || '',
+        deadline: answers[2] || '',
+        priority: answers[3] || 'Normal',
+        knowledge: answers[4] || '',
+        materials: answers[5] || {},
+        dailyMinutes: 30, // Default u obtener de answers[6]
+        tasksCount: 0,
+        progress: 0,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Llamada al servicio simulado
+      const result = await createProject(newProjectData);
+      // Usar el ID devuelto por el servicio, o el local
+      const projectId = result.success && result.id !== 'proj-new' ? result.id : newProjectData.id;
+      
+      if (typeof window !== 'undefined') {
+        const existing = localStorage.getItem('komorebi_projects');
+        const projects = existing ? JSON.parse(existing) : [];
+        projects.push({
+          id: projectId,
+          name: newProjectData.projectName,
+          importance: newProjectData.priority,
+          tasksCount: 0,
+          progress: 0,
+          createdAt: newProjectData.createdAt,
+        });
+        localStorage.setItem('komorebi_projects', JSON.stringify(projects));
+      }
 
-    if (typeof window !== 'undefined') {
-      const existing = localStorage.getItem('komorebi_projects');
-      const projects = existing ? JSON.parse(existing) : [];
-      projects.push(newProject);
-      localStorage.setItem('komorebi_projects', JSON.stringify(projects));
+      router.push(`/proyectos/${projectId}`);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setIsFinishing(false);
     }
-    
-    router.push('/proyectos');
-    router.refresh();
   };
 
   const updateAnswer = (step: number, value: any) => {
