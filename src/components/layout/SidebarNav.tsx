@@ -17,6 +17,19 @@ export function SidebarNav() {
     { href: '/ia', icon: Sparkles, label: 'Asistente IA' },
   ];
 
+  const [sidebarProjects, setSidebarProjects] = React.useState<{id: string, name: string}[]>([]);
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('komorebi_projects');
+      if (saved) {
+        setSidebarProjects(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   return (
     <nav className="flex-1 px-4 space-y-1 mt-4">
       {navItems.map((item) => {
@@ -39,7 +52,15 @@ export function SidebarNav() {
               {item.label}
             </Link>
 
-            {item.href === '/proyectos' && isActive && (
+            {item.href === '/proyectos' && isActive && sidebarProjects.length > 0 && (
+              <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
+                {sidebarProjects.slice(0, 5).map(p => (
+                  <SubItem key={p.id} label={p.name} href={`/proyectos/${p.id}`} />
+                ))}
+              </div>
+            )}
+            
+            {item.href === '/proyectos' && isActive && sidebarProjects.length === 0 && (
               <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
                 <SubItem label="Aprender Python" />
                 <SubItem label="Backend" />
@@ -53,7 +74,16 @@ export function SidebarNav() {
   );
 }
 
-function SubItem({ label }: { label: string }) {
+function SubItem({ label, href }: { label: string; href?: string }) {
+  if (href) {
+    return (
+      <Link href={href} className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+        <div className="size-1.5 rounded-full bg-accent-amber/50" />
+        {label}
+      </Link>
+    );
+  }
+  
   return (
     <div className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
       <div className="size-1.5 rounded-full bg-accent-amber/50" />

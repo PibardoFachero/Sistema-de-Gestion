@@ -43,7 +43,10 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center py-6 sm:py-12 animate-in fade-in duration-500">
+    <main
+      className="min-h-screen flex items-center justify-center py-6 sm:py-12 animate-in fade-in duration-500"
+      style={{ background: 'linear-gradient(135deg, #FFF8F3 0%, #FBE6DD 50%, #F5E8E0 100%)' }}
+    >
       <OnboardingSurvey />
     </main>
   );

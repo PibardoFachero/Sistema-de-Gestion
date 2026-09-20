@@ -107,28 +107,6 @@ export function OnboardingSurvey() {
                 &ldquo;{currentQuestion.chiwiSpeech}&rdquo;
               </p>
             </div>
-
-            {/* Círculo superior mediano (22px x 22px) */}
-            <div
-              className="absolute rounded-full bg-white border-2 border-[#1A1A1A]"
-              style={{
-                width: '22px',
-                height: '22px',
-                bottom: '-10px',
-                left: '52px',
-              }}
-            />
-
-            {/* Círculo inferior pequeño (14px x 14px) */}
-            <div
-              className="absolute rounded-full bg-white border-2 border-[#1A1A1A]"
-              style={{
-                width: '14px',
-                height: '14px',
-                bottom: '-22px',
-                left: '38px',
-              }}
-            />
           </div>
 
           {/* Slot del Personaje (.character-slot) */}
