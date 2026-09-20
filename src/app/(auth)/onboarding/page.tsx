@@ -20,7 +20,13 @@ export default async function OnboardingPage() {
     redirect('/login');
   }
 
-  // 2. Si ya completó la encuesta previamente, no mostrar onboarding y redirigir al panel
+  // 2. Validar que el correo electrónico esté confirmado antes de permitir el onboarding
+  if (!user.email_confirmed_at) {
+    const emailParam = user.email ? `?email=${encodeURIComponent(user.email)}` : '';
+    redirect(`/verificar-correo${emailParam}`);
+  }
+
+  // 3. Si ya completó la encuesta previamente, no mostrar onboarding y redirigir al panel
   if (user.user_metadata?.onboarding_completed) {
     redirect('/');
   }

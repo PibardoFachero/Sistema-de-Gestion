@@ -29,7 +29,6 @@ export function ChangePasswordModal({
   isOpen,
   onClose,
   email,
-  isGoogleUser = false,
 }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -66,8 +65,9 @@ export function ChangePasswordModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Limpiar campos y estados al abrir/reabrir
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setCurrentPassword('');
       setNewPassword('');
@@ -79,7 +79,7 @@ export function ChangePasswordModal({
       setIsSuccess(false);
       setEmailSentSuccess(false);
     }
-  }, [isOpen]);
+  }
 
   if (!isOpen) return null;
 
