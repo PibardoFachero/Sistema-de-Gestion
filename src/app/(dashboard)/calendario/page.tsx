@@ -378,84 +378,118 @@ export default function CalendarioPage() {
     const selectionStartDayIndex = selectionStart ? days.findIndex(d => format(d, 'yyyy-MM-dd') === selectionStart.date) : -1;
 
     return (
-      <div className="flex flex-col animate-in fade-in duration-300 w-full max-w-6xl mx-auto h-full min-h-[calc(100vh-140px)]">
-        <div className="sticky top-0 z-[40] bg-[#FDFBF9] py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 shrink-0">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => {
-                setView('month');
-                setSelectionStart(null);
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-sm font-bold text-on-surface-variant"
-            >
-              <ArrowLeft className="size-4" />
-              Volver
-            </button>
-            <h2 className="text-xl sm:text-2xl font-bold capitalize text-on-surface hidden sm:block">
-              {format(currentDate, 'MMMM yyyy', { locale: es })}
-            </h2>
-          </div>
+      <div className="flex flex-col h-full w-full max-w-6xl mx-auto animate-in fade-in duration-300">
+        {/* 1. CONTENEDOR MAESTRO DE SCROLL */}
+        <div 
+          className="flex-grow overflow-y-auto custom-scrollbar select-none bg-white border border-[#EAE3DC] rounded-[20px] shadow-sm relative flex flex-col" 
+          style={{ height: 'calc(100vh - 120px)' }} 
+          onMouseLeave={() => setHoveredTimeStr(null)}
+        >
+        
+        {/* 2. ENVOLTORIO STICKY UNIFICADO */}
+        <div className="sticky top-0 z-[50] bg-[#FDFBF9] border-b border-[#EAE3DC] shadow-sm flex flex-col pt-4 shrink-0">
           
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <button
+          {/* BOTONERA */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 px-4 shrink-0">
+            <div className="flex items-center gap-4">
+              <button 
                 onClick={() => {
-                  generateFutureWeeks(start);
-                  setShowReplicateMenu(!showReplicateMenu);
+                  setView('month');
+                  setSelectionStart(null);
                 }}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#f5e5d9] hover:bg-[#E8DCD1] text-[#845326] rounded-xl text-sm font-bold transition-colors shadow-sm mr-2"
-                title="Copiar esta semana a otras fechas"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-sm font-bold text-on-surface-variant"
               >
-                <Copy className="size-4" />
-                Replicar Horario
+                <ArrowLeft className="size-4" />
+                Volver
               </button>
-
-              {showReplicateMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowReplicateMenu(false)} />
-                  <div className="absolute top-full mt-2 right-2 w-64 bg-white border border-[#EAE3DC] rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <button 
-                      onClick={() => {
-                        const endOfActiveMonth = endOfMonthFn(currentDate);
-                        replicateToWeeks(getWeeksUntil(addDays(start, 7), endOfActiveMonth), start, end);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] border-b border-[#EAE3DC] font-semibold transition-colors"
-                    >
-                      Replicar en todo el mes
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const endOfActiveYear = endOfYear(currentDate);
-                        replicateToWeeks(getWeeksUntil(addDays(start, 7), endOfActiveYear), start, end);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] border-b border-[#EAE3DC] font-semibold transition-colors"
-                    >
-                      Replicar en todos los meses
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowReplicateMenu(false);
-                        setShowSpecificWeeksModal(true);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] font-semibold transition-colors"
-                    >
-                      Replicar en semanas específicas...
-                    </button>
-                  </div>
-                </>
-              )}
+              <h2 className="text-xl sm:text-2xl font-bold capitalize text-on-surface hidden sm:block">
+                {format(currentDate, 'MMMM yyyy', { locale: es })}
+              </h2>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    generateFutureWeeks(start);
+                    setShowReplicateMenu(!showReplicateMenu);
+                  }}
+                  className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#f5e5d9] hover:bg-[#E8DCD1] text-[#845326] rounded-xl text-sm font-bold transition-colors shadow-sm mr-2"
+                  title="Copiar esta semana a otras fechas"
+                >
+                  <Copy className="size-4" />
+                  Replicar Horario
+                </button>
 
-            <div className="flex items-center gap-2 bg-white border border-[#EAE3DC] rounded-xl p-1 shadow-sm">
-              <button onClick={goToPrevWeek} className="p-1.5 rounded-lg hover:bg-surface-container transition-colors text-on-surface">
-                <ChevronLeft className="size-5" />
-              </button>
-              <span className="px-2 text-xs sm:text-sm font-bold text-on-surface-variant capitalize">
-                {format(start, 'd MMM', { locale: es })} - {format(end, 'd MMM', { locale: es })}
-              </span>
-              <button onClick={goToNextWeek} className="p-1.5 rounded-lg hover:bg-surface-container transition-colors text-on-surface">
-                <ChevronRight className="size-5" />
-              </button>
+                {showReplicateMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowReplicateMenu(false)} />
+                    <div className="absolute top-full mt-2 right-2 w-64 bg-white border border-[#EAE3DC] rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <button 
+                        onClick={() => {
+                          const endOfActiveMonth = endOfMonthFn(currentDate);
+                          replicateToWeeks(getWeeksUntil(addDays(start, 7), endOfActiveMonth), start, end);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] border-b border-[#EAE3DC] font-semibold transition-colors"
+                      >
+                        Replicar en todo el mes
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const endOfActiveYear = endOfYear(currentDate);
+                          replicateToWeeks(getWeeksUntil(addDays(start, 7), endOfActiveYear), start, end);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] border-b border-[#EAE3DC] font-semibold transition-colors"
+                      >
+                        Replicar en todos los meses
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setShowReplicateMenu(false);
+                          setShowSpecificWeeksModal(true);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-[#845326] hover:bg-[#FDFBF9] font-semibold transition-colors"
+                      >
+                        Replicar en semanas específicas...
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 bg-white border border-[#EAE3DC] rounded-xl p-1 shadow-sm">
+                <button onClick={goToPrevWeek} className="p-1.5 rounded-lg hover:bg-surface-container transition-colors text-on-surface">
+                  <ChevronLeft className="size-5" />
+                </button>
+                <span className="px-2 text-xs sm:text-sm font-bold text-on-surface-variant capitalize">
+                  {format(start, 'd MMM', { locale: es })} - {format(end, 'd MMM', { locale: es })}
+                </span>
+                <button onClick={goToNextWeek} className="p-1.5 rounded-lg hover:bg-surface-container transition-colors text-on-surface">
+                  <ChevronRight className="size-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* CABECERA DE DÍAS (Fila de días agrupada con la botonera) */}
+          <div className="flex bg-[#FDFBF9]">
+            <div className="w-[100px] min-w-[100px] border-r border-[#EAE3DC] bg-[#FDFBF9]"></div>
+            <div className="flex-1 grid grid-cols-7 min-w-[500px]">
+              {days.map((day) => {
+                const isToday = isSameDay(day, new Date());
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const isPast = isBefore(day, startOfDay(new Date()));
+                return (
+                  <div key={dateStr} className={`flex flex-col items-center justify-center py-2 border-r border-[#EAE3DC] last:border-r-0 ${isPast ? 'opacity-50' : ''}`}>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 truncate px-1">
+                      {format(day, 'EEE', { locale: es })}
+                    </span>
+                    <span className={`text-base font-black ${isToday ? 'bg-[#845326] text-white size-7 flex items-center justify-center rounded-full' : 'text-on-surface'}`}>
+                      {format(day, 'd')}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -512,32 +546,10 @@ export default function CalendarioPage() {
           </div>
         )}
 
-        {/* Contenedor del Grid */}
-        <div className="flex-1 overflow-y-auto bg-white border border-[#EAE3DC] rounded-[20px] shadow-sm relative custom-scrollbar select-none" onMouseLeave={() => setHoveredTimeStr(null)}>
-          <div className="sticky top-0 z-[20] flex bg-white border-b border-[#EAE3DC] shadow-sm">
-            <div className="sticky left-0 top-0 z-[30] w-[100px] min-w-[100px] border-r border-[#EAE3DC] bg-white"></div>
-            <div className="flex-1 grid grid-cols-7 min-w-[500px]">
-              {days.map((day) => {
-                const isToday = isSameDay(day, new Date());
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const isPast = isBefore(day, startOfDay(new Date()));
-                return (
-                  <div key={dateStr} className={`flex flex-col items-center justify-center py-2 border-r border-[#EAE3DC] last:border-r-0 bg-surface-container-lowest ${isPast ? 'opacity-50' : ''}`}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 truncate px-1">
-                      {format(day, 'EEE', { locale: es })}
-                    </span>
-                    <span className={`text-base font-black ${isToday ? 'bg-[#845326] text-white size-7 flex items-center justify-center rounded-full' : 'text-on-surface'}`}>
-                      {format(day, 'd')}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex relative pt-4 pb-4">
-            <div className="sticky left-0 z-10 w-[100px] min-w-[100px] bg-white border-r border-[#EAE3DC] flex flex-col">
-              {visibleTimeSlots.map((time) => {
+        {/* 3. GRID DE HORAS (Contenido Desplazable) */}
+        <div className="flex relative pt-4 pb-4">
+          <div className="sticky left-0 z-10 w-[100px] min-w-[100px] bg-white border-r border-[#EAE3DC] flex flex-col">
+            {visibleTimeSlots.map((time) => {
                 const isHourStart = time.endsWith(':00');
                 const isHourEnd = time.endsWith(':55');
                 const [, minuteStr] = time.split(':');
@@ -637,9 +649,8 @@ export default function CalendarioPage() {
                             ${isHourEnd ? 'mb-3' : ''}
                             ${isPast ? '' : 'cursor-pointer'}
                             ${isHoveredRow && !isOccupied && !isMacroPartiallyOccupied && !isSelectedAsStart ? 'bg-[#f5e5d9]/60' : ''}
-                            ${!isPast && !isOccupied && !isMacroPartiallyOccupied && !isSelectedAsStart && !isHoveredRow ? 'hover:bg-[#E8DCD1]/30' : ''}
-                            ${isOccupied && !isSelectedAsStart ? `${colorTheme.bg} ${colorTheme.hover}` : ''}
-                            ${isMacroPartiallyOccupied && !isSelectedAsStart ? `${colorTheme.bgPale} hover:${colorTheme.bg} border-[1px] border-dashed ${colorTheme.border}` : ''}
+                            ${isOccupied && !isSelectedAsStart ? `${colorTheme.bg}` : ''}
+                            ${isMacroPartiallyOccupied && !isSelectedAsStart ? `${colorTheme.bgPale} border-[1px] border-dashed ${colorTheme.border}` : ''}
                             ${isExtensionLineCell ? 'bg-[#E8DCD1]/80 border-t border-b border-[#845326]/30' : ''}
                           `}
                           onClick={() => handleCellClick(dateStr, dayOfWeek, timeStr, isPast)}
@@ -709,7 +720,7 @@ export default function CalendarioPage() {
         </div>
 
         {/* LEYENDA VISUAL DE COLORES */}
-        <div className="flex justify-center flex-wrap gap-x-6 gap-y-4 mt-6 mb-4 px-4 pb-6">
+        <div className="flex-shrink-0 py-4 flex justify-center flex-wrap gap-x-6 gap-y-4 px-4">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-4 h-4 rounded bg-[#C8D6AF] border border-[#3A4A28]/20"></div>
             <span className="text-xs font-bold text-[#845326]">Libre</span>
