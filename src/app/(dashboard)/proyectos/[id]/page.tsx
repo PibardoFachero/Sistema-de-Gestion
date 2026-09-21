@@ -266,23 +266,7 @@ export default function ProjectDetailPage({
           };
         });
 
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            const list: LocalProjectStorageItem[] = JSON.parse(saved);
-            const updatedList = list.map((item) =>
-              item.id === project.id
-                ? {
-                    ...item,
-                    progress: res.progreso ?? item.progress,
-                    tasksCount: (item.tasksCount || 0) + newTasks.length,
-                  }
-                : item,
-            );
-            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
-            window.dispatchEvent(new Event('projects_updated'));
-          }
-        }
+        window.dispatchEvent(new Event('projects_updated'));
 
         setAiSuccessMessage(`¡Se han generado ${newTasks.length} tareas automáticamente con IA!`);
         setTimeout(() => setAiSuccessMessage(null), 6000);
