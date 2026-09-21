@@ -114,32 +114,74 @@ export async function createProjectAction(input: CreateProjectInput) {
     }
 
     // =========================================================================
-    // [INTEGRACIÓN IA / N8N]:
-    // Si la URL del webhook de n8n está configurada, generamos automáticamente
-    // el plan de tareas inicial y lo guardamos en la tabla 'tareas' de Supabase.
+    // [INTEGRACIÓN IA / GEMINI - CRONOGRAMA AUTOMÁTICO]:
+    // Si GEMINI_API_KEY está configurada, generamos el cronograma inteligente
+    // para el proyecto y registramos los eventos de calendario iniciales.
     // =========================================================================
-    if (process.env.N8N_WEBHOOK_URL) {
+    if (process.env.GEMINI_API_KEY) {
       try {
-        await generateProjectTasksFromN8n({
-          id: project.id,
-          user_id: user.id,
-          titulo: project.titulo,
+        const { generateScheduleWithGemini } = await import('@/services/ai/scheduleAiService');
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Consultar disponibilidad configurada del usuario para que Gemini respete su horario
+        const { data: bloquesDisp } = await supabase
+          .from('bloques_disponibilidad')
+          .select('*')
+          .eq('usuario_id', user.id);
+
+        let disponibilidadTexto = '';
+        if (bloquesDisp && bloquesDisp.length > 0) {
+          disponibilidadTexto = bloquesDisp
+            .map((b) => {
+              const diaNombre = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][b.dia_semana ?? 0] || 'Día';
+              return `- ${diaNombre}: ${b.hora_inicio} a ${b.hora_fin} (${b.tipo})`;
+            })
+            .join('\n');
+        }
+
+        const scheduleResult = await generateScheduleWithGemini({
+          usuarioId: user.id,
+          proyectoId: project.id,
+          nombre: project.titulo,
           objetivo: project.objetivo,
-          fecha_limite: project.fecha_limite,
-          prioridad: project.prioridad,
-          nivel_conocimiento: project.nivel_conocimiento,
-          material_url: project.material_url,
-          minutos_diarios: project.minutos_diarios,
+          fechaLimite: project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined,
+          importancia: project.prioridad,
+          nivel: project.nivel_conocimiento,
+          tiempoDiario: project.minutos_diarios,
+          bloquesLibresPorDia: disponibilidadTexto || undefined,
         });
-      } catch (n8nErr) {
-        console.warn(
-          'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
-          n8nErr,
-        );
+
+        // Guardar cronograma en Supabase
+        await supabase.from('cronogramas').insert({
+          proyecto_id: project.id,
+          usuario_id: user.id,
+          version: 1,
+          datos: scheduleResult,
+          activo: true,
+          estado: 'vigente',
+        });
+
+        // Insertar eventos de calendario
+        if (scheduleResult.bloques && scheduleResult.bloques.length > 0) {
+          const eventos = scheduleResult.bloques.map((b) => ({
+            usuario_id: user.id,
+            proyecto_id: project.id,
+            titulo: b.tarea,
+            descripcion: b.descripcion || '',
+            inicio: new Date(`${b.fecha}T${b.hora_inicio}:00Z`).toISOString(),
+            fin: new Date(`${b.fecha}T${b.hora_fin}:00Z`).toISOString(),
+            estado: 'pendiente' as const,
+            generado_por_ia: true,
+          }));
+          await supabase.from('eventos_calendario').insert(eventos);
+        }
+      } catch (geminiErr) {
+        console.warn('Aviso: No se pudo generar cronograma inicial con Gemini:', geminiErr);
       }
     }
 
     revalidatePath('/proyectos');
+    revalidatePath('/calendario');
     return { success: true, project };
   } catch (error: unknown) {
     console.error('Error en createProjectAction:', error);

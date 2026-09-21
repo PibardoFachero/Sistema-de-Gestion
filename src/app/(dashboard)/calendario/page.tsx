@@ -30,6 +30,11 @@ import {
   Copy,
   X,
   Check,
+  Upload,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  FileText,
 } from 'lucide-react';
 
 interface Availability {
@@ -38,10 +43,10 @@ interface Availability {
   startTime: string;
   endTime: string;
   label: string;
-  type?: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad';
+  type?: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' | 'estudio' | 'ocupado';
 }
 
-const COLOR_MAP = {
+const COLOR_MAP: Record<string, { bg: string; hover: string; text: string; border: string; bgPale: string }> = {
   libre: {
     bg: 'bg-[#C8D6AF]',
     hover: 'hover:bg-[#B5C59A]',
@@ -56,7 +61,21 @@ const COLOR_MAP = {
     border: 'border-[#203D6B]/20',
     bgPale: 'bg-[#BBD0F4]/30',
   },
+  estudio: {
+    bg: 'bg-[#BBD0F4]',
+    hover: 'hover:bg-[#A4BFE6]',
+    text: 'text-[#203D6B]',
+    border: 'border-[#203D6B]/20',
+    bgPale: 'bg-[#BBD0F4]/30',
+  },
   trabajo: {
+    bg: 'bg-[#F4C2BA]',
+    hover: 'hover:bg-[#E5B0A7]',
+    text: 'text-[#6B3229]',
+    border: 'border-[#6B3229]/20',
+    bgPale: 'bg-[#F4C2BA]/30',
+  },
+  ocupado: {
     bg: 'bg-[#F4C2BA]',
     hover: 'hover:bg-[#E5B0A7]',
     text: 'text-[#6B3229]',
@@ -95,7 +114,17 @@ export default function CalendarioPage() {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('komorebi_availabilities');
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed.map((a: any) => {
+              let t = a.type || 'libre';
+              if (t === 'estudio') t = 'estudiando';
+              if (t === 'ocupado') t = 'trabajo';
+              return { ...a, type: t };
+            });
+          }
+        }
       } catch (e) {
         console.error(e);
       }
@@ -125,6 +154,13 @@ export default function CalendarioPage() {
   const [futureWeeksList, setFutureWeeksList] = useState<
     { start: Date; end: Date; label: string }[]
   >([]);
+
+  // Estado para la subida y procesamiento de horario con IA
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
 
   const activeTimes = new Set(availabilities.map((a) => a.startTime));
 
@@ -233,6 +269,124 @@ export default function CalendarioPage() {
         </div>
       </div>
     );
+  };
+
+  const handleProcessScheduleFile = async () => {
+    if (!uploadFile) {
+      setUploadError('Por favor selecciona una imagen o documento PDF con tu horario.');
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadError(null);
+    setUploadSuccessMsg(null);
+
+    try {
+      // Convertir archivo a base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const commaIdx = result.indexOf(',');
+          resolve(commaIdx !== -1 ? result.substring(commaIdx + 1) : result);
+        };
+        reader.onerror = () => reject(new Error('Error al leer el archivo'));
+        reader.readAsDataURL(uploadFile);
+      });
+
+      const res = await fetch('/api/calendar/extract-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64Data,
+          mimeType: uploadFile.type || 'image/png',
+          guardarEnDisponibilidad: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al procesar el horario');
+      }
+
+      if (data.bloques && data.bloques.length > 0) {
+        // Calcular la semana activa actual
+        const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const weekDays = eachDayOfInterval({ start, end: endOfWeek(currentDate, { weekStartsOn: 1 }) });
+
+        const mappedAvails: Availability[] = [];
+
+        data.bloques.forEach((b: { dia_semana: number; hora_inicio: string; hora_fin: string; tipo: string; etiqueta?: string }) => {
+          // Mapear dia_semana (0: Domingo, 1: Lunes.. 6: Sábado) al día correspondiente en la semana visible
+          const targetDay = weekDays.find((d) => d.getDay() === b.dia_semana);
+          if (!targetDay) return;
+
+          const dateStr = format(targetDay, 'yyyy-MM-dd');
+          const dayOfWeekName = format(targetDay, 'EEEE', { locale: es });
+
+          // Normalizar horas al slot más cercano
+          const startSlot = b.hora_inicio.length === 5 ? b.hora_inicio : `${b.hora_inicio.padStart(5, '0')}`;
+          const endSlot = b.hora_fin.length === 5 ? b.hora_fin : `${b.hora_fin.padStart(5, '0')}`;
+
+          const startIdx = TIME_SLOTS.indexOf(startSlot);
+          const endIdx = TIME_SLOTS.indexOf(endSlot);
+
+          const fromIdx = startIdx !== -1 ? startIdx : 0;
+          const toIdx = endIdx !== -1 && endIdx > fromIdx ? endIdx : fromIdx + 12;
+
+          let mappedType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'estudiando';
+          const rawTipo = String(b.tipo || '').toLowerCase();
+          if (rawTipo.includes('estudio') || rawTipo.includes('estudiando') || rawTipo.includes('clase')) {
+            mappedType = 'estudiando';
+          } else if (rawTipo.includes('trabajo') || rawTipo.includes('ocupado') || rawTipo.includes('laboral')) {
+            mappedType = 'trabajo';
+          } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
+            mappedType = 'descanso';
+          } else if (rawTipo.includes('libre')) {
+            mappedType = 'libre';
+          } else {
+            mappedType = 'otra_actividad';
+          }
+
+          for (let i = fromIdx; i < toIdx; i++) {
+            const slot = TIME_SLOTS[i];
+            if (slot && slot !== '24:00') {
+              mappedAvails.push({
+                date: dateStr,
+                dayOfWeek: dayOfWeekName,
+                startTime: slot,
+                endTime: TIME_SLOTS[i + 1] || '24:00',
+                label: b.etiqueta || 'Clase/Actividad',
+                type: mappedType,
+              });
+            }
+          }
+        });
+
+        if (mappedAvails.length > 0) {
+          setAvailabilities((prev) => {
+            const keys = new Set(mappedAvails.map((m) => `${m.date}_${m.startTime}`));
+            const filtered = prev.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
+            return [...filtered, ...mappedAvails];
+          });
+        }
+
+        setUploadSuccessMsg(`¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`);
+        setTimeout(() => {
+          setShowUploadModal(false);
+          setUploadFile(null);
+          setUploadSuccessMsg(null);
+          setView('week');
+        }, 1500);
+      } else {
+        setUploadError('La IA no pudo detectar bloques de horario en el documento o imagen. Asegúrate de que las horas y días sean legibles.');
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Error inesperado extrayendo el horario');
+    } finally {
+      setUploadLoading(false);
+    }
   };
 
   const applyRange = (
@@ -353,13 +507,18 @@ export default function CalendarioPage() {
     dateStr: string,
     timeStr: string,
     currentLabel: string,
-    currentType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad',
+    currentType: string,
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
     setEditingCell({ date: dateStr, time: timeStr });
     setEditLabel(currentLabel === 'Libre' ? '' : currentLabel);
-    setEditType(currentType || 'libre');
+    let normalized: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'libre';
+    if (currentType === 'estudio' || currentType === 'estudiando') normalized = 'estudiando';
+    else if (currentType === 'trabajo' || currentType === 'ocupado') normalized = 'trabajo';
+    else if (currentType === 'descanso') normalized = 'descanso';
+    else if (currentType === 'otra_actividad') normalized = 'otra_actividad';
+    setEditType(normalized);
   };
 
   const saveEditedLabel = () => {
@@ -517,6 +676,20 @@ export default function CalendarioPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setUploadFile(null);
+                    setUploadError(null);
+                    setUploadSuccessMsg(null);
+                    setShowUploadModal(true);
+                  }}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-[#845326] hover:bg-[#6c421f] text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                  title="Subir imagen o PDF de tu horario para que la IA lo monte automáticamente"
+                >
+                  <Sparkles className="size-4 text-[#F7D6BF]" />
+                  <span>Subir Horario (IA)</span>
+                </button>
+
                 <div className="relative">
                   <button
                     onClick={() => {
@@ -701,6 +874,135 @@ export default function CalendarioPage() {
             </div>
           )}
 
+          {/* Modal Subida de Horario con IA */}
+          {showUploadModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-[#EAE3DC]">
+                <div className="px-6 py-4 border-b border-[#EAE3DC] flex items-center justify-between bg-[#FDFBF9]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-[#f5e5d9] rounded-xl text-[#845326]">
+                      <Sparkles className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold text-[#845326]">Cargar Horario con Gemini AI</h3>
+                      <p className="text-xs text-on-surface-variant font-medium">Extrae automáticamente tus materias o turnos</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!uploadLoading) {
+                        setShowUploadModal(false);
+                        setUploadFile(null);
+                        setUploadError(null);
+                      }
+                    }}
+                    disabled={uploadLoading}
+                    className="p-2 hover:bg-[#EAE3DC] rounded-full text-on-surface-variant transition-colors disabled:opacity-40"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {uploadError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
+
+                  {uploadSuccessMsg && (
+                    <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-xs rounded-xl flex items-center gap-2 font-medium">
+                      <Check className="size-4 shrink-0 text-green-600" />
+                      <span>{uploadSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                    Sube una <strong>foto, captura de pantalla (.png, .jpg) o documento PDF</strong> de tu horario escolar, universitario o laboral. La IA extraerá los días y bloques horarios para que queden reflejados en tu calendario.
+                  </p>
+
+                  <div className="border-2 border-dashed border-[#E2D9D0] rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-[#FDFBF9] hover:bg-[#F5EFE9] transition-colors relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.webp,.pdf,image/*,application/pdf"
+                      disabled={uploadLoading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setUploadFile(file);
+                          setUploadError(null);
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <Upload className="size-8 text-[#845326] mb-2" />
+                    <p className="text-sm font-bold text-[#2C1F14]">
+                      {uploadFile ? uploadFile.name : 'Haz clic o arrastra tu archivo aquí'}
+                    </p>
+                    <p className="text-xs text-[#845326] mt-1 font-medium">
+                      PNG, JPG, WEBP o PDF (Hasta 20MB)
+                    </p>
+                  </div>
+
+                  {uploadFile && (
+                    <div className="flex items-center justify-between p-2.5 px-3 bg-surface-container rounded-xl text-xs">
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText className="size-4 text-[#845326] shrink-0" />
+                        <span className="truncate font-semibold text-on-surface">{uploadFile.name}</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium shrink-0">
+                          ({(uploadFile.size / 1024).toFixed(0)} KB)
+                        </span>
+                      </div>
+                      {!uploadLoading && (
+                        <button
+                          type="button"
+                          onClick={() => setUploadFile(null)}
+                          className="text-red-500 hover:text-red-700 p-1 text-xs font-semibold"
+                        >
+                          Quitar
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 px-6 border-t border-[#EAE3DC] bg-[#FDFBF9] flex justify-end gap-3">
+                  <button
+                    type="button"
+                    disabled={uploadLoading}
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadFile(null);
+                      setUploadError(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-[#EAE3DC] transition-colors disabled:opacity-40"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!uploadFile || uploadLoading}
+                    onClick={handleProcessScheduleFile}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold bg-[#845326] text-white hover:bg-[#6c421f] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-[0.98]"
+                  >
+                    {uploadLoading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin text-white" />
+                        <span>Analizando con Gemini...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="size-4 text-[#F7D6BF]" />
+                        <span>Procesar y Montar Horario</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 3. GRID DE HORAS (Contenido Desplazable) */}
           <div className="flex relative pt-4 pb-4">
             <div className="sticky left-0 z-10 w-[100px] min-w-[100px] bg-white border-r border-[#EAE3DC] flex flex-col">
@@ -806,7 +1108,7 @@ export default function CalendarioPage() {
 
                       const effectiveAvail = isCollapsedHour ? macroFirstAvail : avail;
                       const currentType = effectiveAvail?.type || 'libre';
-                      const colorTheme = COLOR_MAP[currentType];
+                      const colorTheme = COLOR_MAP[currentType] || COLOR_MAP.estudiando || COLOR_MAP.libre;
 
                       const isMacroPartiallyOccupied =
                         isCollapsedHour && macroAvailCount > 0 && macroAvailCount < 12;
@@ -839,9 +1141,9 @@ export default function CalendarioPage() {
                           )}
 
                           {(isOccupied || isMacroPartiallyOccupied) && !isEditing && (
-                            <div className="absolute inset-0 flex items-center justify-between px-1 overflow-hidden pointer-events-none z-0">
+                            <div className="absolute inset-0 flex items-center justify-between px-1.5 overflow-hidden pointer-events-none z-0">
                               <span
-                                className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}
+                                className={`text-[10px] font-bold truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/70' : colorTheme.text}`}
                               >
                                 {displayLabel}
                               </span>
