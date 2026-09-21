@@ -3,6 +3,7 @@ export interface ProjectData {
   deadline?: string;
   priority: string;
   dailyMinutes: number | string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Allow other fields from the 7 steps
 }
 

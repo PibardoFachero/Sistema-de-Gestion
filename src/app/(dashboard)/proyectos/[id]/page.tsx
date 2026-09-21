@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react';
@@ -38,6 +38,7 @@ const mockProjectDetail = {
   ]
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [project, setProject] = useState(mockProjectDetail);
@@ -73,7 +74,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       const saved = localStorage.getItem('komorebi_projects');
       if (saved) {
         const projects = JSON.parse(saved);
-        const updated = projects.filter((p: any) => p.id !== project.id);
+        const updated = projects.filter((p: { id: string }) => p.id !== project.id);
         localStorage.setItem('komorebi_projects', JSON.stringify(updated));
         window.dispatchEvent(new Event('projects_updated'));
       }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as LinkIcon, X } from 'lucide-react';
@@ -8,29 +8,27 @@ import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as L
 export function CreateProjectWizard() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
-  const [onboardingTime, setOnboardingTime] = useState<string>('unas horas');
 
   const totalSteps = 7;
   const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
 
-  useEffect(() => {
-    // Leer respuestas previas de onboarding para la pregunta 6
+  const [onboardingTime] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('komorebi_onboarding_answers');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed[5]) {
-            setOnboardingTime(parsed[5]);
-          }
+          if (parsed[5]) return parsed[5];
         } catch (e) {
           console.error('Error parsing onboarding answers', e);
         }
       }
     }
-  }, []);
+    return 'unas horas';
+  });
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -115,6 +113,7 @@ export function CreateProjectWizard() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateAnswer = (step: number, value: any) => {
     setAnswers((prev) => ({ ...prev, [step]: value }));
   };
