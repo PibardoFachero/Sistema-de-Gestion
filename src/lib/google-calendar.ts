@@ -26,7 +26,10 @@ export const GCAL_COOKIE_NAME = 'gcal_tokens';
 /**
  * Obtiene la URL de redirección configurada para OAuth2.
  */
-export function getRedirectUri(): string {
+export function getRedirectUri(customRedirectUri?: string): string {
+  if (customRedirectUri) {
+    return customRedirectUri;
+  }
   if (process.env.GOOGLE_REDIRECT_URI) {
     return process.env.GOOGLE_REDIRECT_URI;
   }
@@ -37,7 +40,7 @@ export function getRedirectUri(): string {
 /**
  * Genera la URL de consentimiento para que el usuario autorice el acceso a Google Calendar.
  */
-export function getGoogleAuthUrl(state?: string): string {
+export function getGoogleAuthUrl(state?: string, customRedirectUri?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     throw new Error('Falta la variable de entorno GOOGLE_CLIENT_ID.');
@@ -45,7 +48,7 @@ export function getGoogleAuthUrl(state?: string): string {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: getRedirectUri(),
+    redirect_uri: getRedirectUri(customRedirectUri),
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
     access_type: 'offline',
@@ -63,7 +66,10 @@ export function getGoogleAuthUrl(state?: string): string {
 /**
  * Intercambia el código temporal de autorización de Google por tokens de acceso y actualización.
  */
-export async function exchangeCodeForTokens(code: string): Promise<GoogleCalendarTokens> {
+export async function exchangeCodeForTokens(
+  code: string,
+  customRedirectUri?: string,
+): Promise<GoogleCalendarTokens> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
@@ -78,7 +84,7 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleCalenda
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: getRedirectUri(),
+      redirect_uri: getRedirectUri(customRedirectUri),
       grant_type: 'authorization_code',
     }),
   });

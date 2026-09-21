@@ -14,12 +14,14 @@ export async function GET(request: NextRequest) {
   if (error) {
     const errorUrl = new URL(redirectTarget);
     errorUrl.searchParams.set('calendar_error', error);
+    errorUrl.searchParams.set('gcal_error', 'true');
     return NextResponse.redirect(errorUrl.toString());
   }
 
   if (!code) {
     const errorUrl = new URL(redirectTarget);
     errorUrl.searchParams.set('calendar_error', 'missing_code');
+    errorUrl.searchParams.set('gcal_error', 'true');
     return NextResponse.redirect(errorUrl.toString());
   }
 
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
     // Redirigir al usuario indicando éxito en la conexión
     const successUrl = new URL(redirectTarget);
     successUrl.searchParams.set('calendar_connected', 'true');
+    successUrl.searchParams.set('gcal_success', 'true');
 
     const response = NextResponse.redirect(successUrl.toString());
 
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
     const message = err instanceof Error ? err.message : 'token_exchange_failed';
     const errorUrl = new URL(redirectTarget);
     errorUrl.searchParams.set('calendar_error', encodeURIComponent(message));
+    errorUrl.searchParams.set('gcal_error', 'true');
     return NextResponse.redirect(errorUrl.toString());
   }
 }
