@@ -122,7 +122,7 @@ export async function exportAsPDF(elementId: string, aiText: string, title: stri
   pdf.save(`Reporte_${title.replace(/\s+/g, '_')}.pdf`);
 }
 
-export async function exportAsExcel(elementId: string, aiText: string, title: string, rawData: any[]) {
+export async function exportAsExcel(elementId: string, aiText: string, title: string, rawData: Record<string, unknown>[]) {
   const chartImage = await captureChartImage(elementId);
   
   const ExcelJS = await import('exceljs');

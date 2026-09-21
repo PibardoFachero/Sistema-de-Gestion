@@ -129,7 +129,7 @@ export default function CalendarioPage() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -156,24 +156,27 @@ export default function CalendarioPage() {
         setIsGoogleConnected(true);
         setToastMessage({ type: 'success', text: 'Google Calendar sincronizado correctamente' });
         window.history.replaceState({}, document.title, window.location.pathname);
-        
+
         // Mock de evento de Google Calendar para previsualizar el estilo
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
         const tomorrowDay = format(tomorrow, 'EEEE', { locale: es });
-        
-        setAvailabilities(prev => {
-          if (prev.some(a => a.source === 'google')) return prev;
+
+        setAvailabilities((prev) => {
+          if (prev.some((a) => a.source === 'google')) return prev;
           const mockEvents: Availability[] = [];
-          for(let m=0; m<60; m+=5) {
+          for (let m = 0; m < 60; m += 5) {
             const mStr = m.toString().padStart(2, '0');
-            const nmStr = (m+5 === 60 ? '00' : (m+5).toString().padStart(2, '0'));
-            const h = 10 + (m+5 === 60 ? 1 : 0);
+            const nmStr = m + 5 === 60 ? '00' : (m + 5).toString().padStart(2, '0');
+            const h = 10 + (m + 5 === 60 ? 1 : 0);
             mockEvents.push({
-              date: tomorrowStr, dayOfWeek: tomorrowDay,
-              startTime: `10:${mStr}`, endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
-              label: 'Reunión Sync', source: 'google'
+              date: tomorrowStr,
+              dayOfWeek: tomorrowDay,
+              startTime: `10:${mStr}`,
+              endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
+              label: 'Reunión Sync',
+              source: 'google',
             });
           }
           return [...prev, ...mockEvents];

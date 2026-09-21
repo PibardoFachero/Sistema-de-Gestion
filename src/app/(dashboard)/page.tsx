@@ -1,12 +1,17 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Coffee, Play, Calendar, ShieldCheck } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import {
+  evaluateAndSyncUserStreak,
+  getCaracasDateKey,
+  isTaskForDate,
+} from '@/features/gamification/services/streakService';
+import { HomeTaskItem } from '@/features/tasks/components/HomeTaskList';
+import { HomeProjectItem } from '@/features/proyectos/components/HomeActiveProjects';
+import { HomeDashboardClient } from '@/features/dashboard/components/HomeDashboardClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Komorebi | Sistema de Gestión de Calendarios con Google OAuth',
@@ -24,14 +29,38 @@ export default async function HomePage() {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('racha_activa, racha_maxima')
-    .eq('id', user.id)
-    .maybeSingle();
+  // 1. Evaluar y sincronizar racha del usuario
+  const streakResult = await evaluateAndSyncUserStreak(supabase, user.id);
 
-  const rachaActiva = typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0;
+  // 2. Obtener proyectos del usuario desde la tabla 'projects'
+  const { data: projectsData, error: projectsError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', user.id);
 
+  if (projectsError) {
+    console.error('Error al obtener projects en HomePage:', projectsError);
+  }
+
+  const rawProjects = projectsData ?? [];
+  const projectIds = rawProjects.map((p) => p.id);
+
+  // 3. Obtener todas las tareas de los proyectos del usuario desde la tabla 'tareas'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let rawTasks: any[] = [];
+  if (projectIds.length > 0) {
+    const { data: tasksData, error: tasksError } = await supabase
+      .from('tareas')
+      .select('*')
+      .in('id_proyecto', projectIds);
+
+    if (tasksError) {
+      console.error('Error al obtener tareas en HomePage:', tasksError);
+    }
+    rawTasks = tasksData ?? [];
+  }
+
+  // 4. Nombre de usuario para el saludo
   const displayName =
     user.user_metadata?.first_name ||
     user.user_metadata?.username ||
@@ -41,140 +70,167 @@ export default async function HomePage() {
     user.email?.split('@')[0] ||
     'Estudiante';
 
+  // 5. Saludo horario y fecha en español en zona horaria local (America/Caracas)
+  const now = new Date();
+  const caracasHour = parseInt(
+    new Intl.DateTimeFormat('es-VE', {
+      timeZone: 'America/Caracas',
+      hour: 'numeric',
+      hour12: false,
+    }).format(now),
+    10,
+  );
+
+  let saludo = '¡Buenos días';
+  if (caracasHour >= 12 && caracasHour < 19) {
+    saludo = '¡Buenas tardes';
+  } else if (caracasHour >= 19 || caracasHour < 5) {
+    saludo = '¡Buenas noches';
+  }
+
+  const formattedDate = new Intl.DateTimeFormat('es-VE', {
+    timeZone: 'America/Caracas',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(now);
+  const displayDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+  const todayKey = getCaracasDateKey(now);
+
+  const projectMap = new Map(rawProjects.map((p) => [p.id, p]));
+
+  // 6. Proyectos activos (no completados)
+  const activeProjectsRaw = rawProjects.filter((p) => !p.completado && p.status !== 'completed');
+  const activeProjects: HomeProjectItem[] = activeProjectsRaw.map((p) => {
+    const pTasks = rawTasks.filter((t) => t.id_proyecto === p.id);
+    const tCount = pTasks.length;
+    const cCount = pTasks.filter((t) => t.completado).length;
+    const calcProgress = tCount === 0 ? p.progreso || 0 : Math.round((cCount / tCount) * 100);
+
+    return {
+      id: p.id,
+      titulo: p.titulo || p.name || 'Proyecto sin título',
+      prioridad: p.prioridad || 'Normal',
+      progreso: calcProgress,
+      completedTasks: cCount,
+      totalTasks: tCount,
+      fecha_limite: p.fecha_limite,
+    };
+  });
+
+  // 7. Tareas por completar en el día actual
+  const todayScheduledTasks = rawTasks.filter((t) => {
+    if (!t.fecha_inicio) return false;
+    return isTaskForDate(t.fecha_inicio, todayKey);
+  });
+
+  // Ordenar tareas de hoy cronológicamente
+  todayScheduledTasks.sort((a, b) => {
+    const timeA = a.fecha_inicio ? new Date(a.fecha_inicio).getTime() : 0;
+    const timeB = b.fecha_inicio ? new Date(b.fecha_inicio).getTime() : 0;
+    return timeA - timeB;
+  });
+
+  // Si no hay tareas con horario fijado para hoy, mostrar tareas pendientes de proyectos activos
+  const activeProjectIds = new Set(activeProjectsRaw.map((p) => p.id));
+  const candidateTasks =
+    todayScheduledTasks.length > 0
+      ? todayScheduledTasks
+      : rawTasks
+          .filter((t) => activeProjectIds.has(t.id_proyecto) && !t.completado)
+          .slice(0, 6);
+
+  const homeTasks: HomeTaskItem[] = candidateTasks.map((t) => ({
+    id: t.id,
+    id_proyecto: t.id_proyecto,
+    titulo: t.titulo || 'Tarea sin título',
+    descripcion: t.descripcion,
+    duracion: Number(t.duracion) || 30,
+    completado: Boolean(t.completado),
+    fecha_inicio: t.fecha_inicio,
+    prioridad: t.prioridad,
+    resources: t.resources,
+    url_recomendada: t.url_recomendada,
+    projectName:
+      projectMap.get(t.id_proyecto)?.titulo ||
+      projectMap.get(t.id_proyecto)?.name ||
+      'Proyecto',
+  }));
+
+  // 8. Cálculo de métricas:
+  // a) Esta semana
+  const mondayDate = new Date(now);
+  const dayOffset = (mondayDate.getDay() + 6) % 7;
+  mondayDate.setDate(mondayDate.getDate() - dayOffset);
+  mondayDate.setHours(0, 0, 0, 0);
+
+  const sundayDate = new Date(mondayDate);
+  sundayDate.setDate(sundayDate.getDate() + 6);
+  sundayDate.setHours(23, 59, 59, 999);
+
+  const thisWeekTasks = rawTasks.filter((t) => {
+    if (!t.fecha_inicio) return false;
+    const taskDate = new Date(t.fecha_inicio);
+    return taskDate >= mondayDate && taskDate <= sundayDate;
+  });
+
+  const weeklyMinutes =
+    thisWeekTasks.length > 0
+      ? thisWeekTasks.reduce((acc, t) => acc + (Number(t.duracion) || 30), 0)
+      : rawTasks.reduce((acc, t) => acc + (Number(t.duracion) || 30), 0);
+
+  const dailyTargetTotal = rawProjects.reduce(
+    (acc, p) => acc + (Number(p.minutos_diarios) || 0),
+    0,
+  );
+  const weeklyTargetMinutes = dailyTargetTotal > 0 ? dailyTargetTotal * 7 : 600;
+  const weeklyProgressPercent = Math.min(
+    100,
+    Math.round((weeklyMinutes / weeklyTargetMinutes) * 100),
+  );
+
+  // b) Progreso hoy
+  let todayDisplayTotal = todayScheduledTasks.length;
+  let todayDisplayCompleted = todayScheduledTasks.filter((t) => t.completado).length;
+
+  if (todayDisplayTotal === 0) {
+    const completedToday = rawTasks.filter((t) => {
+      if (!t.completado) return false;
+      const d = t.completed_at || t.fecha_inicio;
+      return isTaskForDate(d, todayKey);
+    }).length;
+    todayDisplayCompleted = completedToday;
+    todayDisplayTotal = Math.max(completedToday, candidateTasks.length);
+  }
+
+  // c) Ritmo Global
+  const totalTasksCount = rawTasks.length;
+  const completedTasksCount = rawTasks.filter((t) => t.completado).length;
+  const globalProgress =
+    totalTasksCount === 0 ? 0 : Math.round((completedTasksCount / totalTasksCount) * 100);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            ¡Buenos días, {displayName}!
-          </h1>
-          <Coffee className="size-8 text-outline" />
-        </div>
-        <p className="mt-2 text-on-surface-variant max-w-2xl">
-          Martes, 24 de Octubre de 2024 · Tienes 3 sesiones planificadas para hoy. Respeta tus
-          ritmos y tiempos de descanso.
-        </p>
-      </header>
-
-      {/* Descripción oficial: Komorebi - Sistema de Gestión de Calendarios con Google OAuth */}
-      <section
-        aria-label="Información de la plataforma Komorebi"
-        className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-xs"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-amber/15 px-3 py-0.5 text-xs font-bold text-accent-amber uppercase tracking-wider">
-                <Calendar className="size-3.5" />
-                Komorebi
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-0.5 text-[11px] font-semibold text-on-surface-variant">
-                <ShieldCheck className="size-3 text-status-success" />
-                Google OAuth
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-primary">
-              Komorebi — Sistema de Gestión de Calendarios con Google OAuth
-            </h2>
-            <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
-              Esta aplicación es un sistema integral de gestión de calendarios con Google OAuth,
-              diseñado para sincronizar eventos en tiempo real con Google Calendar, organizar
-              bloques de estudio y gestionar proyectos académicos de manera segura.
-            </p>
-          </div>
-          <Link
-            href="/calendario"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-on-primary hover:bg-primary/90 transition-colors shadow-xs"
-          >
-            <Calendar className="size-3.5 text-accent-amber" />
-            <span>Ver Calendario</span>
-          </Link>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="streak" className="self-start">
-            Racha
-          </Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">
-              {rachaActiva} {rachaActiva === 1 ? 'día' : 'días'}
-            </span>
-          </div>
-          <p className="text-xs text-on-surface-variant">Hábito consolidado</p>
-        </Card>
-
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge className="self-start">Esta semana</Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">14h 20m</span>
-          </div>
-          <div className="flex items-center gap-2 mt-auto">
-            <ProgressBar progress={79} height="sm" />
-            <span className="text-[10px] text-on-surface-variant font-medium whitespace-nowrap">
-              Meta 18h
-            </span>
-          </div>
-        </Card>
-
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="success" className="self-start">
-            Progreso hoy
-          </Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">2 / 5</span>
-          </div>
-          <p className="text-xs text-on-surface-variant">40% completado</p>
-        </Card>
-
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge className="self-start">Ritmo Global</Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">88%</span>
-          </div>
-          <p className="text-xs text-status-success font-medium">+4% vs semana ant.</p>
-        </Card>
-      </section>
-
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold">Tareas de hoy</h2>
-            <p className="text-sm text-on-surface-variant">3 pendientes por abordar</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Tarea 1 */}
-          <Card className="p-0 overflow-hidden relative border-l-4 border-l-primary">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Badge>Aprender Python desde cero</Badge>
-                  <Badge variant="priority">Prioritario</Badge>
-                </div>
-                <span className="text-xs font-semibold text-accent-amber">Siguiente turno</span>
-              </div>
-
-              <h3 className="text-lg font-bold">Ejercicios prácticos de Listas y Diccionarios</h3>
-
-              <div className="flex items-center gap-4 mt-4 text-sm text-on-surface-variant">
-                <span className="flex items-center gap-1.5">
-                  <span className="font-semibold text-on-surface">10:30 AM</span>
-                </span>
-                <span className="flex items-center gap-1.5">45 min</span>
-              </div>
-
-              <div className="flex items-center gap-3 mt-6">
-                <Button variant="primary" className="ml-auto gap-2">
-                  Iniciar tarea <Play className="size-4 fill-current" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-    </div>
+    <HomeDashboardClient
+      userData={{
+        displayName,
+        saludo,
+        displayDate,
+      }}
+      initialMetrics={{
+        rachaActiva: streakResult.racha_activa,
+        rachaMaxima: streakResult.racha_maxima,
+        weeklyMinutes,
+        weeklyTargetMinutes,
+        weeklyProgressPercent,
+        todayCompleted: todayDisplayCompleted,
+        todayTotal: todayDisplayTotal,
+        globalProgress,
+        totalTasksCount,
+        completedTasksCount,
+      }}
+      initialTasks={homeTasks}
+      initialProjects={activeProjects}
+    />
   );
 }
