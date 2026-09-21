@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/recuperar-contrasena') ||
     pathname.startsWith('/verificar-correo');
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
+  const isCalendarApi = pathname.startsWith('/api/calendar');
   const isPasswordResetRoute = pathname.startsWith('/restablecer-contrasena');
 
   const isRegisteredRecently = Boolean(request.cookies.get('just_registered_email')?.value);
@@ -64,7 +65,14 @@ export async function updateSession(request: NextRequest) {
 
   // Si no está autenticado y no es una ruta de autenticación/callback/restablecimiento ni una Server Action:
   // Siempre redirigir al login
-  if (!user && !isAuthRoute && !isAuthCallback && !isPasswordResetRoute && !isServerAction) {
+  if (
+    !user &&
+    !isAuthRoute &&
+    !isAuthCallback &&
+    !isCalendarApi &&
+    !isPasswordResetRoute &&
+    !isServerAction
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     const redirectResponse = NextResponse.redirect(url);
