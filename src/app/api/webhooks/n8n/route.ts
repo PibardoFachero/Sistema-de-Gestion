@@ -3,8 +3,16 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
 const requestSchema = z.object({
-  mensaje: z.string().trim().min(1).max(4000),
+  mensaje: z.string().trim().min(1).max(20000),
   tipo_evento: z.literal('chat'),
+  archivo: z
+    .object({
+      nombre: z.string(),
+      tipo: z.string(),
+      tamano: z.number(),
+      contenido: z.string().optional(),
+    })
+    .optional(),
   contexto: z
     .object({
       origen: z.literal('analytics'),
@@ -40,14 +48,59 @@ export async function POST(request: Request) {
     );
   }
 
+  // Consultar proyectos y tareas del usuario en Supabase para darle acceso a la IA
+  let proyectosContextText = '';
+  let userProjects: unknown[] = [];
+  try {
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, progreso, completado, tareas(id, titulo, duracion, completado, resources)')
+      .eq('user_id', auth.user.id)
+      .order('progreso', { ascending: true });
+
+    if (projects && projects.length > 0) {
+      userProjects = projects;
+      proyectosContextText =
+        `[Información de los proyectos actuales del usuario en Komorebi:\n` +
+        projects
+          .map((p) => {
+            const tareasList =
+              p.tareas && p.tareas.length > 0
+                ? p.tareas
+                    .map(
+                      (t: { titulo: string; duracion: number | null; completado: boolean }) =>
+                        `- Tarea: "${t.titulo}" (${t.completado ? 'Completada' : 'Pendiente'}, ${t.duracion || 30} min)`,
+                    )
+                    .join('\n  ')
+                : 'Sin tareas registradas aún';
+            return `• Proyecto: "${p.titulo}" | Progreso: ${p.progreso}% | Prioridad: ${p.prioridad || 'Media'} | Objetivo: "${p.objetivo || 'Sin objetivo'}"\n  Tareas:\n  ${tareasList}`;
+          })
+          .join('\n\n') +
+        `\n]\n\n`;
+    }
+  } catch (err) {
+    console.warn('Error al cargar proyectos para contexto de Komo:', err);
+  }
+
+  const promptConContexto = proyectosContextText
+    ? `${proyectosContextText}Instrucción o consulta del usuario:\n${parsed.data.mensaje}`
+    : parsed.data.mensaje;
+
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        sessionId: auth.user.id,
+        userId: auth.user.id,
         user_id: auth.user.id,
-        mensaje: parsed.data.mensaje,
+        chatInput: promptConContexto,
+        message: promptConContexto,
+        mensaje: promptConContexto,
+        input: promptConContexto,
         tipo_evento: 'chat',
+        proyectos: userProjects,
+        archivo: parsed.data.archivo,
         contexto: parsed.data.contexto,
       }),
     });

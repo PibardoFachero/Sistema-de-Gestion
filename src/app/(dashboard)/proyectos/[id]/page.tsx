@@ -1,9 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Plus, X, Trash2, AlertCircle, Check, Link as LinkIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Trash2,
+  AlertCircle,
+  Check,
+  Link as LinkIcon,
+  Sparkles,
+  Loader2,
+  Paperclip,
+} from 'lucide-react';
+import { extractTextFromFile } from '@/features/ai-assistant/utils/fileTextExtractor';
 import { useRouter } from 'next/navigation';
 import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard';
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
@@ -14,6 +26,7 @@ import {
   updateTaskAction,
   deleteTaskAction,
   deleteProjectAction,
+  generateTasksWithN8nAction,
   TaskRecord,
 } from '@/features/proyectos/actions/proyectoActions';
 
@@ -103,6 +116,14 @@ function checkScheduleConflict(
   return { hasConflict: false, message: null };
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
 export default function ProjectDetailPage({
   params,
 }: {
@@ -117,6 +138,55 @@ export default function ProjectDetailPage({
   const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  // Estados para generación de tareas con n8n IA
+  const [isGeneratingWithAI, setIsGeneratingWithAI] = useState(false);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+
+  // Estados para modal de generar tarea con IA
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiMaterialUrl, setAiMaterialUrl] = useState('');
+  const [aiAttachedFile, setAiAttachedFile] = useState<{
+    name: string;
+    size: number;
+    type: string;
+    content?: string;
+  } | null>(null);
+  const [aiFileExtractionStatus, setAiFileExtractionStatus] = useState<{
+    wordCount: number;
+    isSupported: boolean;
+  } | null>(null);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAiFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const extraction = await extractTextFromFile(file);
+
+    setAiAttachedFile({
+      name: file.name,
+      size: file.size,
+      type: file.type || 'application/octet-stream',
+      content: extraction.text || undefined,
+    });
+
+    setAiFileExtractionStatus({
+      wordCount: extraction.wordCount,
+      isSupported: extraction.isSupported,
+    });
+
+    event.target.value = '';
+  };
+
+  const handleRemoveAiFile = () => {
+    setAiAttachedFile(null);
+    setAiFileExtractionStatus(null);
+    if (aiFileInputRef.current) {
+      aiFileInputRef.current.value = '';
+    }
+  };
 
   // Estado para el modal de agregar tarea manual
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -228,6 +298,64 @@ export default function ProjectDetailPage({
     }
 
     setEditErrorMessage(null);
+  };
+
+  const handleGenerateTasksWithAI = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!project || isGeneratingWithAI) return;
+    setIsGeneratingWithAI(true);
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+
+    try {
+      const res = await generateTasksWithN8nAction(project.id, {
+        material_url: aiMaterialUrl.trim() || undefined,
+        file_content: aiAttachedFile?.content,
+        file_name: aiAttachedFile?.name,
+      });
+
+      if (res.success && res.tasks) {
+        const newTasks: Task[] = res.tasks.map((t: TaskRecord) => ({
+          id: t.id,
+          title: t.titulo,
+          description: t.descripcion || '',
+          duration: t.duracion,
+          startDate: t.fecha_inicio || undefined,
+          resourceUrl: t.resources || t.url_recomendada || null,
+          isCompleted: Boolean(t.completado),
+        }));
+
+        setProject((prev) => {
+          if (!prev) return null;
+          const merged = [...prev.tasks, ...newTasks];
+          return {
+            ...prev,
+            tasks: merged,
+            progress: res.progreso ?? prev.progress,
+            completado: false,
+          };
+        });
+
+        window.dispatchEvent(new Event('projects_updated'));
+
+        setAiSuccessMessage(`¡Se han generado ${newTasks.length} tareas automáticamente con IA!`);
+        setTimeout(() => setAiSuccessMessage(null), 6000);
+
+        // Reset y cierre del modal
+        setAiMaterialUrl('');
+        setAiAttachedFile(null);
+        setAiFileExtractionStatus(null);
+        setIsAiModalOpen(false);
+      } else {
+        setAiErrorMessage(res.error || 'No fue posible generar las tareas con n8n.');
+      }
+    } catch (err: unknown) {
+      console.error('Error generando tareas con IA:', err);
+      const msg = err instanceof Error ? err.message : 'Error de comunicación con el webhook de n8n.';
+      setAiErrorMessage(msg);
+    } finally {
+      setIsGeneratingWithAI(false);
+    }
   };
 
   // Cargar proyecto y tareas desde Supabase al resolver params
@@ -788,24 +916,53 @@ export default function ProjectDetailPage({
         <h2 className="text-xl font-bold text-on-surface">Plan de Acción</h2>
       </div>
 
+      {/* Mensajes de retroalimentación de la IA */}
+      {aiSuccessMessage && (
+        <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs sm:text-sm flex items-center gap-2">
+          <Check className="size-4 shrink-0 text-emerald-600" />
+          <span>{aiSuccessMessage}</span>
+        </div>
+      )}
+
+      {aiErrorMessage && (
+        <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs sm:text-sm flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0 text-red-600" />
+          <span>{aiErrorMessage}</span>
+        </div>
+      )}
+
       {project.tasks.length === 0 ? (
         <div className="bg-white border border-[#E8DCD1] rounded-2xl p-8 text-center">
           <p className="text-sm font-semibold text-on-surface mb-2">
             Aún no hay tareas registradas
           </p>
-          <p className="text-xs text-on-surface-variant mb-4">
-            Comienza agregando tu primera tarea de estudio para este proyecto.
+          <p className="text-xs text-on-surface-variant mb-6 max-w-md mx-auto">
+            Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de forma manual.
           </p>
-          <button
-            onClick={() => {
-              setTaskErrorMessage(null);
-              setIsAddModalOpen(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#f5e5d9] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#845326] hover:bg-[#E8DCD1] transition-all cursor-pointer"
-          >
-            <Plus className="size-4" />
-            Agregar Tarea
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setTaskErrorMessage(null);
+                setIsAddModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#f5e5d9] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#845326] hover:bg-[#E8DCD1] transition-all cursor-pointer"
+            >
+              <Plus className="size-4" />
+              <span>Agregar Tarea</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAiErrorMessage(null);
+                setIsAiModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#2C1F14] hover:bg-[#433022] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-all hover:brightness-105 active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="size-4 text-[#FEB800]" />
+              <span>Generar tarea con IA</span>
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -824,9 +981,10 @@ export default function ProjectDetailPage({
             ))}
           </div>
 
-          {/* Botón de agregar tarea manualmente: por debajo de las tareas creadas y en el centro */}
-          <div className="mt-8 flex justify-center">
+          {/* Botones de acción: Agregar Tarea y Generar Tarea con IA */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <button
+              type="button"
               onClick={() => {
                 setTaskErrorMessage(null);
                 setIsAddModalOpen(true);
@@ -835,6 +993,17 @@ export default function ProjectDetailPage({
             >
               <Plus className="size-5" />
               <span>Agregar Tarea</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAiErrorMessage(null);
+                setIsAiModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#2C1F14] hover:bg-[#433022] text-white px-7 py-3 text-sm font-bold shadow-sm hover:shadow-md transition-all hover:brightness-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="size-5 text-[#FEB800]" />
+              <span>Generar tarea con IA</span>
             </button>
           </div>
         </>
@@ -1066,6 +1235,157 @@ export default function ProjectDetailPage({
                   className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-98"
                 >
                   {isSubmittingTask ? 'Guardando...' : 'Guardar Tarea'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para generar tarea con IA */}
+      {isAiModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200 border border-[#E8DCD1]">
+            <button
+              type="button"
+              onClick={() => {
+                if (!isGeneratingWithAI) {
+                  setIsAiModalOpen(false);
+                }
+              }}
+              disabled={isGeneratingWithAI}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors cursor-pointer disabled:opacity-40"
+              aria-label="Cerrar modal"
+            >
+              <X className="size-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-[#2C1F14] text-[#FEB800] shadow-xs">
+                <Sparkles className="size-5" />
+              </span>
+              <h2 className="text-xl font-bold text-on-surface">Generar tarea con IA</h2>
+            </div>
+            <p className="text-xs text-on-surface-variant mb-5 leading-relaxed">
+              Komo analizará tu proyecto <span className="font-semibold text-on-surface">&quot;{project.title}&quot;</span> y creará nuevas tareas de forma automática.
+            </p>
+
+            {aiErrorMessage && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{aiErrorMessage}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleGenerateTasksWithAI} className="flex flex-col gap-4">
+              {/* Campo opcional: URL */}
+              <div>
+                <label htmlFor="aiMaterialUrl" className="flex items-center gap-2 text-sm font-bold text-on-surface mb-1.5">
+                  <LinkIcon className="size-4 text-[#845326]" /> URL o recurso web (opcional)
+                </label>
+                <input
+                  id="aiMaterialUrl"
+                  type="url"
+                  value={aiMaterialUrl}
+                  onChange={(e) => setAiMaterialUrl(e.target.value)}
+                  placeholder="https://ejemplo.com/guia-o-documentacion"
+                  disabled={isGeneratingWithAI}
+                  className="w-full rounded-xl border-2 border-[#E8DCD1] bg-white px-4 py-2.5 text-on-surface placeholder:text-gray-400 focus:border-[#2C1F14] focus:outline-none transition-all text-sm disabled:bg-gray-50"
+                />
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Enlace a tutorial, repositorio o material que la IA tomará en cuenta.
+                </p>
+              </div>
+
+              {/* Campo opcional: Archivo */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-bold text-on-surface mb-1.5">
+                  <Paperclip className="size-4 text-[#845326]" /> Archivo de referencia (opcional)
+                </label>
+
+                <input
+                  type="file"
+                  ref={aiFileInputRef}
+                  onChange={handleAiFileChange}
+                  disabled={isGeneratingWithAI}
+                  accept=".txt,.pdf,.doc,.docx,.csv,.json,.md"
+                  className="hidden"
+                />
+
+                {aiAttachedFile ? (
+                  <div className="flex items-center gap-2 rounded-xl border-2 border-[#E8DCD1] bg-[#FDFBF9] p-3">
+                    <Paperclip className="size-4 text-[#845326] shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-on-surface truncate">
+                        {aiAttachedFile.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-gray-500">
+                          {formatBytes(aiAttachedFile.size)}
+                        </span>
+                        {aiFileExtractionStatus && aiFileExtractionStatus.isSupported && (
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-semibold">
+                            ✓ {aiFileExtractionStatus.wordCount} palabras
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAiFile}
+                      disabled={isGeneratingWithAI}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition-colors cursor-pointer"
+                      title="Quitar archivo"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => aiFileInputRef.current?.click()}
+                    disabled={isGeneratingWithAI}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#E8DCD1] hover:border-[#845326] bg-[#FDFBF9] hover:bg-[#f5e5d9]/30 p-3.5 text-xs text-[#845326] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Paperclip className="size-4" />
+                    <span>Subir archivo (PDF, TXT, Markdown, etc.)</span>
+                  </button>
+                )}
+                <p className="mt-1 text-[11px] text-gray-500">
+                  La IA extraerá el contenido del documento para diseñar las tareas.
+                </p>
+              </div>
+
+              {/* Mensaje informativo cuando ambos campos están vacíos */}
+              <div className="rounded-xl bg-[#f5e5d9]/50 border border-[#E8DCD1] p-3 text-xs text-on-surface-variant leading-relaxed">
+                💡 <span className="font-semibold text-on-surface">Nota:</span> Ambos campos son opcionales. Si los dejas vacíos, Komo se basará en el objetivo y descripción de tu proyecto.
+              </div>
+
+              <div className="mt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAiModalOpen(false)}
+                  disabled={isGeneratingWithAI}
+                  className="flex-1 rounded-xl bg-gray-100 hover:bg-gray-200 px-4 py-3 text-sm font-bold text-gray-700 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGeneratingWithAI}
+                  className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isGeneratingWithAI ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin text-[#FEB800]" />
+                      <span>Generando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="size-4 text-[#FEB800]" />
+                      <span>Generar tareas</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
