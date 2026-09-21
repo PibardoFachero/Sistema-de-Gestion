@@ -15,7 +15,14 @@ interface Availability {
   startTime: string;
   endTime: string;
   label: string;
+  type?: 'libre' | 'descanso' | 'trabajo';
 }
+
+const COLOR_MAP = {
+  libre: { bg: 'bg-[#C8D6AF]', hover: 'hover:bg-[#B5C59A]', text: 'text-[#3A4A28]', border: 'border-[#3A4A28]/20', bgPale: 'bg-[#C8D6AF]/30' },
+  descanso: { bg: 'bg-[#F9EBB2]', hover: 'hover:bg-[#E8D9A0]', text: 'text-[#5C4F1A]', border: 'border-[#5C4F1A]/20', bgPale: 'bg-[#F9EBB2]/30' },
+  trabajo: { bg: 'bg-[#F4C2BA]', hover: 'hover:bg-[#E5B0A7]', text: 'text-[#6B3229]', border: 'border-[#6B3229]/20', bgPale: 'bg-[#F4C2BA]/30' }
+};
 
 // ARREGLO GLOBAL MAESTRO (Para lógica de rangos)
 const TIME_SLOTS: string[] = [];
@@ -43,15 +50,13 @@ export default function CalendarioPage() {
   
   const [editingCell, setEditingCell] = useState<{ date: string, time: string } | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [editType, setEditType] = useState<'libre' | 'descanso' | 'trabajo'>('libre');
   
-  // 1. ESTADO DE SELECCIÓN POR 2 CLICS Y MACROBLOQUES
   const [selectionStart, setSelectionStart] = useState<{ date: string, time: string, action: 'add' | 'remove', isMacro: boolean } | null>(null);
 
-  // 2. ESTADOS DE UX AVANZADA
   const [expandedHours, setExpandedHours] = useState<number[]>([]);
   const [hoveredTimeStr, setHoveredTimeStr] = useState<string | null>(null);
 
-  // Estados para Modal de Replicar
   const [showReplicateMenu, setShowReplicateMenu] = useState(false);
   const [showSpecificWeeksModal, setShowSpecificWeeksModal] = useState(false);
   const [selectedWeeks, setSelectedWeeks] = useState<string[]>([]);
@@ -63,7 +68,6 @@ export default function CalendarioPage() {
     localStorage.setItem('komorebi_availabilities', JSON.stringify(availabilities));
   }, [availabilities]);
 
-  // CÁLCULO DINÁMICO DE FILAS VISIBLES
   const visibleTimeSlots: string[] = [];
   for (let h = 0; h <= 23; h++) {
     const hourStr = h.toString().padStart(2, '0');
@@ -79,9 +83,6 @@ export default function CalendarioPage() {
     setExpandedHours(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]);
   };
 
-  /* ============================
-     VISTA MENSUAL (GRID ANUAL)
-     ============================ */
   const renderMonthlyGrid = () => {
     const startY = startOfYear(currentDate);
     const endY = endOfYear(currentDate);
@@ -91,7 +92,6 @@ export default function CalendarioPage() {
 
     return (
       <div className="flex flex-col animate-in fade-in duration-500 w-full max-w-5xl mx-auto pb-12">
-        {/* Banner Superior */}
         <div className="bg-[#FBE6DD] rounded-[24px] p-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-[#F7D6BF] shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7D6BF] rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/4"></div>
           <div className="bg-white p-3 rounded-full shadow-sm relative z-10 text-[#845326] shrink-0">
@@ -107,7 +107,6 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Selector de Año */}
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-2xl font-bold text-on-surface">
             {format(currentDate, 'yyyy')}
@@ -129,7 +128,6 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Grid de Meses */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {months.map((month) => {
             const isCurrentMonth = isSameMonth(new Date(), month);
@@ -165,10 +163,6 @@ export default function CalendarioPage() {
     );
   };
 
-  /* ============================
-     VISTA SEMANAL (TIMEBLOCKING)
-     ============================ */
-
   const applyRange = (dateStr: string, dayOfWeek: string, minIdx: number, maxIdx: number, action: 'add' | 'remove') => {
     if (action === 'add') {
       const newBlocks: Availability[] = [];
@@ -190,7 +184,8 @@ export default function CalendarioPage() {
           dayOfWeek: dayOfWeek,
           startTime: slotTime,
           endTime: endTimeStr,
-          label: 'Libre'
+          label: '',
+          type: 'libre'
         });
       }
 
@@ -217,12 +212,10 @@ export default function CalendarioPage() {
     const h = parseInt(hStr, 10);
     const isCollapsedHour = mStr === '00' && !expandedHours.includes(h);
     
-    // Obtener los índices absolutos del array maestro (TIME_SLOTS)
     const clickStartIdx = TIME_SLOTS.indexOf(timeStr);
     const clickEndIdx = isCollapsedHour ? clickStartIdx + 11 : clickStartIdx;
 
     let exists = false;
-    // Comprobar si al menos un bloque del clic actual está ocupado para inferir si borramos o añadimos
     for (let i = clickStartIdx; i <= clickEndIdx; i++) {
        if (availabilities.some(a => a.date === dateStr && a.startTime === TIME_SLOTS[i])) {
          exists = true; break;
@@ -239,14 +232,12 @@ export default function CalendarioPage() {
       setEditingCell(null);
     } else {
       if (selectionStart.date === dateStr && selectionStart.time === timeStr) {
-        // Doble clic en el mismo lugar: aplicar y listo (Toggle simple)
         applyRange(dateStr, dayOfWeek, clickStartIdx, clickEndIdx, selectionStart.action);
         setSelectionStart(null);
         return;
       }
 
       if (selectionStart.date !== dateStr) {
-        // Columna distinta: reiniciar selección
         setSelectionStart({ 
           date: dateStr, 
           time: timeStr, 
@@ -256,14 +247,12 @@ export default function CalendarioPage() {
         return;
       }
 
-      // Rango en la misma columna
       const startIdxObj = TIME_SLOTS.indexOf(selectionStart.time);
       const startObjIsMacro = selectionStart.isMacro;
       
       const minIdx = Math.min(startIdxObj, clickStartIdx);
       let maxIdx = Math.max(startIdxObj, clickStartIdx);
 
-      // Expandir el maxIdx si es necesario
       if (maxIdx === clickStartIdx && isCollapsedHour) maxIdx = clickEndIdx;
       if (maxIdx === startIdxObj && startObjIsMacro) maxIdx = startIdxObj + 11;
 
@@ -272,19 +261,33 @@ export default function CalendarioPage() {
     }
   };
 
-  const handleEditLabel = (dateStr: string, timeStr: string, currentLabel: string, e: React.MouseEvent) => {
+  const handleEditLabel = (dateStr: string, timeStr: string, currentLabel: string, currentType: 'libre' | 'descanso' | 'trabajo', e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingCell({ date: dateStr, time: timeStr });
-    setEditLabel(currentLabel);
+    setEditLabel(currentLabel === 'Libre' ? '' : currentLabel);
+    setEditType(currentType || 'libre');
   };
 
   const saveEditedLabel = () => {
-    if (editingCell && editLabel.trim()) {
-      setAvailabilities(prev => prev.map(a => 
-        (a.date === editingCell.date && a.startTime === editingCell.time)
-          ? { ...a, label: editLabel.trim().substring(0, 15) }
-          : a
-      ));
+    if (editingCell) {
+      const isCollapsed = editingCell.time.endsWith(':00') && !expandedHours.includes(parseInt(editingCell.time.split(':')[0], 10));
+
+      if (isCollapsed) {
+        const startIdx = TIME_SLOTS.indexOf(editingCell.time);
+        const hourTimes = new Set(TIME_SLOTS.slice(startIdx, startIdx + 12));
+        
+        setAvailabilities(prev => prev.map(a => 
+          (a.date === editingCell.date && hourTimes.has(a.startTime))
+            ? { ...a, label: editLabel.trim().substring(0, 15), type: editType }
+            : a
+        ));
+      } else {
+        setAvailabilities(prev => prev.map(a => 
+          (a.date === editingCell.date && a.startTime === editingCell.time)
+            ? { ...a, label: editLabel.trim().substring(0, 15), type: editType }
+            : a
+        ));
+      }
     }
     setEditingCell(null);
   };
@@ -303,7 +306,6 @@ export default function CalendarioPage() {
     return new Date(y, m - 1, d);
   };
 
-  // --- LÓGICA DE REPLICACIÓN ---
   const generateFutureWeeks = (currentWeekStart: Date) => {
     const weeks = [];
     const endOfActiveYear = endOfYear(currentDate);
@@ -364,19 +366,17 @@ export default function CalendarioPage() {
   };
 
   const renderWeeklyGrid = () => {
-    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Lunes
-    const end = endOfWeek(currentDate, { weekStartsOn: 1 }); // Domingo
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const end = endOfWeek(currentDate, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start, end });
 
     const goToPrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
     const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-    // Validar el día del clic inicial para la línea de extensión
     const selectionStartDayIndex = selectionStart ? days.findIndex(d => format(d, 'yyyy-MM-dd') === selectionStart.date) : -1;
 
     return (
       <div className="flex flex-col animate-in fade-in duration-300 w-full max-w-6xl mx-auto h-[calc(100vh-140px)]">
-        {/* Cabecera Semanal */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
           <div className="flex items-center gap-4">
             <button 
@@ -458,7 +458,7 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Modal de Semanas Específicas */}
+        {/* Modal Semanas Específicas */}
         {showSpecificWeeksModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
@@ -510,10 +510,8 @@ export default function CalendarioPage() {
           </div>
         )}
 
-        {/* Contenedor del Grid Scrollable */}
+        {/* Contenedor del Grid */}
         <div className="flex-1 overflow-y-auto bg-white border border-[#EAE3DC] rounded-[20px] shadow-sm relative custom-scrollbar select-none" onMouseLeave={() => setHoveredTimeStr(null)}>
-          
-          {/* Eje X: Cabeceras de días (Sticky Top) */}
           <div className="sticky top-0 z-20 flex bg-surface-container-lowest border-b border-[#EAE3DC] shadow-sm">
             <div className="w-[100px] min-w-[100px] border-r border-[#EAE3DC] bg-surface-container-lowest"></div>
             <div className="flex-1 grid grid-cols-7 min-w-[500px]">
@@ -535,10 +533,7 @@ export default function CalendarioPage() {
             </div>
           </div>
 
-          {/* Cuerpo del Grid */}
           <div className="flex relative pt-4 pb-4">
-            
-            {/* Eje Y: Horas (Sticky Left) */}
             <div className="sticky left-0 z-10 w-[100px] min-w-[100px] bg-white border-r border-[#EAE3DC] flex flex-col">
               {visibleTimeSlots.map((time) => {
                 const isHourStart = time.endsWith(':00');
@@ -546,7 +541,6 @@ export default function CalendarioPage() {
                 const [, minuteStr] = time.split(':');
                 const isActive = activeTimes.has(time);
                 
-                // Resaltado si la fila está en Hover o en la línea de extensión del SelectionStart
                 const isHovered = hoveredTimeStr === time;
                 const isExtensionLine = selectionStart?.time === time;
 
@@ -587,14 +581,12 @@ export default function CalendarioPage() {
               })}
             </div>
 
-            {/* Celdas Interactivas */}
             <div className="flex-1 grid grid-cols-7 min-w-[500px]">
               {days.map((day, colIndex) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const dayOfWeek = format(day, 'EEEE', { locale: es });
                 const isPast = isBefore(day, startOfDay(new Date()));
                 
-                // Si la celda está a la izquierda (o es) del clic inicial para trazar la línea
                 const isBeforeOrEqualSelectionDay = colIndex <= selectionStartDayIndex;
 
                 return (
@@ -611,19 +603,27 @@ export default function CalendarioPage() {
 
                       const isStartAdd = isSelectedAsStart && selectionStart?.action === 'add';
 
-                      // Si es una hora en punto (colapsada), al renderizar si hay AL MENOS UNA celda ocupada en el interior de esa hora, mostrarlo pintado.
-                      // Así el usuario sabe que hay disponibilidad ahí adentro.
                       const isCollapsedHour = timeStr.endsWith(':00') && !expandedHours.includes(parseInt(timeStr.split(':')[0], 10));
                       let macroAvailCount = 0;
+                      let macroFirstAvail: Availability | undefined;
                       if (isCollapsedHour) {
                          const startIdx = TIME_SLOTS.indexOf(timeStr);
                          for(let i=startIdx; i<startIdx+12; i++) {
-                           if(availabilities.some(a => a.date === dateStr && a.startTime === TIME_SLOTS[i])) macroAvailCount++;
+                           const found = availabilities.find(a => a.date === dateStr && a.startTime === TIME_SLOTS[i]);
+                           if(found) {
+                             macroAvailCount++;
+                             if (!macroFirstAvail) macroFirstAvail = found;
+                           }
                          }
                       }
+                      
+                      const effectiveAvail = isCollapsedHour ? macroFirstAvail : avail;
+                      const currentType = effectiveAvail?.type || 'libre';
+                      const colorTheme = COLOR_MAP[currentType];
+
                       const isMacroPartiallyOccupied = isCollapsedHour && macroAvailCount > 0 && macroAvailCount < 12;
                       const isOccupied = avail || (isCollapsedHour && macroAvailCount === 12);
-                      const displayLabel = isCollapsedHour && macroAvailCount > 0 ? `${macroAvailCount} int. libres` : avail?.label;
+                      const displayLabel = effectiveAvail?.label && effectiveAvail.label !== 'Libre' ? effectiveAvail.label : '';
                       
                       return (
                         <div 
@@ -636,28 +636,27 @@ export default function CalendarioPage() {
                             ${isPast ? '' : 'cursor-pointer'}
                             ${isHoveredRow && !isOccupied && !isMacroPartiallyOccupied && !isSelectedAsStart ? 'bg-[#f5e5d9]/60' : ''}
                             ${!isPast && !isOccupied && !isMacroPartiallyOccupied && !isSelectedAsStart && !isHoveredRow ? 'hover:bg-[#E8DCD1]/30' : ''}
-                            ${isOccupied && !isSelectedAsStart ? 'bg-[#C8D6AF] hover:bg-[#B5C59A]' : ''}
-                            ${isMacroPartiallyOccupied && !isSelectedAsStart ? 'bg-[#C8D6AF]/30 hover:bg-[#C8D6AF]/50 border-[1px] border-dashed border-[#3A4A28]/20' : ''}
+                            ${isOccupied && !isSelectedAsStart ? `${colorTheme.bg} ${colorTheme.hover}` : ''}
+                            ${isMacroPartiallyOccupied && !isSelectedAsStart ? `${colorTheme.bgPale} hover:${colorTheme.bg} border-[1px] border-dashed ${colorTheme.border}` : ''}
                             ${isExtensionLineCell ? 'bg-[#E8DCD1]/80 border-t border-b border-[#845326]/30' : ''}
                           `}
                           onClick={() => handleCellClick(dateStr, dayOfWeek, timeStr, isPast)}
                         >
-                          {/* Sombreado 100% para el selectionStart */}
                           {isSelectedAsStart && (
                             <div className={`absolute inset-0 z-20 border-[2px] border-[#845326] shadow-sm ${isStartAdd ? 'bg-[#C8D6AF]' : 'bg-[#EAE3DC]'}`}></div>
                           )}
 
                           {(isOccupied || isMacroPartiallyOccupied) && !isEditing && (
                             <div className="absolute inset-0 flex items-center justify-between px-1 overflow-hidden pointer-events-none z-0">
-                              <span className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? 'text-[#3A4A28]/60' : 'text-[#3A4A28]'}`}>
+                              <span className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}>
                                 {displayLabel}
                               </span>
                               
                               <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
-                                {!isPast && !isCollapsedHour && (
+                                {!isPast && (
                                   <button 
-                                    onClick={(e) => handleEditLabel(dateStr, timeStr, avail!.label, e)}
-                                    className="p-0.5 bg-white/70 rounded hover:bg-white text-[#3A4A28] transition-colors"
+                                    onClick={(e) => handleEditLabel(dateStr, timeStr, effectiveAvail!.label, currentType, e)}
+                                    className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
                                     title="Editar"
                                   >
                                     <Edit2 className="size-3" />
@@ -669,7 +668,7 @@ export default function CalendarioPage() {
 
                           {isEditing && !isPast && (
                             <div 
-                              className="absolute top-0 left-0 z-30 bg-white p-0.5 border border-[#845326] rounded shadow-sm flex items-center min-w-[80px]"
+                              className="absolute top-0 left-0 z-[60] bg-white p-3 border border-[#EAE3DC] rounded-xl shadow-xl flex flex-col gap-3 min-w-[150px]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
@@ -681,11 +680,18 @@ export default function CalendarioPage() {
                                   if (e.key === 'Enter') saveEditedLabel();
                                   if (e.key === 'Escape') setEditingCell(null);
                                 }}
-                                onBlur={saveEditedLabel}
                                 maxLength={15}
-                                className="w-full h-full text-[10px] font-bold text-on-surface bg-transparent focus:outline-none"
-                                placeholder="..."
+                                className="w-full text-xs font-bold text-on-surface bg-[#FDFBF9] border border-[#EAE3DC] rounded-md p-1.5 focus:outline-none focus:border-[#845326]"
+                                placeholder="Nota..."
                               />
+                              <div className="flex gap-2 justify-center">
+                                 <button onClick={() => setEditType('libre')} className={`w-6 h-6 rounded border ${editType === 'libre' ? 'border-[#845326] ring-2 ring-[#C8D6AF]/50' : 'border-[#EAE3DC]'} bg-[#C8D6AF]`} title="Libre"></button>
+                                 <button onClick={() => setEditType('descanso')} className={`w-6 h-6 rounded border ${editType === 'descanso' ? 'border-[#845326] ring-2 ring-[#F9EBB2]/50' : 'border-[#EAE3DC]'} bg-[#F9EBB2]`} title="Descanso"></button>
+                                 <button onClick={() => setEditType('trabajo')} className={`w-6 h-6 rounded border ${editType === 'trabajo' ? 'border-[#845326] ring-2 ring-[#F4C2BA]/50' : 'border-[#EAE3DC]'} bg-[#F4C2BA]`} title="Trabajo"></button>
+                              </div>
+                              <button onClick={saveEditedLabel} className="w-full bg-[#845326] text-white text-xs font-bold py-1.5 rounded-lg hover:bg-[#6c421f] transition-colors">
+                                Guardar
+                              </button>
                             </div>
                           )}
                         </div>
@@ -695,6 +701,22 @@ export default function CalendarioPage() {
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* LEYENDA VISUAL DE COLORES */}
+        <div className="flex justify-center gap-6 mt-4 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-[#C8D6AF] border border-[#3A4A28]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Libre</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-[#F9EBB2] border border-[#5C4F1A]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Descanso</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-[#F4C2BA] border border-[#6B3229]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Trabajo</span>
           </div>
         </div>
 
