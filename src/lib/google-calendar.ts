@@ -1,5 +1,3 @@
-import { google } from 'googleapis';
-import type { Credentials, OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
 
 export interface GoogleCalendarEvent {
@@ -14,15 +12,14 @@ export interface GoogleCalendarEvent {
   status: string | null;
 }
 
-export interface GoogleCalendarTokens extends Credentials {
+export interface GoogleCalendarTokens {
   access_token?: string | null;
   refresh_token?: string | null;
   scope?: string;
   token_type?: string | null;
   expiry_date?: number | null;
+  expires_in?: number;
 }
-
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 
 export const GCAL_COOKIE_NAME = 'gcal_tokens';
 
@@ -38,43 +35,107 @@ export function getRedirectUri(): string {
 }
 
 /**
- * Crea e inicializa el cliente de OAuth2 de Google.
- */
-export function getGoogleOAuthClient(): OAuth2Client {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error(
-      'Faltan las variables de entorno GOOGLE_CLIENT_ID y/o GOOGLE_CLIENT_SECRET.'
-    );
-  }
-
-  return new google.auth.OAuth2(clientId, clientSecret, getRedirectUri());
-}
-
-/**
  * Genera la URL de consentimiento para que el usuario autorice el acceso a Google Calendar.
  */
 export function getGoogleAuthUrl(state?: string): string {
-  const oauth2Client = getGoogleOAuthClient();
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error('Falta la variable de entorno GOOGLE_CLIENT_ID.');
+  }
 
-  return oauth2Client.generateAuthUrl({
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: getRedirectUri(),
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
     access_type: 'offline',
-    scope: SCOPES,
     prompt: 'consent',
-    include_granted_scopes: true,
-    state: state || undefined,
+    include_granted_scopes: 'true',
   });
+
+  if (state) {
+    params.set('state', state);
+  }
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
 /**
  * Intercambia el código temporal de autorización de Google por tokens de acceso y actualización.
  */
 export async function exchangeCodeForTokens(code: string): Promise<GoogleCalendarTokens> {
-  const oauth2Client = getGoogleOAuthClient();
-  const { tokens } = await oauth2Client.getToken(code);
-  return tokens;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Faltan las variables de entorno GOOGLE_CLIENT_ID y/o GOOGLE_CLIENT_SECRET.');
+  }
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: getRedirectUri(),
+      grant_type: 'authorization_code',
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || 'Error al intercambiar código por tokens.');
+  }
+
+  const expiry_date = data.expires_in ? Date.now() + data.expires_in * 1000 : null;
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    scope: data.scope,
+    token_type: data.token_type,
+    expiry_date,
+    expires_in: data.expires_in,
+  };
+}
+
+/**
+ * Refresca el access_token usando el refresh_token guardado.
+ */
+export async function refreshAccessToken(refreshToken: string): Promise<GoogleCalendarTokens> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Faltan las variables de entorno GOOGLE_CLIENT_ID y/o GOOGLE_CLIENT_SECRET.');
+  }
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || 'Error al refrescar el token de acceso.');
+  }
+
+  return {
+    access_token: data.access_token,
+    refresh_token: refreshToken,
+    scope: data.scope,
+    token_type: data.token_type,
+    expiry_date: data.expires_in ? Date.now() + data.expires_in * 1000 : null,
+  };
 }
 
 /**
@@ -87,33 +148,57 @@ export async function getUpcomingCalendarEvents(
     maxResults?: number;
   } = {}
 ): Promise<{ events: GoogleCalendarEvent[]; refreshedTokens?: GoogleCalendarTokens }> {
-  const oauth2Client = getGoogleOAuthClient();
-  oauth2Client.setCredentials(tokens);
-
+  let activeAccessToken = tokens.access_token;
   let refreshedTokens: GoogleCalendarTokens | undefined;
 
-  // Escuchar si se refresca el token automáticamente para propagar la actualización
-  oauth2Client.on('tokens', (newTokens) => {
-    refreshedTokens = {
-      ...tokens,
-      ...newTokens,
-    };
-  });
+  // Si el token expiró y hay un refresh_token, renovarlo automáticamente
+  const isExpired = tokens.expiry_date ? Date.now() >= tokens.expiry_date - 60000 : false;
+  if ((!activeAccessToken || isExpired) && tokens.refresh_token) {
+    refreshedTokens = await refreshAccessToken(tokens.refresh_token);
+    activeAccessToken = refreshedTokens.access_token;
+  }
 
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+  if (!activeAccessToken) {
+    throw new Error('No hay access_token disponible para consultar los eventos.');
+  }
 
   const timeMin = options.timeMin || new Date().toISOString();
   const maxResults = options.maxResults ?? 50;
 
-  const response = await calendar.events.list({
-    calendarId: 'primary',
+  const params = new URLSearchParams({
     timeMin,
-    maxResults,
-    singleEvents: true,
+    maxResults: String(maxResults),
+    singleEvents: 'true',
     orderBy: 'startTime',
   });
 
-  const rawEvents = response.data.items || [];
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${activeAccessToken}`,
+      Accept: 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const message = data.error?.message || 'Error al consultar eventos en Google Calendar.';
+    throw new Error(message);
+  }
+
+  interface RawGoogleEventItem {
+    id?: string;
+    summary?: string;
+    description?: string;
+    location?: string;
+    start?: { dateTime?: string; date?: string };
+    end?: { dateTime?: string; date?: string };
+    htmlLink?: string;
+    status?: string;
+  }
+
+  const rawEvents: RawGoogleEventItem[] = data.items || [];
 
   const events: GoogleCalendarEvent[] = rawEvents.map((item) => {
     const isAllDay = !item.start?.dateTime && !!item.start?.date;

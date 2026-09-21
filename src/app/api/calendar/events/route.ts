@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
     const isAuthRevoked =
       message.includes('invalid_grant') ||
       message.includes('Token has been expired or revoked') ||
+      message.includes('invalid authentication credentials') ||
       statusCode === 401;
 
     const response = NextResponse.json(

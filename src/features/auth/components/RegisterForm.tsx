@@ -443,6 +443,24 @@ export function RegisterForm() {
             </>
           )}
         </Button>
+
+        <p className="mt-4 text-center text-xs text-on-surface-variant">
+          Al registrarte, aceptas nuestros{' '}
+          <Link
+            href="/terms"
+            className="text-primary underline hover:text-accent-amber transition-colors"
+          >
+            Términos de Servicio
+          </Link>{' '}
+          y nuestra{' '}
+          <Link
+            href="/privacy"
+            className="text-primary underline hover:text-accent-amber transition-colors"
+          >
+            Política de Privacidad
+          </Link>
+          .
+        </p>
       </form>
 
       {/* Enlace inferior */}
