@@ -7,6 +7,11 @@ import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import { formatMinutes } from '../data/calculations';
 import type { AnalyticsDashboardData, AnalyticsMetricId } from '../data/types';
+import { WorkloadChart } from './charts/WorkloadChart';
+import { ProgressChart } from './charts/ProgressChart';
+import { PrioritiesChart } from './charts/PrioritiesChart';
+import { DeadlinesTimeline } from './charts/DeadlinesTimeline';
+import { ExportMenu } from './ExportMenu';
 
 type Metric = {
   label: string;
@@ -67,10 +72,13 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
             Una lectura privada de tus proyectos y tareas para ayudarte a decidir qué hacer después.
           </p>
         </div>
-        <span className="flex w-fit items-center gap-2 rounded-xl border border-status-success/25 bg-status-success-bg px-3 py-2 text-xs font-semibold text-status-success">
-          <Info className="size-4" />
-          Datos de tu cuenta
-        </span>
+        <div className="flex items-center gap-3">
+          <ExportMenu data={data} activeMetric={activeMetric} />
+          <span className="hidden sm:flex w-fit items-center gap-2 rounded-xl border border-status-success/25 bg-status-success-bg px-3 py-2 text-xs font-semibold text-status-success">
+            <Info className="size-4" />
+            Datos de tu cuenta
+          </span>
+        </div>
       </header>
 
       <Card className="overflow-hidden p-0">
@@ -154,7 +162,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
           {availability.available ? (
             <>
               <p className="sr-only">Resumen accesible: {presentation.accessibleSummary}</p>
-              <div className="overflow-x-auto">
+              <div id="exportable-chart-area" className="overflow-x-auto bg-surface-container-lowest p-2 rounded-xl">
                 <MetricChart metric={activeMetric} data={data} />
               </div>
             </>
@@ -236,111 +244,15 @@ function MetricChart({
   data: AnalyticsDashboardData;
 }) {
   if (metric === 'workload') {
-    const maximum = Math.max(...data.series.workload.map((item) => item.plannedMinutes), 1);
-    return (
-      <div
-        className="flex h-60 min-w-[34rem] items-end justify-between gap-3 border-b border-outline-variant/50 px-1 pt-6 sm:min-w-0"
-        aria-label="Minutos planificados por día"
-      >
-        {data.series.workload.map((item) => (
-          <div
-            key={item.day}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-          >
-            <span className="text-[11px] font-semibold text-on-surface-variant">
-              {item.plannedMinutes ? formatMinutes(item.plannedMinutes) : '—'}
-            </span>
-            <div className="flex h-40 w-full max-w-12 items-end rounded-t-xl bg-surface-container">
-              <div
-                className="w-full rounded-t-xl bg-accent-amber transition-all duration-500"
-                style={{ height: `${(item.plannedMinutes / maximum) * 100}%` }}
-              />
-            </div>
-            <span className="text-xs font-bold text-on-surface-variant">{item.label}</span>
-          </div>
-        ))}
-      </div>
-    );
+    return <WorkloadChart data={data.series.workload} />;
   }
-  if (metric === 'progress' || metric === 'priorities') {
-    const rows = metric === 'progress' ? data.series.progress : data.series.priorities;
-    const priorityMaximum =
-      metric === 'priorities' ? Math.max(...data.series.priorities.map((row) => row.value), 1) : 1;
-    return (
-      <div
-        className="space-y-5"
-        aria-label={metric === 'progress' ? 'Progreso por proyecto' : 'Proyectos por prioridad'}
-      >
-        {rows.map((row) => {
-          const progressRow = 'projectId' in row;
-          const tone = progressRow ? 'bg-secondary' : toneClass(row.tone);
-          const width = progressRow ? row.value : (row.value / priorityMaximum) * 100;
-          return (
-            <div key={progressRow ? row.projectId : row.name}>
-              <div className="mb-2 flex items-start justify-between gap-4 text-sm">
-                <span className="min-w-0 break-words font-semibold text-on-surface">
-                  {row.name}
-                </span>
-                <span className="shrink-0 whitespace-nowrap font-bold text-on-surface">
-                  {progressRow
-                    ? `${row.value}% (${row.completedTasks}/${row.totalTasks})`
-                    : row.value}
-                </span>
-              </div>
-              <div className="h-3 overflow-hidden rounded-full bg-outline-variant/20">
-                <div
-                  className={cn('h-full rounded-full transition-all duration-500', tone)}
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
+  if (metric === 'progress') {
+    return <ProgressChart data={data.series.progress} />;
   }
-  return (
-    <ol className="min-w-0 space-y-4" aria-label="Próximas fechas límite">
-      {data.series.deadlines.map((deadline, index) => (
-        <li key={deadline.projectId} className="grid grid-cols-[1rem_minmax(0,1fr)] gap-3">
-          <div className="relative flex items-center justify-center" aria-hidden="true">
-            {index > 0 && (
-              <span className="absolute bottom-1/2 left-1/2 top-[-1rem] w-px -translate-x-1/2 bg-outline-variant/50" />
-            )}
-            {index < data.series.deadlines.length - 1 && (
-              <span className="absolute bottom-[-1rem] left-1/2 top-1/2 w-px -translate-x-1/2 bg-outline-variant/50" />
-            )}
-            <span
-              className={cn(
-                'relative z-10 size-3 shrink-0 rounded-full border-2 border-surface-container-lowest',
-                deadline.tone === 'urgent'
-                  ? 'bg-status-urgent'
-                  : deadline.tone === 'attention'
-                    ? 'bg-status-attention'
-                    : 'bg-status-success',
-              )}
-            />
-          </div>
-          <div className="min-w-0 rounded-xl border border-outline-variant/40 bg-surface-container-low/40 px-3 py-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
-            <div className="min-w-0">
-              <p className="break-words font-semibold text-on-surface">{deadline.name}</p>
-              <p className="mt-0.5 text-sm text-on-surface-variant">{deadline.relativeLabel}</p>
-            </div>
-            <span className="mt-2 inline-flex w-fit rounded-full bg-surface-container px-2.5 py-1 text-xs font-bold text-on-surface-variant sm:mt-0">
-              {deadline.state}
-            </span>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function toneClass(tone: 'priority' | 'required' | 'personal' | 'neutral') {
-  if (tone === 'priority') return 'bg-secondary';
-  if (tone === 'required') return 'bg-status-urgent';
-  if (tone === 'personal') return 'bg-status-success';
-  return 'bg-outline';
+  if (metric === 'priorities') {
+    return <PrioritiesChart data={data.series.priorities} />;
+  }
+  return <DeadlinesTimeline data={data.series.deadlines} />;
 }
 
 function EmptyMetric({ message }: { message: string }) {
