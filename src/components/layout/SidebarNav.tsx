@@ -4,6 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LibraryBig } from 'lucide-react';
+import {
+  getProjectsAction,
+  type ProjectRecord,
+} from '@/features/proyectos/actions/proyectoActions';
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -22,21 +26,38 @@ export function SidebarNav() {
   >([]);
 
   React.useEffect(() => {
-    const loadProjects = () => {
+    let isMounted = true;
+
+    const loadProjects = async () => {
       try {
-        const saved = localStorage.getItem('komorebi_projects');
-        if (saved) {
-          setSidebarProjects(JSON.parse(saved));
+        const result = await getProjectsAction();
+        if (!isMounted) return;
+
+        if (!result.success) {
+          setSidebarProjects([]);
+          return;
         }
+
+        setSidebarProjects(
+          (result.projects as ProjectRecord[]).map((project) => ({
+            id: project.id,
+            name: project.titulo,
+            importance: project.prioridad,
+          })),
+        );
       } catch (e) {
         console.error(e);
+        if (isMounted) setSidebarProjects([]);
       }
     };
 
     loadProjects();
 
     window.addEventListener('projects_updated', loadProjects);
-    return () => window.removeEventListener('projects_updated', loadProjects);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('projects_updated', loadProjects);
+    };
   }, []);
 
   return (
@@ -83,10 +104,8 @@ export function SidebarNav() {
             )}
 
             {item.href === '/proyectos' && isActive && sidebarProjects.length === 0 && (
-              <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
-                <SubItem label="Aprender Python" />
-                <SubItem label="Backend" />
-                <SubItem label="Japonés" />
+              <div className="pl-11 pr-4 py-2 animate-in fade-in duration-200">
+                <p className="text-xs text-on-surface-variant">Aún no tienes proyectos.</p>
               </div>
             )}
           </div>
@@ -96,23 +115,14 @@ export function SidebarNav() {
   );
 }
 
-function SubItem({ label, href }: { label: string; href?: string }) {
-  if (href) {
-    return (
-      <Link
-        href={href}
-        className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors"
-      >
-        <div className="size-1.5 rounded-full bg-accent-amber/50" />
-        {label}
-      </Link>
-    );
-  }
-
+function SubItem({ label, href }: { label: string; href: string }) {
   return (
-    <div className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+    <Link
+      href={href}
+      className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors"
+    >
       <div className="size-1.5 rounded-full bg-accent-amber/50" />
       {label}
-    </div>
+    </Link>
   );
 }

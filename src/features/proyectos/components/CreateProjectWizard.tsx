@@ -100,10 +100,12 @@ export function CreateProjectWizard() {
     try {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      const configuredTimeStr = answers[6] 
-        ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim() 
+      const configuredTimeStr = answers[6]
+        ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim()
         : '30';
 
       // 1. Preparar material_url con URLs y nombres de hasta 3 archivos
@@ -138,8 +140,8 @@ export function CreateProjectWizard() {
           fecha_limite: deadline,
           prioridad: priority,
           horario_configurado: configuredTimeStr,
-        })
-      }).catch(err => console.error('Error enviando webhook n8n:', err));
+        }),
+      }).catch((err) => console.error('Error enviando webhook n8n:', err));
 
       // 2. Guardar en Supabase usando la Server Action
       const result = await createProjectAction({
@@ -158,21 +160,8 @@ export function CreateProjectWizard() {
 
       const createdProject = result.project;
 
-      // 3. Sincronizar localStorage para compatibilidad inmediata con componentes clientes (como SidebarNav)
-      if (typeof window !== 'undefined') {
-        const existing = localStorage.getItem('komorebi_projects');
-        const projects = existing ? JSON.parse(existing) : [];
-        projects.unshift({
-          id: createdProject.id,
-          name: createdProject.titulo,
-          importance: createdProject.prioridad,
-          tasksCount: 0,
-          progress: 0,
-          createdAt: createdProject.fecha_limite || new Date().toISOString(),
-        });
-        localStorage.setItem('komorebi_projects', JSON.stringify(projects));
-        window.dispatchEvent(new Event('projects_updated'));
-      }
+      // Actualizar los componentes que muestran el listado desde Supabase.
+      window.dispatchEvent(new Event('projects_updated'));
 
       router.push(`/proyectos/${createdProject.id}`);
     } catch (error: unknown) {

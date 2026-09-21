@@ -23,6 +23,8 @@ type ProfileRecord = {
   racha_activa?: number | null;
   racha_maxima?: number | null;
   telefono?: string | null;
+  telegram_username?: string | null;
+  telegram_verified_at?: string | null;
 };
 
 export default async function PerfilPage() {
@@ -118,6 +120,8 @@ export default async function PerfilPage() {
     personalContext: profile?.contexto_personal || profile?.descripcion || '',
     description: profile?.descripcion || profile?.contexto_personal || '',
     phone: profile?.telefono ?? (meta.phone || meta.telefono || null),
+    telegramUsername: profile?.telegram_username,
+    telegramVerifiedAt: profile?.telegram_verified_at,
     objective: profile?.objetivo || '',
     pace: profile?.ritmo || '',
     difficulties,

@@ -35,7 +35,7 @@ export const createProject = async (projectData: ProjectData) => {
       typeof projectData.materials === 'string'
         ? projectData.materials
         : JSON.stringify(projectData.materials || {}),
-    minutos_diarios: projectData.dailyMinutes || 30,
+    minutos_diarios: Number(projectData.dailyMinutes) || 30,
   });
 
   if (!result.success || !result.project) {
