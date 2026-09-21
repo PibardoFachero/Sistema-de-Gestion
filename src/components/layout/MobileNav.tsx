@@ -31,10 +31,14 @@ export function MobileNav() {
               isActive ? 'text-primary' : 'text-outline hover:text-on-surface'
             }`}
           >
-            <div className={`${isActive ? 'bg-surface-container-high' : ''} p-1.5 rounded-full transition-colors`}>
+            <div
+              className={`${isActive ? 'bg-surface-container-high' : ''} p-1.5 rounded-full transition-colors`}
+            >
               <Icon className="size-5" />
             </div>
-            <span className={`text-[10px] font-medium leading-tight ${isActive ? 'font-semibold' : ''}`}>
+            <span
+              className={`text-[10px] font-medium leading-tight ${isActive ? 'font-semibold' : ''}`}
+            >
               {item.label}
             </span>
           </Link>

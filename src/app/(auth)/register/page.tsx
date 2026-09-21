@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Crear una cuenta | Komorebi Study Studio',
-  description: 'Regístrate en Komorebi Study Studio para gestionar tus proyectos académicos y hábitos de estudio.',
+  description:
+    'Regístrate en Komorebi Study Studio para gestionar tus proyectos académicos y hábitos de estudio.',
 };
 
 export default async function RegisterPage() {
@@ -52,9 +53,12 @@ export default async function RegisterPage() {
             />
           </div>
 
-          <h2 className="text-3xl font-bold mb-4 tracking-tight">Transforma tu forma de estudiar.</h2>
+          <h2 className="text-3xl font-bold mb-4 tracking-tight">
+            Transforma tu forma de estudiar.
+          </h2>
           <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-10 leading-relaxed font-medium">
-            Únete a Komorebi y descubre el sistema definitivo para organizar tu vida universitaria y vencer la procrastinación.
+            Únete a Komorebi y descubre el sistema definitivo para organizar tu vida universitaria y
+            vencer la procrastinación.
           </p>
 
           <div className="grid grid-cols-1 gap-6 w-full max-w-sm text-left">
@@ -64,7 +68,9 @@ export default async function RegisterPage() {
               </div>
               <div>
                 <h3 className="font-bold text-sm">Aumenta tu productividad</h3>
-                <p className="text-xs text-white/60 font-medium">Herramientas creadas para universitarios</p>
+                <p className="text-xs text-white/60 font-medium">
+                  Herramientas creadas para universitarios
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
@@ -73,7 +79,9 @@ export default async function RegisterPage() {
               </div>
               <div>
                 <h3 className="font-bold text-sm">Domina tu tiempo</h3>
-                <p className="text-xs text-white/60 font-medium">Temporizadores Pomodoro integrados</p>
+                <p className="text-xs text-white/60 font-medium">
+                  Temporizadores Pomodoro integrados
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
@@ -82,7 +90,9 @@ export default async function RegisterPage() {
               </div>
               <div>
                 <h3 className="font-bold text-sm">Visualiza tus logros</h3>
-                <p className="text-xs text-white/60 font-medium">Mide tus horas y celebra tu progreso</p>
+                <p className="text-xs text-white/60 font-medium">
+                  Mide tus horas y celebra tu progreso
+                </p>
               </div>
             </div>
           </div>

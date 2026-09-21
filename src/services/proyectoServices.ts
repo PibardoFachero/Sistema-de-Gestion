@@ -1,53 +1,70 @@
+import {
+  createProjectAction,
+  toggleTaskStatusAction,
+  createTaskAction,
+  deleteTaskAction,
+  deleteProjectAction,
+  getProjectsAction,
+  getProjectDetailAction,
+} from '@/features/proyectos/actions/proyectoActions';
+
 export interface ProjectData {
   projectName: string;
+  objective?: string;
   deadline?: string;
   priority: string;
+  knowledge?: string;
+  materials?: Record<string, unknown> | string;
   dailyMinutes: number;
-  [key: string]: any; // Allow other fields from the 7 steps
+  [key: string]: unknown;
 }
 
 /**
  * createProject
- * Función que recibe el payload del cuestionario de 7 pasos.
- * Lista para hacer POST al webhook de n8n o insertar en Supabase.
+ * Inserta el nuevo proyecto en la tabla 'projects' de Supabase mediante createProjectAction.
  */
 export const createProject = async (projectData: ProjectData) => {
-  console.log('Mock: createProject called with', projectData);
-  
-  // TODO: Add Fetch API or Supabase client integration
-  /*
-  const response = await fetch('YOUR_N8N_WEBHOOK_URL', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(projectData),
+  const result = await createProjectAction({
+    titulo: projectData.projectName,
+    objetivo: projectData.objective || '',
+    fecha_limite: projectData.deadline || '',
+    prioridad: projectData.priority || 'Prioritario',
+    nivel_conocimiento: projectData.knowledge || '',
+    material_url:
+      typeof projectData.materials === 'string'
+        ? projectData.materials
+        : JSON.stringify(projectData.materials || {}),
+    minutos_diarios: projectData.dailyMinutes || 30,
   });
-  return response.json();
-  */
-  
-  return { success: true, id: 'proj-new' };
+
+  if (!result.success || !result.project) {
+    throw new Error(result.error || 'Error al crear el proyecto');
+  }
+
+  return { success: true, id: result.project.id, project: result.project };
 };
 
 /**
  * toggleTaskStatus
- * Función asíncrona que se ejecuta al clickear el checkbox de una tarea.
- * Lista para actualizar el campo is_completed en Supabase y tocar last_active_at.
+ * Actualiza el campo 'completado' en la tabla 'tareas' y recalcula 'progreso' en 'projects'.
  */
-export const toggleTaskStatus = async (taskId: string, isCompleted: boolean) => {
-  console.log(`Mock: toggleTaskStatus called. Task ID: ${taskId} | isCompleted: ${isCompleted}`);
-  
-  // TODO: Add Supabase client integration
-  /*
-  const { data, error } = await supabase
-    .from('tasks')
-    .update({ is_completed: isCompleted })
-    .eq('id', taskId);
+export const toggleTaskStatus = async (
+  taskId: string,
+  isCompleted: boolean,
+  projectId?: string,
+) => {
+  if (!projectId) {
+    console.warn('toggleTaskStatus: projectId no proporcionado.');
+  }
+  return await toggleTaskStatusAction(taskId, isCompleted, projectId || '');
+};
 
-  // Update user last_active_at for streaks
-  await supabase
-    .from('users')
-    .update({ last_active_at: new Date().toISOString() })
-    .eq('id', currentUser.id);
-  */
-  
-  return { success: true };
+export {
+  createProjectAction,
+  toggleTaskStatusAction,
+  createTaskAction,
+  deleteTaskAction,
+  deleteProjectAction,
+  getProjectsAction,
+  getProjectDetailAction,
 };

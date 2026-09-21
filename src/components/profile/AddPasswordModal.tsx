@@ -144,7 +144,9 @@ export function AddPasswordModal({
             </h2>
 
             <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
-              Tu contraseña ha sido guardada exitosamente. A partir de ahora podrás acceder a tu cuenta iniciando sesión tanto con Google como utilizando tu correo electrónico (<span className="font-semibold text-on-surface">{email}</span>) y tu nueva contraseña.
+              Tu contraseña ha sido guardada exitosamente. A partir de ahora podrás acceder a tu
+              cuenta iniciando sesión tanto con Google como utilizando tu correo electrónico (
+              <span className="font-semibold text-on-surface">{email}</span>) y tu nueva contraseña.
             </p>
 
             <Button
@@ -170,14 +172,14 @@ export function AddPasswordModal({
                 >
                   Agregar contraseña
                 </h2>
-                <p className="text-xs text-on-surface-variant">
-                  Cuenta vinculada con Google
-                </p>
+                <p className="text-xs text-on-surface-variant">Cuenta vinculada con Google</p>
               </div>
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              Tu cuenta se registró con Google (<span className="font-semibold text-on-surface">{email}</span>). Define una contraseña para acceder también mediante correo y clave:
+              Tu cuenta se registró con Google (
+              <span className="font-semibold text-on-surface">{email}</span>). Define una contraseña
+              para acceder también mediante correo y clave:
             </p>
 
             {generalError && (
@@ -249,7 +251,11 @@ export function AddPasswordModal({
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                   >
-                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -270,7 +276,11 @@ export function AddPasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasMinLength ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasMinLength ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Mínimo 6 caracteres
                     </span>
                   </div>
@@ -285,7 +295,11 @@ export function AddPasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasUpperCase ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasUpperCase ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Una letra mayúscula
                     </span>
                   </div>
@@ -300,7 +314,11 @@ export function AddPasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasNumber ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasNumber ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Al menos un número
                     </span>
                   </div>
@@ -315,7 +333,11 @@ export function AddPasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasSpecialChar ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasSpecialChar ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Un carácter especial
                     </span>
                   </div>
@@ -332,8 +354,14 @@ export function AddPasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={passwordsMatch ? 'text-status-success font-medium' : 'text-status-error'}>
-                      {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
+                    <span
+                      className={
+                        passwordsMatch ? 'text-status-success font-medium' : 'text-status-error'
+                      }
+                    >
+                      {passwordsMatch
+                        ? 'Las contraseñas coinciden'
+                        : 'Las contraseñas no coinciden'}
                     </span>
                   </div>
                 )}

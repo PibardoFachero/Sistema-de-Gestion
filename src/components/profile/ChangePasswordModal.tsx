@@ -25,11 +25,7 @@ interface ChangePasswordModalProps {
   isGoogleUser?: boolean;
 }
 
-export function ChangePasswordModal({
-  isOpen,
-  onClose,
-  email,
-}: ChangePasswordModalProps) {
+export function ChangePasswordModal({ isOpen, onClose, email }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -89,10 +85,16 @@ export function ChangePasswordModal({
   const hasUpperCase = /[A-Z\p{Lu}]/u.test(newPassword);
   const hasNumber = /[0-9]/.test(newPassword);
   const hasSpecialChar = /[^a-zA-Z0-9\s\p{L}]/u.test(newPassword);
-  const isDifferentFromCurrent = newPassword.length > 0 && currentPassword.length > 0 && newPassword !== currentPassword;
+  const isDifferentFromCurrent =
+    newPassword.length > 0 && currentPassword.length > 0 && newPassword !== currentPassword;
   const isNewPasswordValid = hasMinLength && hasUpperCase && hasNumber && hasSpecialChar;
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
-  const canSubmit = hasCurrentPassword && isNewPasswordValid && passwordsMatch && isDifferentFromCurrent && !isSubmitting;
+  const canSubmit =
+    hasCurrentPassword &&
+    isNewPasswordValid &&
+    passwordsMatch &&
+    isDifferentFromCurrent &&
+    !isSubmitting;
 
   // Actualización de contraseña directa (verificando la actual)
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -201,7 +203,8 @@ export function ChangePasswordModal({
             </h2>
 
             <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
-              Tu contraseña ha sido cambiada exitosamente. Tu sesión se mantiene activa y puedes continuar trabajando en tu cuenta.
+              Tu contraseña ha sido cambiada exitosamente. Tu sesión se mantiene activa y puedes
+              continuar trabajando en tu cuenta.
             </p>
 
             <Button
@@ -276,14 +279,13 @@ export function ChangePasswordModal({
                 >
                   Cambiar contraseña
                 </h2>
-                <p className="text-xs text-on-surface-variant">
-                  Seguridad y acceso a tu cuenta
-                </p>
+                <p className="text-xs text-on-surface-variant">Seguridad y acceso a tu cuenta</p>
               </div>
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              Para cambiar tu contraseña, ingresa tu clave actual y define la nueva contraseña para tu cuenta (<span className="font-semibold text-on-surface">{email}</span>):
+              Para cambiar tu contraseña, ingresa tu clave actual y define la nueva contraseña para
+              tu cuenta (<span className="font-semibold text-on-surface">{email}</span>):
             </p>
 
             {generalError && (
@@ -322,7 +324,11 @@ export function ChangePasswordModal({
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     aria-label={showCurrentPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                   >
-                    {showCurrentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showCurrentPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -388,7 +394,11 @@ export function ChangePasswordModal({
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                   >
-                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -409,7 +419,11 @@ export function ChangePasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasMinLength ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasMinLength ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Mínimo 6 caracteres
                     </span>
                   </div>
@@ -424,7 +438,11 @@ export function ChangePasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasUpperCase ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasUpperCase ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Una letra mayúscula
                     </span>
                   </div>
@@ -439,7 +457,11 @@ export function ChangePasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasNumber ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasNumber ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Al menos un número
                     </span>
                   </div>
@@ -454,7 +476,11 @@ export function ChangePasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={hasSpecialChar ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>
+                    <span
+                      className={
+                        hasSpecialChar ? 'text-on-surface font-medium' : 'text-on-surface-variant'
+                      }
+                    >
                       Un carácter especial
                     </span>
                   </div>
@@ -496,8 +522,14 @@ export function ChangePasswordModal({
                     >
                       <Check className="size-2.5 stroke-[3]" />
                     </div>
-                    <span className={passwordsMatch ? 'text-status-success font-medium' : 'text-status-error'}>
-                      {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
+                    <span
+                      className={
+                        passwordsMatch ? 'text-status-success font-medium' : 'text-status-error'
+                      }
+                    >
+                      {passwordsMatch
+                        ? 'Las contraseñas coinciden'
+                        : 'Las contraseñas no coinciden'}
                     </span>
                   </div>
                 )}

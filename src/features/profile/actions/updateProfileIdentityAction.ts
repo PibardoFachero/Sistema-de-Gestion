@@ -148,7 +148,10 @@ export async function updateProfileIdentity(
       // y Node.js lanza el error "431 Request Header Fields Too Large".
       // Por tanto, la imagen base64 se guarda EXCLUSIVAMENTE en la tabla 'profiles'.
       // En auth.users solo guardamos URLs HTTP/HTTPS o limpiamos si había base64 previo.
-      if (input.avatarUrl && (input.avatarUrl.startsWith('http://') || input.avatarUrl.startsWith('https://'))) {
+      if (
+        input.avatarUrl &&
+        (input.avatarUrl.startsWith('http://') || input.avatarUrl.startsWith('https://'))
+      ) {
         metadataUpdates.avatar_url = input.avatarUrl;
       } else {
         metadataUpdates.avatar_url = null;
