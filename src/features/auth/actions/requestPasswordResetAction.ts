@@ -46,7 +46,10 @@ export async function requestPasswordReset(
     }
 
     // Si la URL detectada es una IP de red local (ej. 172.x, 192.168.x), priorizar localhost o NEXT_PUBLIC_SITE_URL
-    if (siteUrl && (siteUrl.includes('172.') || siteUrl.includes('192.168.') || siteUrl.includes('10.'))) {
+    if (
+      siteUrl &&
+      (siteUrl.includes('172.') || siteUrl.includes('192.168.') || siteUrl.includes('10.'))
+    ) {
       siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     }
 

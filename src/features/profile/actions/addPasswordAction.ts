@@ -9,9 +9,7 @@ export interface AddPasswordResponse {
   error?: string;
 }
 
-export async function addPassword(
-  formData: ResetPasswordFormData,
-): Promise<AddPasswordResponse> {
+export async function addPassword(formData: ResetPasswordFormData): Promise<AddPasswordResponse> {
   const validationResult = resetPasswordSchema.safeParse(formData);
 
   if (!validationResult.success) {

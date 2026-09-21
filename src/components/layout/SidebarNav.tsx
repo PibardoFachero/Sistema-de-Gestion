@@ -17,7 +17,9 @@ export function SidebarNav() {
     { href: '/ia', icon: Sparkles, label: 'Asistente IA' },
   ];
 
-  const [sidebarProjects, setSidebarProjects] = React.useState<{id: string, name: string, importance?: string}[]>([]);
+  const [sidebarProjects, setSidebarProjects] = React.useState<
+    { id: string; name: string; importance?: string }[]
+  >([]);
 
   React.useEffect(() => {
     const loadProjects = () => {
@@ -30,9 +32,9 @@ export function SidebarNav() {
         console.error(e);
       }
     };
-    
+
     loadProjects();
-    
+
     window.addEventListener('projects_updated', loadProjects);
     return () => window.removeEventListener('projects_updated', loadProjects);
   }, []);
@@ -63,19 +65,23 @@ export function SidebarNav() {
               <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
                 {sidebarProjects
                   .sort((a, b) => {
-                    const isAHigh = ['obligatorio', 'prioritario'].includes((a.importance || '').toLowerCase());
-                    const isBHigh = ['obligatorio', 'prioritario'].includes((b.importance || '').toLowerCase());
+                    const isAHigh = ['obligatorio', 'prioritario'].includes(
+                      (a.importance || '').toLowerCase(),
+                    );
+                    const isBHigh = ['obligatorio', 'prioritario'].includes(
+                      (b.importance || '').toLowerCase(),
+                    );
                     if (isAHigh && !isBHigh) return -1;
                     if (!isAHigh && isBHigh) return 1;
                     return 0;
                   })
                   .slice(0, 3)
-                  .map(p => (
-                  <SubItem key={p.id} label={p.name} href={`/proyectos/${p.id}`} />
-                ))}
+                  .map((p) => (
+                    <SubItem key={p.id} label={p.name} href={`/proyectos/${p.id}`} />
+                  ))}
               </div>
             )}
-            
+
             {item.href === '/proyectos' && isActive && sidebarProjects.length === 0 && (
               <div className="pl-11 pr-4 py-2 space-y-3 animate-in fade-in duration-200">
                 <SubItem label="Aprender Python" />
@@ -93,13 +99,16 @@ export function SidebarNav() {
 function SubItem({ label, href }: { label: string; href?: string }) {
   if (href) {
     return (
-      <Link href={href} className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+      <Link
+        href={href}
+        className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors"
+      >
         <div className="size-1.5 rounded-full bg-accent-amber/50" />
         {label}
       </Link>
     );
   }
-  
+
   return (
     <div className="flex items-center gap-3 text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
       <div className="size-1.5 rounded-full bg-accent-amber/50" />

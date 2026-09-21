@@ -38,10 +38,15 @@ export async function Sidebar({ initialUser }: SidebarProps) {
           </div>
           <div>
             <h2 className="font-bold text-primary tracking-tight leading-tight">Komorebi</h2>
-            <p className="text-[10px] uppercase font-semibold text-accent-amber tracking-wider">Study Studio</p>
+            <p className="text-[10px] uppercase font-semibold text-accent-amber tracking-wider">
+              Study Studio
+            </p>
           </div>
         </div>
-        <button className="text-outline hover:text-primary transition-colors cursor-pointer" aria-label="Colapsar menú">
+        <button
+          className="text-outline hover:text-primary transition-colors cursor-pointer"
+          aria-label="Colapsar menú"
+        >
           <PanelLeftClose className="size-5" />
         </button>
       </div>

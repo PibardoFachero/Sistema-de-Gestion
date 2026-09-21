@@ -39,7 +39,7 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
   // Determinar color de la píldora de importancia
   let importanceBg = 'bg-gray-100 text-gray-700';
   const importanceLower = (project.importance || '').toLowerCase();
-  
+
   if (importanceLower.includes('obligatorio')) {
     importanceBg = 'bg-[#FBE6DD] text-[#845326]'; // rosa/durazno suave
   } else if (importanceLower.includes('prioritario')) {
@@ -49,26 +49,12 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
   }
 
   return (
-    <Link 
+    <Link
       href={`/proyectos/${project.id}`}
       className="group relative flex flex-col bg-white rounded-[20px] border border-[#EAE3DC] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-200 ease-in-out hover:-translate-y-[3px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] block"
     >
-      
-      {/* Botón de Eliminación (Hover) */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (onDelete) onDelete(project.id);
-        }}
-        className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white/85 flex items-center justify-center opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 ease-in-out hover:bg-[#FFEAEB] text-gray-400 hover:text-[#FF8888] shadow-sm"
-      >
-        <Trash2 className="size-4" />
-      </button>
-      
       {/* Cabecera superior ("Fondo Cute") */}
-      <div 
+      <div
         className="h-[130px] w-full flex items-center justify-center relative"
         style={{ background: gradient }}
       >
@@ -82,26 +68,46 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
           />
         </div>
       </div>
-      
+
       {/* Cuerpo inferior de la tarjeta */}
-      <div className="flex flex-col flex-1 p-5 gap-4">
-        
+      <div className="flex flex-col flex-1 p-5 pb-6 gap-4 relative">
         {/* Fila superior: Nombre e Importancia */}
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-bold text-[#2C1F14] text-lg leading-tight line-clamp-2">
             {project.name}
           </h3>
-          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${importanceBg}`}>
+          <span
+            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${importanceBg}`}
+          >
             {project.importance?.split(' ')[0]}
           </span>
         </div>
-        
+
         <div className="mt-auto flex flex-col gap-3">
           {/* Fila intermedia: Texto informativo */}
-          <p className="text-sm font-semibold text-[#845326]">
-            Nro. de tareas: {project.tasksCount}
-          </p>
-          
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-[#845326]">
+              Nro. de tareas: {project.tasksCount}
+            </p>
+
+            {/* Botón de Eliminación (Abajo a la Derecha) */}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(project.id);
+                }}
+                className="w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out shadow-xs border border-red-200/60 cursor-pointer active:scale-90"
+                title="Eliminar proyecto"
+                aria-label="Eliminar proyecto"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            )}
+          </div>
+
           {/* Fila inferior (Progreso) */}
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center text-xs font-bold text-[#2C1F14]">
@@ -109,17 +115,16 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
               <span>{project.progress}%</span>
             </div>
             <div className="w-full h-2 rounded-full bg-[#EAE3DC] overflow-hidden">
-              <div 
+              <div
                 className="h-full rounded-full transition-all duration-1000 ease-out"
-                style={{ 
+                style={{
                   width: `${project.progress}%`,
-                  background: gradient // Usamos el mismo gradiente para que combine!
+                  background: gradient, // Usamos el mismo gradiente para que combine!
                 }}
               />
             </div>
           </div>
         </div>
-        
       </div>
     </Link>
   );

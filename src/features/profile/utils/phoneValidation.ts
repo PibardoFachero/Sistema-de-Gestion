@@ -26,7 +26,8 @@ export function validatePhoneNumber(phoneInput?: string | null): PhoneValidation
   if (!trimmed.startsWith('+')) {
     return {
       isValid: false,
-      error: 'El número telefónico debe incluir un prefijo internacional válido que empiece con + (ej. +58).',
+      error:
+        'El número telefónico debe incluir un prefijo internacional válido que empiece con + (ej. +58).',
       formattedPhone: null,
     };
   }

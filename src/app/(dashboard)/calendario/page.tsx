@@ -8,7 +8,8 @@ export default function CalendarioPage() {
       </div>
       <h1 className="text-3xl font-bold text-on-surface mb-2">Calendario</h1>
       <p className="text-on-surface-variant max-w-md">
-        El calendario está en desarrollo. Pronto podrás visualizar tus fechas límite y sesiones de estudio.
+        El calendario está en desarrollo. Pronto podrás visualizar tus fechas límite y sesiones de
+        estudio.
       </p>
       <div className="mt-8 px-4 py-2 bg-accent-amber/20 text-primary font-semibold rounded-full text-sm">
         En proceso...
