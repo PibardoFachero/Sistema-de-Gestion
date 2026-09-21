@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  exchangeCodeForTokens,
-  encryptTokens,
-  GCAL_COOKIE_NAME,
-} from '@/lib/google-calendar';
+import { exchangeCodeForTokens, encryptTokens, GCAL_COOKIE_NAME } from '@/lib/google-calendar';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);

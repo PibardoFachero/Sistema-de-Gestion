@@ -54,13 +54,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={t.id}
               className={cn(
                 'pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-2xl shadow-lg border text-sm font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 transition-all',
-                t.type === 'success' && 'bg-surface-container-lowest border-status-success/30 text-on-surface ring-1 ring-status-success/20',
-                t.type === 'error' && 'bg-surface-container-lowest border-error/30 text-on-surface ring-1 ring-error/20',
-                t.type === 'info' && 'bg-surface-container-lowest border-outline-variant/60 text-on-surface ring-1 ring-primary/10'
+                t.type === 'success' &&
+                  'bg-surface-container-lowest border-status-success/30 text-on-surface ring-1 ring-status-success/20',
+                t.type === 'error' &&
+                  'bg-surface-container-lowest border-error/30 text-on-surface ring-1 ring-error/20',
+                t.type === 'info' &&
+                  'bg-surface-container-lowest border-outline-variant/60 text-on-surface ring-1 ring-primary/10',
               )}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                {t.type === 'success' && <CheckCircle2 className="size-5 shrink-0 text-status-success" />}
+                {t.type === 'success' && (
+                  <CheckCircle2 className="size-5 shrink-0 text-status-success" />
+                )}
                 {t.type === 'error' && <AlertCircle className="size-5 shrink-0 text-error" />}
                 {t.type === 'info' && <Info className="size-5 shrink-0 text-primary" />}
                 <p className="line-clamp-2 text-xs leading-snug">{t.message}</p>

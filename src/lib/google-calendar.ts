@@ -86,7 +86,9 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleCalenda
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error_description || data.error || 'Error al intercambiar código por tokens.');
+    throw new Error(
+      data.error_description || data.error || 'Error al intercambiar código por tokens.',
+    );
   }
 
   const expiry_date = data.expires_in ? Date.now() + data.expires_in * 1000 : null;
@@ -126,7 +128,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<GoogleCa
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error_description || data.error || 'Error al refrescar el token de acceso.');
+    throw new Error(
+      data.error_description || data.error || 'Error al refrescar el token de acceso.',
+    );
   }
 
   return {
@@ -146,7 +150,7 @@ export async function getUpcomingCalendarEvents(
   options: {
     timeMin?: string;
     maxResults?: number;
-  } = {}
+  } = {},
 ): Promise<{ events: GoogleCalendarEvent[]; refreshedTokens?: GoogleCalendarTokens }> {
   let activeAccessToken = tokens.access_token;
   let refreshedTokens: GoogleCalendarTokens | undefined;

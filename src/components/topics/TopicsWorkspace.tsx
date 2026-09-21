@@ -25,12 +25,7 @@ import { Card } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import {
-  Topic,
-  TopicSource,
-  LinkedProject,
-  SourceStatus,
-} from '@/features/topics/types';
+import { Topic, TopicSource, LinkedProject, SourceStatus } from '@/features/topics/types';
 import {
   getTopicsAction,
   createTopicAction,
@@ -107,7 +102,7 @@ export function TopicsWorkspace() {
 
   const selectedTopic = topics.find((topic) => topic.id === selectedTopicId) ?? null;
   const filteredTopics = topics.filter((topic) =>
-    topic.name.toLowerCase().includes(search.toLowerCase())
+    topic.name.toLowerCase().includes(search.toLowerCase()),
   );
   const activeSourceCount = selectedTopic
     ? selectedTopic.sources.filter((source) => source.enabledForAi).length
@@ -146,8 +141,8 @@ export function TopicsWorkspace() {
         prev.map((t) =>
           t.id === selectedTopic.id
             ? { ...t, name: title, description, lastEdited: 'Editado ahora' }
-            : t
-        )
+            : t,
+        ),
       );
       toast.success('Tema actualizado');
     } else {
@@ -188,10 +183,8 @@ export function TopicsWorkspace() {
       if (res.success) {
         setTopics((prev) =>
           prev.map((t) =>
-            t.id === selectedTopic.id
-              ? { ...t, mainNote: note, lastEdited: 'Editado ahora' }
-              : t
-          )
+            t.id === selectedTopic.id ? { ...t, mainNote: note, lastEdited: 'Editado ahora' } : t,
+          ),
         );
         toast.success('Nota principal guardada');
       } else {
@@ -218,8 +211,8 @@ export function TopicsWorkspace() {
         prev.map((t) =>
           t.id === selectedTopic.id
             ? { ...t, sources: [...t.sources, newSource], lastEdited: 'Editado ahora' }
-            : t
-        )
+            : t,
+        ),
       );
       toast.success('Nota de fuente agregada');
     } else {
@@ -244,8 +237,8 @@ export function TopicsWorkspace() {
           prev.map((t) =>
             t.id === selectedTopic.id
               ? { ...t, sources: [...t.sources, newSource], lastEdited: 'Editado ahora' }
-              : t
-          )
+              : t,
+          ),
         );
         setLinkValue('');
         setIsAddingLink(false);
@@ -293,9 +286,7 @@ export function TopicsWorkspace() {
           continue;
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from('topic-files')
-          .getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('topic-files').getPublicUrl(filePath);
 
         const fileExt = file.name.split('.').pop() || 'archivo';
 
@@ -314,8 +305,8 @@ export function TopicsWorkspace() {
             prev.map((t) =>
               t.id === selectedTopic.id
                 ? { ...t, sources: [...t.sources, newSource], lastEdited: 'Editado ahora' }
-                : t
-            )
+                : t,
+            ),
           );
           toast.success(`Archivo "${file.name}" subido`);
         }
@@ -341,11 +332,11 @@ export function TopicsWorkspace() {
           ? {
               ...t,
               sources: t.sources.map((s) =>
-                s.id === sourceId ? { ...s, enabledForAi: targetStatus } : s
+                s.id === sourceId ? { ...s, enabledForAi: targetStatus } : s,
               ),
             }
-          : t
-      )
+          : t,
+      ),
     );
 
     const res = await toggleSourceContextAction(sourceId, source.enabledForAi);
@@ -353,7 +344,7 @@ export function TopicsWorkspace() {
       toast.info(
         targetStatus
           ? `Fuente "${source.title}" incluida en contexto de IA`
-          : `Fuente "${source.title}" excluida del contexto`
+          : `Fuente "${source.title}" excluida del contexto`,
       );
     } else {
       // Revertir optimismo
@@ -363,11 +354,11 @@ export function TopicsWorkspace() {
             ? {
                 ...t,
                 sources: t.sources.map((s) =>
-                  s.id === sourceId ? { ...s, enabledForAi: source.enabledForAi } : s
+                  s.id === sourceId ? { ...s, enabledForAi: source.enabledForAi } : s,
                 ),
               }
-            : t
-        )
+            : t,
+        ),
       );
       toast.error(res.error || 'No se pudo actualizar el estado');
     }
@@ -381,8 +372,8 @@ export function TopicsWorkspace() {
         prev.map((t) =>
           t.id === selectedTopic.id
             ? { ...t, sources: t.sources.filter((s) => s.id !== sourceId) }
-            : t
-        )
+            : t,
+        ),
       );
       setOpenSourceMenuId(null);
       toast.success('Fuente eliminada');
@@ -403,8 +394,8 @@ export function TopicsWorkspace() {
                 ? t.projects
                 : [...t.projects, project],
             }
-          : t
-      )
+          : t,
+      ),
     );
     toast.success(`Proyecto "${project.name}" vinculado`);
   }
@@ -417,8 +408,8 @@ export function TopicsWorkspace() {
         prev.map((t) =>
           t.id === selectedTopic.id
             ? { ...t, projects: t.projects.filter((p) => p.id !== projectId) }
-            : t
-        )
+            : t,
+        ),
       );
       toast.info('Proyecto desvinculado');
     } else {
@@ -450,7 +441,8 @@ export function TopicsWorkspace() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Temas</h1>
           <p className="mt-2 max-w-2xl text-on-surface-variant">
-            Reúne notas y fuentes que luego podrás activar como contexto para la IA o vincular a un proyecto.
+            Reúne notas y fuentes que luego podrás activar como contexto para la IA o vincular a un
+            proyecto.
           </p>
         </div>
         <Button
@@ -471,7 +463,8 @@ export function TopicsWorkspace() {
           <BookOpen className="mx-auto size-12 text-outline mb-4" />
           <h2 className="text-xl font-bold text-on-surface">Tu biblioteca está vacía</h2>
           <p className="mt-2 text-sm text-on-surface-variant max-w-md mx-auto">
-            Crea tu primer tema de estudio para organizar tus notas, archivos y fuentes con contexto inteligente.
+            Crea tu primer tema de estudio para organizar tus notas, archivos y fuentes con contexto
+            inteligente.
           </p>
           <Button
             size="md"
@@ -511,7 +504,7 @@ export function TopicsWorkspace() {
                       'w-full min-w-0 max-w-full rounded-2xl border p-3.5 text-left shadow-sm transition-colors',
                       isSelected
                         ? 'border-primary/40 bg-surface-container-high ring-1 ring-primary/10'
-                        : 'border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container-low'
+                        : 'border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container-low',
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -842,8 +835,8 @@ export function TopicsWorkspace() {
               prev.map((t) =>
                 t.id === selectedTopic.id
                   ? { ...t, projects: t.projects.filter((p) => p.id !== pid) }
-                  : t
-              )
+                  : t,
+              ),
             );
           }}
         />
@@ -906,7 +899,9 @@ function SourceRow({ source, isMenuOpen, onToggleMenu, onToggle, onDelete }: Sou
       </div>
 
       <div className="flex max-w-full flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
-        <span className={cn('rounded-full px-2.5 py-1.5 text-[11px] font-semibold', status.className)}>
+        <span
+          className={cn('rounded-full px-2.5 py-1.5 text-[11px] font-semibold', status.className)}
+        >
           {status.label}
         </span>
         <button
@@ -917,7 +912,7 @@ function SourceRow({ source, isMenuOpen, onToggleMenu, onToggle, onDelete }: Sou
             'min-h-10 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
             source.enabledForAi
               ? 'bg-primary text-on-primary'
-              : 'bg-surface-container-high text-on-surface-variant hover:text-primary'
+              : 'bg-surface-container-high text-on-surface-variant hover:text-primary',
           )}
         >
           {source.enabledForAi ? 'En contexto' : 'Incluir en IA'}
@@ -963,7 +958,7 @@ function TopicMetric({
       <p
         className={cn(
           'truncate font-bold text-on-surface',
-          compact ? 'text-[11px] sm:text-xs' : 'text-sm sm:text-base'
+          compact ? 'text-[11px] sm:text-xs' : 'text-sm sm:text-base',
         )}
       >
         {value}
@@ -975,13 +970,7 @@ function TopicMetric({
   );
 }
 
-function ProjectLinkCard({
-  project,
-  onUnlink,
-}: {
-  project: LinkedProject;
-  onUnlink: () => void;
-}) {
+function ProjectLinkCard({ project, onUnlink }: { project: LinkedProject; onUnlink: () => void }) {
   return (
     <div className="group relative rounded-2xl border border-outline-variant/60 bg-surface-container-lowest p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
