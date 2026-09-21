@@ -11,10 +11,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
     }
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    const webhookUrl = process.env.N8N_ANALYTICS_WEBHOOK_URL;
     if (!webhookUrl) {
       return NextResponse.json(
-        { error: 'La URL del webhook de n8n (N8N_WEBHOOK_URL) no está configurada.' },
+        { error: 'La URL del webhook de n8n para analítica (N8N_ANALYTICS_WEBHOOK_URL) no está configurada.' },
         { status: 500 }
       );
     }
