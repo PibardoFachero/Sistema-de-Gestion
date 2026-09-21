@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { getAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 
 export interface CreateProjectInput {
@@ -41,6 +40,21 @@ export interface ProjectRecord {
   progreso: number;
   completado?: boolean;
   tareas?: TaskRecord[];
+}
+
+async function userOwnsProject(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  projectId: string,
+) {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !error && Boolean(data);
 }
 
 /**
@@ -177,8 +191,7 @@ export async function getProjectDetailAction(id: string) {
       return { success: false, error: projectError?.message || 'Proyecto no encontrado.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    const db = supabase;
 
     const { data: tareas, error: tareasError } = await db
       .from('tareas')
@@ -223,14 +236,21 @@ export async function toggleTaskStatusAction(
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    if (!(await userOwnsProject(supabase, user.id, projectId))) {
+      return {
+        success: false,
+        error: 'No tienes permiso para modificar las tareas de este proyecto.',
+      };
+    }
+
+    const db = supabase;
 
     // 1. Actualizar la tarea en la tabla 'tareas'
     const { error: updateError } = await db
       .from('tareas')
       .update({ completado: isCompleted })
-      .eq('id', taskId);
+      .eq('id', taskId)
+      .eq('id_proyecto', projectId);
 
     if (updateError) {
       return { success: false, error: updateError.message };
@@ -255,13 +275,22 @@ export async function toggleTaskStatusAction(
       const { error: projError } = await db
         .from('projects')
         .update({ progreso: newProgreso, completado: isProjectCompleted })
-        .eq('id', projectId);
+        .eq('id', projectId)
+        .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await db.from('projects').update({ progreso: newProgreso }).eq('id', projectId);
+        await db
+          .from('projects')
+          .update({ progreso: newProgreso })
+          .eq('id', projectId)
+          .eq('user_id', user.id);
       }
     } catch {
-      await db.from('projects').update({ progreso: newProgreso }).eq('id', projectId);
+      await db
+        .from('projects')
+        .update({ progreso: newProgreso })
+        .eq('id', projectId)
+        .eq('user_id', user.id);
     }
 
     revalidatePath(`/proyectos/${projectId}`);
@@ -299,8 +328,11 @@ export async function createTaskAction(data: {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    if (!(await userOwnsProject(supabase, user.id, data.projectId))) {
+      return { success: false, error: 'No tienes permiso para crear tareas en este proyecto.' };
+    }
+
+    const db = supabase;
 
     let parsedFechaInicio: string | null = null;
     if (data.fecha_inicio) {
@@ -406,13 +438,22 @@ export async function createTaskAction(data: {
       const { error: projError } = await db
         .from('projects')
         .update({ progreso: newProgreso, completado: false })
-        .eq('id', data.projectId);
+        .eq('id', data.projectId)
+        .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await db.from('projects').update({ progreso: newProgreso }).eq('id', data.projectId);
+        await db
+          .from('projects')
+          .update({ progreso: newProgreso })
+          .eq('id', data.projectId)
+          .eq('user_id', user.id);
       }
     } catch {
-      await db.from('projects').update({ progreso: newProgreso }).eq('id', data.projectId);
+      await db
+        .from('projects')
+        .update({ progreso: newProgreso })
+        .eq('id', data.projectId)
+        .eq('user_id', user.id);
     }
 
     revalidatePath(`/proyectos/${data.projectId}`);
@@ -442,10 +483,17 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    if (!(await userOwnsProject(supabase, user.id, projectId))) {
+      return { success: false, error: 'No tienes permiso para eliminar tareas de este proyecto.' };
+    }
 
-    const { error: deleteError } = await db.from('tareas').delete().eq('id', taskId);
+    const db = supabase;
+
+    const { error: deleteError } = await db
+      .from('tareas')
+      .delete()
+      .eq('id', taskId)
+      .eq('id_proyecto', projectId);
 
     if (deleteError) {
       return { success: false, error: deleteError.message };
@@ -469,13 +517,22 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
       const { error: projError } = await db
         .from('projects')
         .update({ progreso: newProgreso, completado: isProjectCompleted })
-        .eq('id', projectId);
+        .eq('id', projectId)
+        .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await db.from('projects').update({ progreso: newProgreso }).eq('id', projectId);
+        await db
+          .from('projects')
+          .update({ progreso: newProgreso })
+          .eq('id', projectId)
+          .eq('user_id', user.id);
       }
     } catch {
-      await db.from('projects').update({ progreso: newProgreso }).eq('id', projectId);
+      await db
+        .from('projects')
+        .update({ progreso: newProgreso })
+        .eq('id', projectId)
+        .eq('user_id', user.id);
     }
 
     revalidatePath(`/proyectos/${projectId}`);
@@ -505,8 +562,11 @@ export async function deleteProjectAction(projectId: string) {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    if (!(await userOwnsProject(supabase, user.id, projectId))) {
+      return { success: false, error: 'No tienes permiso para eliminar este proyecto.' };
+    }
+
+    const db = supabase;
 
     // Eliminar tareas asociadas primero
     await db.from('tareas').delete().eq('id_proyecto', projectId);
@@ -556,8 +616,14 @@ export async function updateTaskAction(data: {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    const adminDb = getAdminClient();
-    const db = adminDb || supabase;
+    if (!(await userOwnsProject(supabase, user.id, data.projectId))) {
+      return {
+        success: false,
+        error: 'No tienes permiso para modificar las tareas de este proyecto.',
+      };
+    }
+
+    const db = supabase;
 
     let parsedFechaInicio: string | null = null;
     if (data.fecha_inicio) {
@@ -631,6 +697,7 @@ export async function updateTaskAction(data: {
         resources: data.resources?.trim() || null,
       })
       .eq('id', data.taskId)
+      .eq('id_proyecto', data.projectId)
       .select()
       .single();
 
@@ -657,13 +724,22 @@ export async function updateTaskAction(data: {
       const { error: projError } = await db
         .from('projects')
         .update({ progreso: newProgreso, completado: isProjectCompleted })
-        .eq('id', data.projectId);
+        .eq('id', data.projectId)
+        .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await db.from('projects').update({ progreso: newProgreso }).eq('id', data.projectId);
+        await db
+          .from('projects')
+          .update({ progreso: newProgreso })
+          .eq('id', data.projectId)
+          .eq('user_id', user.id);
       }
     } catch {
-      await db.from('projects').update({ progreso: newProgreso }).eq('id', data.projectId);
+      await db
+        .from('projects')
+        .update({ progreso: newProgreso })
+        .eq('id', data.projectId)
+        .eq('user_id', user.id);
     }
 
     revalidatePath(`/proyectos/${data.projectId}`);
