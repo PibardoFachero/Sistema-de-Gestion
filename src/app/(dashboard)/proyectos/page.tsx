@@ -4,35 +4,115 @@ import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Project, ProjectCard } from '@/features/proyectos/components/ProjectCard';
+import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
+import { getProjectsAction, deleteProjectAction, ProjectRecord } from '@/features/proyectos/actions/proyectoActions';
+
 
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Cargar proyectos desde el almacenamiento local
-    const loadProjects = () => {
+    let isMounted = true;
+
+    const fetchProjects = async () => {
       try {
-        const saved = localStorage.getItem('komorebi_projects');
-        if (saved) {
-          setProyectos(JSON.parse(saved));
+        const res = await getProjectsAction();
+        if (!isMounted) return;
+
+        if (res.success && res.projects) {
+          const mapped: Project[] = (res.projects as ProjectRecord[]).map((p) => {
+            const tareas = p.tareas || [];
+            const tasksCount = tareas.length;
+            const completedCount = tareas.filter((t) => t.completado).length;
+            const calculatedProgress =
+              tasksCount === 0 ? (p.progreso ?? 0) : Math.round((completedCount / tasksCount) * 100);
+
+            return {
+              id: p.id,
+              name: p.titulo,
+              importance: p.prioridad || 'Normal',
+              tasksCount,
+              progress: calculatedProgress,
+              createdAt: p.fecha_limite || new Date().toISOString(),
+            };
+          });
+
+          setProyectos(mapped);
+
+          // Mantener sincronizado localStorage para SidebarNav
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('komorebi_projects', JSON.stringify(mapped));
+          }
+        } else {
+          if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('komorebi_projects');
+            if (saved) {
+              setProyectos(JSON.parse(saved) as Project[]);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error loading projects:', error);
+        console.error('Error cargando proyectos desde Supabase:', error);
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('komorebi_projects');
+          if (saved) {
+            setProyectos(JSON.parse(saved) as Project[]);
+          }
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
-    
-    loadProjects();
+
+    fetchProjects();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleDeleteProject = (id: string) => {
-    const updated = proyectos.filter(p => p.id !== id);
+  const handleDeleteClick = (id: string) => {
+    const found = proyectos.find((p) => p.id === id);
+    if (found) {
+      setProjectToDelete(found);
+    }
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete || isDeleting) return;
+    setIsDeleting(true);
+
+    const id = projectToDelete.id;
+    const previous = [...proyectos];
+    // Optimistic update
+    const updated = proyectos.filter((p) => p.id !== id);
     setProyectos(updated);
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('komorebi_projects', JSON.stringify(updated));
       window.dispatchEvent(new Event('projects_updated'));
+    }
+
+    try {
+      const result = await deleteProjectAction(id);
+      if (!result.success) {
+        console.error('Error al borrar proyecto en Supabase:', result.error);
+        setProyectos(previous);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('komorebi_projects', JSON.stringify(previous));
+        }
+      }
+    } catch (error) {
+      console.error('Error al invocar deleteProjectAction:', error);
+      setProyectos(previous);
+    } finally {
+      setIsDeleting(false);
+      setProjectToDelete(null);
     }
   };
 
@@ -46,9 +126,6 @@ export default function ProyectosPage() {
 
   return (
     <div className="flex h-full min-h-[80vh] flex-col animate-in fade-in duration-500">
-      
-      {/* Se eliminó el botón superior izquierdo para unificar la creación en el grid */}
-
       {proyectos.length === 0 ? (
         /* ============================
            EMPTY STATE
@@ -69,7 +146,7 @@ export default function ProyectosPage() {
           <p className="max-w-md text-on-surface-variant">
             Crea tu primer espacio de estudio o trabajo y organiza todas tus tareas de forma sencilla.
           </p>
-          <Link 
+          <Link
             href="/proyectos/nuevo"
             className="mt-8 flex items-center justify-center gap-2 rounded-full bg-[#f5e5d9] px-6 py-3 text-[15px] font-bold text-[#845326] shadow-sm transition-all hover:-translate-y-[2px] hover:bg-[#E8DCD1] hover:shadow-md active:scale-[0.98]"
           >
@@ -82,19 +159,21 @@ export default function ProyectosPage() {
            GRID DE PROYECTOS
            ============================ */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
-          
           {/* Tarjetas de Proyectos Creados */}
           {proyectos.map((proyecto, index) => (
-            <ProjectCard 
-              key={proyecto.id} 
-              project={proyecto} 
-              index={index} 
-              onDelete={handleDeleteProject}
+            <ProjectCard
+              key={proyecto.id}
+              project={proyecto}
+              index={index}
+              onDelete={handleDeleteClick}
             />
           ))}
 
           {/* Tarjeta de Agregar Proyecto Rápido */}
-          <Link href="/proyectos/nuevo" className="group flex flex-col items-center justify-center bg-transparent rounded-[20px] border-2 border-dashed border-[#d2c4bb] hover:border-[#845326] hover:bg-[#FDFBF9] transition-all min-h-[250px] cursor-pointer">
+          <Link
+            href="/proyectos/nuevo"
+            className="group flex flex-col items-center justify-center bg-transparent rounded-[20px] border-2 border-dashed border-[#d2c4bb] hover:border-[#845326] hover:bg-[#FDFBF9] transition-all min-h-[250px] cursor-pointer"
+          >
             <div className="w-14 h-14 rounded-full bg-[#f5e5d9] group-hover:bg-[#E8DCD1] text-[#845326] flex items-center justify-center mb-4 transition-colors">
               <Plus className="size-6" />
             </div>
@@ -102,9 +181,20 @@ export default function ProyectosPage() {
               Nuevo Proyecto
             </span>
           </Link>
-
         </div>
       )}
+
+      {/* Modal de confirmación para eliminar proyecto desde la tarjeta */}
+      <DeleteConfirmModal
+        isOpen={Boolean(projectToDelete)}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={confirmDeleteProject}
+        title="¿Eliminar proyecto?"
+        description="Esta acción eliminará de forma permanente el proyecto y todas sus tareas asociadas. Esta acción no se puede deshacer."
+        itemName={projectToDelete?.name}
+        confirmText="Eliminar Proyecto"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
