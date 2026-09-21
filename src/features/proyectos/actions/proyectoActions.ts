@@ -806,7 +806,14 @@ export async function updateTaskAction(data: {
  * generateTasksWithN8nAction
  * Server Action para invocar la IA de n8n bajo demanda para un proyecto existente.
  */
-export async function generateTasksWithN8nAction(projectId: string) {
+export async function generateTasksWithN8nAction(
+  projectId: string,
+  extraOptions?: {
+    material_url?: string;
+    file_content?: string;
+    file_name?: string;
+  },
+) {
   try {
     const supabase = await createClient();
     const {
@@ -829,6 +836,13 @@ export async function generateTasksWithN8nAction(projectId: string) {
       return { success: false, error: 'Proyecto no encontrado.' };
     }
 
+    // Obtener tareas ya existentes de este proyecto para darles continuidad y no repetirlas
+    const { data: existingTasks } = await supabase
+      .from('tareas')
+      .select('id, titulo, descripcion, completado, fecha_inicio, duracion')
+      .eq('id_proyecto', projectId)
+      .order('fecha_inicio', { ascending: true });
+
     const result = await generateProjectTasksFromN8n({
       user_id: user.id,
       id: project.id,
@@ -837,8 +851,11 @@ export async function generateTasksWithN8nAction(projectId: string) {
       fecha_limite: project.fecha_limite,
       prioridad: project.prioridad,
       nivel_conocimiento: project.nivel_conocimiento,
-      material_url: project.material_url,
+      material_url: extraOptions?.material_url?.trim() || project.material_url,
       minutos_diarios: project.minutos_diarios,
+      file_content: extraOptions?.file_content,
+      file_name: extraOptions?.file_name,
+      existing_tasks: existingTasks || [],
     });
 
     if (!result.success) {

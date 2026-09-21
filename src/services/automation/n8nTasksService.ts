@@ -11,6 +11,16 @@ export interface ProjectForTaskGeneration {
   nivel_conocimiento?: string | null;
   material_url?: string | null;
   minutos_diarios?: number | null;
+  file_content?: string | null;
+  file_name?: string | null;
+  existing_tasks?: Array<{
+    id?: string;
+    titulo: string;
+    descripcion?: string | null;
+    completado?: boolean | null;
+    fecha_inicio?: string | null;
+    duracion?: number | null;
+  }> | null;
 }
 
 export interface GeneratedTaskCandidate {
@@ -286,11 +296,12 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
 /**
  * Calcula fechas de inicio sucesivas (una por día hábil a las 09:00 AM)
  * para evitar colisiones de horario entre tareas generadas automáticamente.
+ * Si se pasa startDate, comienza a partir del día siguiente a esa fecha.
  */
-function calculateDefaultStartDates(count: number): string[] {
+function calculateDefaultStartDates(count: number, startDate?: string | Date): string[] {
   const dates: string[] = [];
-  const base = new Date();
-  base.setDate(base.getDate() + 1); // Comenzar a partir de mañana
+  const base = startDate ? new Date(startDate) : new Date();
+  base.setDate(base.getDate() + 1); // Comenzar a partir del día siguiente
 
   for (let i = 0; i < count; i++) {
     const d = new Date(base);
@@ -319,7 +330,34 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
 
   try {
     // 1. Preparar mensaje explicito para el Agente/Chatbot de n8n
-    const promptMessage = `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${project.minutos_diarios || 30}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${project.material_url ? ` Materiales o recursos base del proyecto: ${project.material_url}.` : ''} Por favor genera el listado de tareas estructurado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
+    const existingTasks = project.existing_tasks || [];
+    const hasExisting = existingTasks.length > 0;
+
+    let existingTasksPrompt = '';
+    if (hasExisting) {
+      existingTasksPrompt =
+        `\n\nTAREAS ACTUALES YA CREADAS EN ESTE PROYECTO (${existingTasks.length} tareas existentes que el usuario YA TIENE):\n` +
+        existingTasks
+          .map(
+            (t, idx) =>
+              `- Tarea existente ${idx + 1}: "${t.titulo}" (${t.completado ? 'Completada' : 'Pendiente'})${
+                t.descripcion ? ` - ${t.descripcion}` : ''
+              }`,
+          )
+          .join('\n') +
+        `\n\nREQUISITO OBLIGATORIO DE CONTINUIDAD:\n` +
+        `El usuario ya tiene registradas las tareas anteriores. NO repitas ninguna de esas tareas bajo ninguna circunstancia ni generes tareas equivalentes. ` +
+        `Genera ÚNICAMENTE un conjunto de tareas NUEVAS y DIFERENTES que continúen la progresión a partir de la última tarea existente, ` +
+        `avanzando hacia los siguientes pasos, conceptos o prácticas para cumplir el objetivo del proyecto.`;
+    }
+
+    const materialPart = project.material_url ? ` Recurso o enlace de referencia suministrado: ${project.material_url}.` : '';
+    const filePart = project.file_content
+      ? ` Documento de referencia adjunto ("${project.file_name || 'archivo'}"):\n--- INICIO DEL DOCUMENTO ---\n${project.file_content}\n--- FIN DEL DOCUMENTO ---\nPor favor toma en cuenta este documento para extraer o estructurar las tareas del proyecto.`
+      : '';
+    const promptMessage = hasExisting
+      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${project.minutos_diarios || 30}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
+      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${project.minutos_diarios || 30}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${materialPart}${filePart} Por favor genera el listado de tareas estructurado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
 
     // 2. Preparar payload completo con compatibilidad para nodos de Supabase (userId, user_id) y agentes de chat (chatInput, message)
     const payload = {
@@ -340,7 +378,17 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       prioridad: project.prioridad || 'Prioritario',
       nivel_conocimiento: project.nivel_conocimiento || '',
       material_url: project.material_url || null,
+      archivo_nombre: project.file_name || null,
+      archivo_contenido: project.file_content || null,
       minutos_diarios: project.minutos_diarios || 30,
+
+      // Tareas ya existentes para prevenir duplicación
+      tareas_existentes: existingTasks.map((t) => ({
+        titulo: t.titulo,
+        descripcion: t.descripcion,
+        completado: Boolean(t.completado),
+      })),
+      cantidad_tareas_existentes: existingTasks.length,
 
       // Mensaje de entrada para Agentes de n8n (Chat Trigger / AI Agent)
       chatInput: promptMessage,
@@ -427,11 +475,53 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       };
     }
 
-    // 5. Normalizar datos para la tabla 'tareas' de Supabase
-    const defaultDates = calculateDefaultStartDates(taskCandidates.length);
+    // 5. Normalizar y desduplicar datos para la tabla 'tareas' de Supabase
+    const existingTitlesSet = new Set(
+      existingTasks.map((t) =>
+        t.titulo
+          .toLowerCase()
+          .trim()
+          .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ''),
+      ),
+    );
+
+    // Filtrar candidatos cuyo título sea idéntico o muy similar a una tarea existente
+    let candidatesToUse = taskCandidates.filter((c) => {
+      const norm = (c.titulo || c.title || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '');
+      return norm.length > 0 && !existingTitlesSet.has(norm);
+    });
+
+    // Si todas las candidatas devueltas eran duplicadas, diferenciarlas con sufijo de fase
+    if (candidatesToUse.length === 0 && taskCandidates.length > 0) {
+      candidatesToUse = taskCandidates.map((c, i) => ({
+        ...c,
+        titulo: `${c.titulo || c.title || 'Tarea'} (Continuación ${existingTasks.length + i + 1})`,
+      }));
+    }
+
+    // Calcular la fecha base posterior a la última tarea existente para evitar solapamientos
+    let latestExistingDate: Date | null = null;
+    for (const t of existingTasks) {
+      if (t.fecha_inicio) {
+        const d = new Date(t.fecha_inicio);
+        if (!isNaN(d.getTime())) {
+          if (!latestExistingDate || d > latestExistingDate) {
+            latestExistingDate = d;
+          }
+        }
+      }
+    }
+
+    const defaultDates = calculateDefaultStartDates(
+      candidatesToUse.length,
+      latestExistingDate || undefined,
+    );
     const defaultDuration = Math.max(10, Number(project.minutos_diarios) || 30);
 
-    const tasksToInsert = taskCandidates.map((candidate, index) => {
+    const tasksToInsert = candidatesToUse.map((candidate, index) => {
       const titulo = (candidate.titulo || candidate.title || `Tarea ${index + 1}`).trim();
       const descripcion = (candidate.descripcion || candidate.description || '').trim() || null;
       const duracion = parseDurationMinutes(candidate.duracion || candidate.duration, defaultDuration);
