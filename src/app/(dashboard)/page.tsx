@@ -1,10 +1,18 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Coffee, Play } from 'lucide-react';
+import { Coffee, Play, Calendar, ShieldCheck } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+
+export const metadata: Metadata = {
+  title: 'Komorebi | Sistema de Gestión de Calendarios con Google OAuth',
+  description:
+    'Komorebi es una aplicación y sistema de gestión de calendarios con Google OAuth diseñada para sincronizar eventos, gestionar sesiones de estudio y elevar la productividad académica.',
+};
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -47,6 +55,42 @@ export default async function HomePage() {
           ritmos y tiempos de descanso.
         </p>
       </header>
+
+      {/* Descripción oficial: Komorebi - Sistema de Gestión de Calendarios con Google OAuth */}
+      <section
+        aria-label="Información de la plataforma Komorebi"
+        className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-xs"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-amber/15 px-3 py-0.5 text-xs font-bold text-accent-amber uppercase tracking-wider">
+                <Calendar className="size-3.5" />
+                Komorebi
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-0.5 text-[11px] font-semibold text-on-surface-variant">
+                <ShieldCheck className="size-3 text-status-success" />
+                Google OAuth
+              </span>
+            </div>
+            <h2 className="text-lg font-bold text-primary">
+              Komorebi — Sistema de Gestión de Calendarios con Google OAuth
+            </h2>
+            <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+              Esta aplicación es un sistema integral de gestión de calendarios con Google OAuth,
+              diseñado para sincronizar eventos en tiempo real con Google Calendar, organizar
+              bloques de estudio y gestionar proyectos académicos de manera segura.
+            </p>
+          </div>
+          <Link
+            href="/calendario"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-on-primary hover:bg-primary/90 transition-colors shadow-xs"
+          >
+            <Calendar className="size-3.5 text-accent-amber" />
+            <span>Ver Calendario</span>
+          </Link>
+        </div>
+      </section>
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 flex flex-col gap-2">

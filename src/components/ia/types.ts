@@ -1,10 +1,55 @@
+import type { AnalyticsMetricId } from '@/features/analytics/data/types';
+
 export type AssistantScope = 'general' | 'project' | 'topic' | 'calendar' | 'analytics';
+
+export type FileAttachment = {
+  name: string;
+  size: number;
+  type: string;
+  content?: string;
+};
+
+export type GeneratedTaskItem = {
+  id?: string;
+  title?: string;
+  titulo?: string;
+  description?: string;
+  descripcion?: string;
+  duration?: string | number;
+  duracion?: string | number;
+  timeSlot?: string;
+  resourceUrl?: string;
+  resource_url?: string;
+  resourceName?: string;
+  isCompleted?: boolean;
+};
+
+export type UserProjectItem = {
+  id: string;
+  titulo: string;
+  progreso: number;
+};
 
 export type AssistantMessage = {
   id: string;
   role: 'assistant' | 'user';
   content: string;
   createdAt?: string;
+  conversationId?: string;
+  contextData?: Record<string, unknown>;
+  fileAttachment?: FileAttachment;
+  tasks?: GeneratedTaskItem[];
+  planTitle?: string;
+  intent?: 'informational' | 'update_project' | 'create_project';
+  targetProjectId?: string;
+  targetProjectTitle?: string;
+};
+
+export type ConversationItem = {
+  id: string;
+  title: string;
+  updated_at: string;
+  created_at: string;
 };
 
 export type AssistantContext = {
@@ -35,5 +80,10 @@ export const GENERAL_ASSISTANT_CONTEXT: AssistantContext = {
 export type SendAssistantMessage = (input: {
   content: string;
   context: AssistantContext;
-}) => Promise<AssistantMessage>;
-import type { AnalyticsMetricId } from '@/features/analytics/data/types';
+  fileAttachment?: FileAttachment;
+  conversationId?: string | null;
+}) => Promise<{
+  message: AssistantMessage;
+  conversationId: string;
+  conversationTitle?: string;
+}>;

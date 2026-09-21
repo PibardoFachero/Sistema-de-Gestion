@@ -45,36 +45,32 @@ export async function updateLearningPreferences(
     if (input.pace !== undefined) payload.ritmo = input.pace || null;
     if (input.difficulties !== undefined) payload.dificultades = input.difficulties;
 
-    // Guardar áreas prioritarias (soporta columna text o text[])
+    // Guardar áreas prioritarias (en PostgreSQL la columna es text[])
     if (input.priorityAreas !== undefined) {
-      payload.area_prioritaria =
-        input.priorityAreas.length > 0 ? input.priorityAreas.join(', ') : null;
+      payload.area_prioritaria = input.priorityAreas;
     }
 
     let updateResult = await supabase.from('profiles').update(payload).eq('id', user.id);
 
-    // Fallback si la columna dificultades espera texto en vez de array
-    if (updateResult.error && updateResult.error.message.toLowerCase().includes('dificultades')) {
-      const stringifiedPayload = {
+    // Fallback si la columna area_prioritaria o dificultades fallan por discrepancia de tipo (array vs text)
+    if (
+      updateResult.error &&
+      (updateResult.error.message.toLowerCase().includes('malformed array') ||
+        updateResult.error.message.toLowerCase().includes('area_prioritaria') ||
+        updateResult.error.message.toLowerCase().includes('dificultades'))
+    ) {
+      const fallbackPayload = {
         ...payload,
+        area_prioritaria:
+          input.priorityAreas && input.priorityAreas.length > 0
+            ? input.priorityAreas.join(', ')
+            : null,
         dificultades:
           input.difficulties && input.difficulties.length > 0
             ? input.difficulties.join(', ')
             : null,
       };
-      updateResult = await supabase.from('profiles').update(stringifiedPayload).eq('id', user.id);
-    }
-
-    // Fallback si la columna area_prioritaria espera array en vez de texto
-    if (
-      updateResult.error &&
-      updateResult.error.message.toLowerCase().includes('area_prioritaria')
-    ) {
-      const arrayPayload = {
-        ...payload,
-        area_prioritaria: input.priorityAreas ?? [],
-      };
-      updateResult = await supabase.from('profiles').update(arrayPayload).eq('id', user.id);
+      updateResult = await supabase.from('profiles').update(fallbackPayload).eq('id', user.id);
     }
 
     // Fallback defensivo si alguna columna aún no existe

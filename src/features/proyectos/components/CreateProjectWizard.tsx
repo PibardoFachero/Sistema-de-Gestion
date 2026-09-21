@@ -648,7 +648,7 @@ export function CreateProjectWizard() {
                 {isFinishing ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" />
-                    <span>Guardando...</span>
+                    <span>Creando tareas...</span>
                   </>
                 ) : currentStep === totalSteps - 1 ? (
                   <>
