@@ -1,6 +1,6 @@
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
-import { Target, Flame, Leaf } from 'lucide-react';
+import { Calendar, Flame, Leaf } from 'lucide-react';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -8,9 +8,9 @@ import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Iniciar Sesión | Komorebi Study Studio',
+  title: 'Iniciar Sesión | Komorebi - Sistema de Gestión de Calendarios con Google OAuth',
   description:
-    'Inicia sesión en Komorebi Study Studio para continuar con tus sesiones y proyectos de estudio.',
+    'Inicia sesión en Komorebi, el sistema de gestión de calendarios con Google OAuth para organizar tus sesiones de estudio y sincronizar tus eventos en tiempo real.',
 };
 
 export default async function LoginPage() {
@@ -41,7 +41,7 @@ export default async function LoginPage() {
             height={36}
             className="w-auto h-auto object-contain drop-shadow-sm"
           />
-          <span className="text-xl font-bold tracking-tight">Komorebi Studio</span>
+          <span className="text-xl font-bold tracking-tight">Komorebi</span>
         </div>
 
         {/* Contenido Central: Mascota y Features */}
@@ -53,21 +53,21 @@ export default async function LoginPage() {
             />
           </div>
 
-          <h2 className="text-3xl font-bold mb-4 tracking-tight">Tu zona de estudio te espera.</h2>
-          <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-10 leading-relaxed font-medium">
-            Chigüi te estaba esperando. Prepara tu café, silencia las notificaciones y prepárate
-            para una sesión productiva.
+          <h2 className="text-3xl font-bold mb-3 tracking-tight">Komorebi</h2>
+          <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-8 leading-relaxed font-medium text-sm">
+            Sistema de gestión de calendarios con Google OAuth para organizar tus sesiones de
+            estudio, sincronizar eventos académicos en tiempo real y maximizar tu productividad.
           </p>
 
-          <div className="grid grid-cols-1 gap-6 w-full max-w-sm text-left">
+          <div className="grid grid-cols-1 gap-4 w-full max-w-sm text-left">
             <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
               <div className="bg-accent-amber/20 p-2.5 rounded-xl">
-                <Target className="size-5 text-accent-amber" />
+                <Calendar className="size-5 text-accent-amber" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Retoma tus proyectos</h3>
+                <h3 className="font-bold text-sm">Gestión de Calendarios</h3>
                 <p className="text-xs text-white/60 font-medium">
-                  Continúa justo donde lo dejaste ayer
+                  Sincronización fluida con Google OAuth
                 </p>
               </div>
             </div>

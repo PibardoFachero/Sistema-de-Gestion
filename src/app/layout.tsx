@@ -18,8 +18,12 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: 'Komorebi Study Studio',
-  description: 'Proyecto universitario colaborativo de aprendizaje y productividad académica.',
+  title: {
+    default: 'Komorebi - Sistema de Gestión de Calendarios con Google OAuth',
+    template: '%s | Komorebi',
+  },
+  description:
+    'Komorebi es un sistema de gestión de calendarios con Google OAuth y productividad académica para organizar sesiones de estudio y sincronizar eventos.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
