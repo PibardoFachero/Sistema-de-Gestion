@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Plus, X, Trash2, AlertCircle, Check, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Plus, X, Trash2, AlertCircle, Check, Link as LinkIcon, Sparkles, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard';
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
@@ -14,6 +14,7 @@ import {
   updateTaskAction,
   deleteTaskAction,
   deleteProjectAction,
+  generateTasksWithN8nAction,
   TaskRecord,
 } from '@/features/proyectos/actions/proyectoActions';
 
@@ -127,6 +128,11 @@ export default function ProjectDetailPage({
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
 
+  // Estados para generación de tareas con n8n IA
+  const [isGeneratingWithAI, setIsGeneratingWithAI] = useState(false);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+
   // Estado para el modal de agregar tarea manual
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -237,6 +243,68 @@ export default function ProjectDetailPage({
     }
 
     setEditErrorMessage(null);
+  };
+
+  const handleGenerateTasksWithAI = async () => {
+    if (!project || isGeneratingWithAI) return;
+    setIsGeneratingWithAI(true);
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+
+    try {
+      const res = await generateTasksWithN8nAction(project.id);
+      if (res.success && res.tasks) {
+        const newTasks: Task[] = res.tasks.map((t: TaskRecord) => ({
+          id: t.id,
+          title: t.titulo,
+          description: t.descripcion || '',
+          duration: t.duracion,
+          startDate: t.fecha_inicio || undefined,
+          resourceUrl: t.resources || t.url_recomendada || null,
+          isCompleted: t.completado,
+        }));
+
+        setProject((prev) => {
+          if (!prev) return null;
+          const merged = [...prev.tasks, ...newTasks];
+          return {
+            ...prev,
+            tasks: merged,
+            progress: res.progreso ?? prev.progress,
+            completado: false,
+          };
+        });
+
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('komorebi_projects');
+          if (saved) {
+            const list: LocalProjectStorageItem[] = JSON.parse(saved);
+            const updatedList = list.map((item) =>
+              item.id === project.id
+                ? {
+                    ...item,
+                    progress: res.progreso ?? item.progress,
+                    tasksCount: (item.tasksCount || 0) + newTasks.length,
+                  }
+                : item,
+            );
+            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
+            window.dispatchEvent(new Event('projects_updated'));
+          }
+        }
+
+        setAiSuccessMessage(`¡Se han generado ${newTasks.length} tareas automáticamente con IA!`);
+        setTimeout(() => setAiSuccessMessage(null), 6000);
+      } else {
+        setAiErrorMessage(res.error || 'No fue posible generar las tareas con n8n.');
+      }
+    } catch (err: unknown) {
+      console.error('Error generando tareas con IA:', err);
+      const msg = err instanceof Error ? err.message : 'Error de comunicación con el webhook de n8n.';
+      setAiErrorMessage(msg);
+    } finally {
+      setIsGeneratingWithAI(false);
+    }
   };
 
   // Cargar proyecto y tareas desde Supabase al resolver params
@@ -877,24 +945,60 @@ export default function ProjectDetailPage({
         <h2 className="text-xl font-bold text-on-surface">Plan de Acción</h2>
       </div>
 
+      {/* Mensajes de retroalimentación de la IA */}
+      {aiSuccessMessage && (
+        <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs sm:text-sm flex items-center gap-2">
+          <Check className="size-4 shrink-0 text-emerald-600" />
+          <span>{aiSuccessMessage}</span>
+        </div>
+      )}
+
+      {aiErrorMessage && (
+        <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs sm:text-sm flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0 text-red-600" />
+          <span>{aiErrorMessage}</span>
+        </div>
+      )}
+
       {project.tasks.length === 0 ? (
         <div className="bg-white border border-[#E8DCD1] rounded-2xl p-8 text-center">
           <p className="text-sm font-semibold text-on-surface mb-2">
             Aún no hay tareas registradas
           </p>
-          <p className="text-xs text-on-surface-variant mb-4">
-            Comienza agregando tu primera tarea de estudio para este proyecto.
+          <p className="text-xs text-on-surface-variant mb-6 max-w-md mx-auto">
+            Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de forma manual.
           </p>
-          <button
-            onClick={() => {
-              setTaskErrorMessage(null);
-              setIsAddModalOpen(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#f5e5d9] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#845326] hover:bg-[#E8DCD1] transition-all cursor-pointer"
-          >
-            <Plus className="size-4" />
-            Agregar Tarea
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleGenerateTasksWithAI}
+              disabled={isGeneratingWithAI}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#2C1F14] hover:bg-[#433022] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-all hover:brightness-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isGeneratingWithAI ? (
+                <>
+                  <Loader2 className="size-4 animate-spin text-[#FEB800]" />
+                  <span>Generando plan con IA...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4 text-[#FEB800]" />
+                  <span>Generar tareas con IA</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTaskErrorMessage(null);
+                setIsAddModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#f5e5d9] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#845326] hover:bg-[#E8DCD1] transition-all cursor-pointer"
+            >
+              <Plus className="size-4" />
+              Agregar Tarea Manual
+            </button>
+          </div>
         </div>
       ) : (
         <>

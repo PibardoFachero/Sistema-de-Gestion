@@ -235,11 +235,10 @@ export function CreateProjectWizard() {
             <input
               type="date"
               min={todayStr}
-              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${
-                isPastDate
+              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${isPastDate
                   ? 'border-red-400 focus:border-red-500'
                   : 'border-[#E2D9D0] focus:border-[#2C1F14]'
-              }`}
+                }`}
               value={answers[2] || ''}
               onChange={(e) => updateAnswer(2, e.target.value)}
             />
@@ -269,19 +268,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(3, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -310,19 +307,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(4, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -498,19 +493,17 @@ export function CreateProjectWizard() {
                         subOption: opt !== 'Menos de 1 hora diaria' ? '' : currentData.subOption,
                       });
                     }}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -529,11 +522,10 @@ export function CreateProjectWizard() {
                       <button
                         key={sub}
                         onClick={() => updateAnswer(6, { ...currentData, subOption: sub })}
-                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                          isSubSelected
+                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${isSubSelected
                             ? 'bg-white border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold'
                             : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14]'
-                        }`}
+                          }`}
                       >
                         <span>{sub}</span>
                         {isSubSelected && <Check className="size-3" />}
@@ -631,7 +623,7 @@ export function CreateProjectWizard() {
                 {isFinishing ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" />
-                    <span>Guardando...</span>
+                    <span>Creando tareas...</span>
                   </>
                 ) : currentStep === totalSteps - 1 ? (
                   <>

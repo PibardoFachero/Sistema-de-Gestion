@@ -44,5 +44,5 @@ create policy "Los usuarios autenticados pueden eliminar tareas"
 
 -- 6. Asegurar que las columnas 'fecha_inicio' y 'url_recomendada' existan en la tabla 'tareas'
 alter table public.tareas add column if not exists fecha_inicio timestamp with time zone;
-alter table public.tareas add column if not exists url_recomendada text;
+alter table public.tareas add column if not exists resources text;
 

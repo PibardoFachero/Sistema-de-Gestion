@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { generateProjectTasksFromN8n } from '@/services/automation/n8nTasksService';
 
 export interface CreateProjectInput {
   titulo: string;
@@ -100,12 +101,26 @@ export async function createProjectAction(input: CreateProjectInput) {
 
     // =========================================================================
     // [INTEGRACIÓN IA / N8N]:
-    // Aquí es donde se debe conectar con la IA de n8n para generar automáticamente
-    // el plan de tareas inicial y registrar los datos resultantes en la tabla 'tareas'
-    // vinculados a este projectId (columnas: id, id_proyecto, titulo, duracion, etc.).
-    // Ejemplo de llamada:
-    // await fetch(process.env.N8N_WEBHOOK_URL, { method: 'POST', body: JSON.stringify(project) });
+    // Si la URL del webhook de n8n está configurada, generamos automáticamente
+    // el plan de tareas inicial y lo guardamos en la tabla 'tareas' de Supabase.
     // =========================================================================
+    if (process.env.N8N_WEBHOOK_URL) {
+      try {
+        await generateProjectTasksFromN8n({
+          id: project.id,
+          user_id: user.id,
+          titulo: project.titulo,
+          objetivo: project.objetivo,
+          fecha_limite: project.fecha_limite,
+          prioridad: project.prioridad,
+          nivel_conocimiento: project.nivel_conocimiento,
+          material_url: project.material_url,
+          minutos_diarios: project.minutos_diarios,
+        });
+      } catch (n8nErr) {
+        console.warn('Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:', n8nErr);
+      }
+    }
 
     revalidatePath('/proyectos');
     return { success: true, project };
@@ -678,6 +693,65 @@ export async function updateTaskAction(data: {
   } catch (error: unknown) {
     console.error('Error en updateTaskAction:', error);
     const msg = error instanceof Error ? error.message : 'Error inesperado al actualizar la tarea.';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * generateTasksWithN8nAction
+ * Server Action para invocar la IA de n8n bajo demanda para un proyecto existente.
+ */
+export async function generateTasksWithN8nAction(projectId: string) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No se encontró una sesión activa.' };
+    }
+
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (projectError || !project) {
+      return { success: false, error: 'Proyecto no encontrado.' };
+    }
+
+    const result = await generateProjectTasksFromN8n({
+      user_id: user.id,
+      id: project.id,
+      titulo: project.titulo,
+      objetivo: project.objetivo,
+      fecha_limite: project.fecha_limite,
+      prioridad: project.prioridad,
+      nivel_conocimiento: project.nivel_conocimiento,
+      material_url: project.material_url,
+      minutos_diarios: project.minutos_diarios,
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    revalidatePath(`/proyectos/${projectId}`);
+    revalidatePath('/proyectos');
+
+    return {
+      success: true,
+      count: result.count,
+      tasks: result.tasks,
+      progreso: result.progreso,
+    };
+  } catch (error: unknown) {
+    console.error('Error en generateTasksWithN8nAction:', error);
+    const msg = error instanceof Error ? error.message : 'Error inesperado al generar tareas.';
     return { success: false, error: msg };
   }
 }

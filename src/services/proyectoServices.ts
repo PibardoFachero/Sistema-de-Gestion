@@ -6,6 +6,7 @@ import {
   deleteProjectAction,
   getProjectsAction,
   getProjectDetailAction,
+  generateTasksWithN8nAction,
 } from '@/features/proyectos/actions/proyectoActions';
 
 export interface ProjectData {
@@ -67,4 +68,5 @@ export {
   deleteProjectAction,
   getProjectsAction,
   getProjectDetailAction,
+  generateTasksWithN8nAction,
 };
