@@ -88,11 +88,12 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
     try {
       const date = new Date(fechaInicio);
       if (Number.isNaN(date.getTime())) return null;
-      return new Intl.DateTimeFormat('es-VE', {
+      const formatted = new Intl.DateTimeFormat('es-VE', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
       }).format(date);
+      return formatted.replace(/[\u202f\u00a0]/g, ' ').replace(/\s+/g, ' ').trim();
     } catch {
       return null;
     }
@@ -248,7 +249,10 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
 
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-on-surface-variant font-medium">
                       {timeLabel && (
-                        <span className="flex items-center gap-1 text-on-surface font-semibold">
+                        <span
+                          className="flex items-center gap-1 text-on-surface font-semibold"
+                          suppressHydrationWarning
+                        >
                           <Clock className="size-3.5 text-accent-amber" />
                           {timeLabel}
                         </span>
