@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           error:
             'No se encontró una sesión activa de Google Calendar. Inicia sesión en /api/calendar/auth.',
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
           ? 'La sesión de Google Calendar ha expirado o fue revocada. Vuelve a conectar tu cuenta.'
           : message,
       },
-      { status: isAuthRevoked ? 401 : statusCode }
+      { status: isAuthRevoked ? 401 : statusCode },
     );
 
     if (isAuthRevoked) {

@@ -63,7 +63,17 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
     // 4. Obtener proyectos y sus hitos para calcular el progreso dinámico
     const projectIds = Array.from(new Set((topicProjectsData || []).map((tp) => tp.project_id)));
 
-    const projectsMap: Record<string, { name: string; description: string; status: string; progress: number; totalMilestones: number; completedMilestones: number }> = {};
+    const projectsMap: Record<
+      string,
+      {
+        name: string;
+        description: string;
+        status: string;
+        progress: number;
+        totalMilestones: number;
+        completedMilestones: number;
+      }
+    > = {};
 
     if (projectIds.length > 0) {
       const { data: projectsData } = await supabase
@@ -232,7 +242,9 @@ export async function createTopicAction(input: CreateTopicInput): Promise<Action
   }
 }
 
-export async function updateTopicAction(input: UpdateTopicInput): Promise<ActionResponse<Partial<Topic>>> {
+export async function updateTopicAction(
+  input: UpdateTopicInput,
+): Promise<ActionResponse<Partial<Topic>>> {
   if (!input.id) {
     return { success: false, error: 'ID de tema requerido' };
   }

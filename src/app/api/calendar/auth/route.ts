@@ -21,13 +21,14 @@ export async function GET(request: NextRequest) {
     // Por defecto, redirigir directamente al flujo de consentimiento de Google
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error al iniciar autenticación con Google';
+    const message =
+      error instanceof Error ? error.message : 'Error al iniciar autenticación con Google';
     return NextResponse.json(
       {
         success: false,
         error: message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

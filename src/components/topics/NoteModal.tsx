@@ -105,21 +105,10 @@ function NoteModalContent({ onClose, onSubmit }: NoteModalContentProps) {
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-outline-variant/30">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={loading}
-            onClick={onClose}
-          >
+          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={onClose}>
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={loading || !title.trim()}
-            className="gap-2"
-          >
+          <Button type="submit" size="sm" disabled={loading || !title.trim()} className="gap-2">
             {loading && <Loader2 className="size-3.5 animate-spin" />}
             Guardar Nota
           </Button>

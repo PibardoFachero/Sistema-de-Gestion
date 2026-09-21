@@ -1,7 +1,12 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { CreateFileSourceInput, CreateLinkSourceInput, CreateNoteSourceInput, TopicSource } from '../types';
+import {
+  CreateFileSourceInput,
+  CreateLinkSourceInput,
+  CreateNoteSourceInput,
+  TopicSource,
+} from '../types';
 import { formatFileSize, formatRelativeDate } from '../utils/formatters';
 
 interface ActionResponse<T = unknown> {
@@ -50,7 +55,10 @@ export async function createNoteSourceAction(
     }
 
     // Actualizar updated_at del tema
-    await supabase.from('topics').update({ updated_at: new Date().toISOString() }).eq('id', input.topicId);
+    await supabase
+      .from('topics')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', input.topicId);
 
     const source: TopicSource = {
       id: data.id,
@@ -128,7 +136,10 @@ export async function createLinkSourceAction(
     }
 
     // Actualizar updated_at del tema
-    await supabase.from('topics').update({ updated_at: new Date().toISOString() }).eq('id', input.topicId);
+    await supabase
+      .from('topics')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', input.topicId);
 
     const source: TopicSource = {
       id: data.id,
@@ -198,7 +209,10 @@ export async function createFileSourceAction(
     }
 
     // Actualizar updated_at del tema
-    await supabase.from('topics').update({ updated_at: new Date().toISOString() }).eq('id', input.topicId);
+    await supabase
+      .from('topics')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', input.topicId);
 
     const sizeStr = formatFileSize(input.fileSize);
     const ext = input.fileType ? input.fileType.toUpperCase() : 'ARCHIVO';

@@ -24,7 +24,10 @@ export function extractAssistantResponseAndTitle(
 
     // Remover bloques de código markdown como ```json ... ``` o ``` ... ```
     if (text.startsWith('```')) {
-      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      text = text
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
     }
 
     // Intentar JSON.parse
@@ -43,7 +46,8 @@ export function extractAssistantResponseAndTitle(
           if (replyMatch && replyMatch[1]) {
             try {
               const unescapedReply = JSON.parse(`"${replyMatch[1]}"`);
-              const unescapedTitle = titleMatch && titleMatch[1] ? JSON.parse(`"${titleMatch[1]}"`) : undefined;
+              const unescapedTitle =
+                titleMatch && titleMatch[1] ? JSON.parse(`"${titleMatch[1]}"`) : undefined;
               return {
                 reply: unescapedReply,
                 title: unescapedTitle || undefined,
@@ -63,11 +67,12 @@ export function extractAssistantResponseAndTitle(
   // Si data ahora es un objeto
   if (typeof data === 'object' && data !== null) {
     const record = data as Record<string, unknown>;
-    
+
     // Título si está disponible
-    const rawTitle = typeof record.title === 'string' && record.title.trim().length > 0
-      ? record.title.trim()
-      : undefined;
+    const rawTitle =
+      typeof record.title === 'string' && record.title.trim().length > 0
+        ? record.title.trim()
+        : undefined;
 
     const rawTasks = Array.isArray(record.tasks)
       ? record.tasks
@@ -100,7 +105,12 @@ export function extractAssistantResponseAndTitle(
 
         let finalReply = candidate.trim();
         // Si expresamente se pide incluir tareas en markdown y existen tareas estructuradas
-        if (options?.includeTasksInMarkdown && rawTasks && rawTasks.length > 0 && !finalReply.toLowerCase().includes(String(rawTasks[0]?.title || '').toLowerCase())) {
+        if (
+          options?.includeTasksInMarkdown &&
+          rawTasks &&
+          rawTasks.length > 0 &&
+          !finalReply.toLowerCase().includes(String(rawTasks[0]?.title || '').toLowerCase())
+        ) {
           finalReply += formatTasksToMarkdown(rawTasks);
         }
 

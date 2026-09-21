@@ -9,7 +9,9 @@ interface ActionResponse<T = unknown> {
   error?: string;
 }
 
-export async function getUserProjectsAction(topicId?: string): Promise<ActionResponse<ProjectOption[]>> {
+export async function getUserProjectsAction(
+  topicId?: string,
+): Promise<ActionResponse<ProjectOption[]>> {
   try {
     const supabase = await createClient();
     const {
@@ -109,13 +111,11 @@ export async function linkProjectAction(
     }
 
     // Vincular en topic_projects
-    const { error: insertError } = await supabase
-      .from('topic_projects')
-      .insert({
-        topic_id: topicId,
-        project_id: projectId,
-        user_id: user.id,
-      });
+    const { error: insertError } = await supabase.from('topic_projects').insert({
+      topic_id: topicId,
+      project_id: projectId,
+      user_id: user.id,
+    });
 
     if (insertError) {
       return { success: false, error: insertError.message };
@@ -139,7 +139,8 @@ export async function linkProjectAction(
 
     const totalMilestones = milestones?.length || 0;
     const completedMilestones = milestones?.filter((m) => m.is_completed).length || 0;
-    const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+    const progress =
+      totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
     const linkedProject: LinkedProject = {
       id: project.id,

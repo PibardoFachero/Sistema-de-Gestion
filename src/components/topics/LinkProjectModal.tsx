@@ -4,7 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { X, FolderKanban, Plus, Check, Loader2, ListPlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LinkedProject, ProjectOption } from '@/features/topics/types';
-import { getUserProjectsAction, linkProjectAction, unlinkProjectAction, createProjectWithMilestonesAction } from '@/features/topics/actions/projectsActions';
+import {
+  getUserProjectsAction,
+  linkProjectAction,
+  unlinkProjectAction,
+  createProjectWithMilestonesAction,
+} from '@/features/topics/actions/projectsActions';
 import { cn } from '@/lib/utils';
 
 interface LinkProjectModalProps {
@@ -93,7 +98,7 @@ function LinkProjectModalContent({
         const res = await unlinkProjectAction(topicId, project.id);
         if (res.success) {
           setProjects((prev) =>
-            prev.map((p) => (p.id === project.id ? { ...p, isLinked: false } : p))
+            prev.map((p) => (p.id === project.id ? { ...p, isLinked: false } : p)),
           );
           onProjectUnlinked(project.id);
         } else {
@@ -103,7 +108,7 @@ function LinkProjectModalContent({
         const res = await linkProjectAction(topicId, project.id);
         if (res.success && res.data) {
           setProjects((prev) =>
-            prev.map((p) => (p.id === project.id ? { ...p, isLinked: true } : p))
+            prev.map((p) => (p.id === project.id ? { ...p, isLinked: true } : p)),
           );
           onProjectLinked(res.data);
         } else {
@@ -144,7 +149,7 @@ function LinkProjectModalContent({
           description: newProjectDesc.trim(),
           milestones,
         },
-        topicId
+        topicId,
       );
 
       if (res.success && res.data) {
@@ -190,7 +195,7 @@ function LinkProjectModalContent({
             'flex-1 py-2 rounded-lg transition-colors',
             activeTab === 'select'
               ? 'bg-surface-container-lowest text-primary shadow-xs'
-              : 'text-on-surface-variant hover:text-primary'
+              : 'text-on-surface-variant hover:text-primary',
           )}
         >
           Tus Proyectos
@@ -202,7 +207,7 @@ function LinkProjectModalContent({
             'flex-1 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5',
             activeTab === 'create'
               ? 'bg-surface-container-lowest text-primary shadow-xs'
-              : 'text-on-surface-variant hover:text-primary'
+              : 'text-on-surface-variant hover:text-primary',
           )}
         >
           <Plus className="size-3.5" />
@@ -258,7 +263,8 @@ function LinkProjectModalContent({
                         />
                       </div>
                       <span className="text-[11px] font-semibold text-outline">
-                        {project.progress}% ({project.completedMilestones}/{project.totalMilestones} hitos)
+                        {project.progress}% ({project.completedMilestones}/{project.totalMilestones}{' '}
+                        hitos)
                       </span>
                     </div>
                   </div>
@@ -271,7 +277,8 @@ function LinkProjectModalContent({
                     onClick={() => handleToggleLink(project)}
                     className={cn(
                       'min-w-[7rem] shrink-0 gap-1.5',
-                      project.isLinked && 'border-status-success text-status-success hover:bg-error/10 hover:text-error hover:border-error'
+                      project.isLinked &&
+                        'border-status-success text-status-success hover:bg-error/10 hover:text-error hover:border-error',
                     )}
                   >
                     {isActionLoading ? (

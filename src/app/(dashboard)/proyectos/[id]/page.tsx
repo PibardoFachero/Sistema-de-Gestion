@@ -351,7 +351,8 @@ export default function ProjectDetailPage({
       }
     } catch (err: unknown) {
       console.error('Error generando tareas con IA:', err);
-      const msg = err instanceof Error ? err.message : 'Error de comunicación con el webhook de n8n.';
+      const msg =
+        err instanceof Error ? err.message : 'Error de comunicación con el webhook de n8n.';
       setAiErrorMessage(msg);
     } finally {
       setIsGeneratingWithAI(false);
@@ -937,7 +938,8 @@ export default function ProjectDetailPage({
             Aún no hay tareas registradas
           </p>
           <p className="text-xs text-on-surface-variant mb-6 max-w-md mx-auto">
-            Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de forma manual.
+            Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de
+            forma manual.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
@@ -1267,7 +1269,9 @@ export default function ProjectDetailPage({
               <h2 className="text-xl font-bold text-on-surface">Generar tarea con IA</h2>
             </div>
             <p className="text-xs text-on-surface-variant mb-5 leading-relaxed">
-              Komo analizará tu proyecto <span className="font-semibold text-on-surface">&quot;{project.title}&quot;</span> y creará nuevas tareas de forma automática.
+              Komo analizará tu proyecto{' '}
+              <span className="font-semibold text-on-surface">&quot;{project.title}&quot;</span> y
+              creará nuevas tareas de forma automática.
             </p>
 
             {aiErrorMessage && (
@@ -1280,7 +1284,10 @@ export default function ProjectDetailPage({
             <form onSubmit={handleGenerateTasksWithAI} className="flex flex-col gap-4">
               {/* Campo opcional: URL */}
               <div>
-                <label htmlFor="aiMaterialUrl" className="flex items-center gap-2 text-sm font-bold text-on-surface mb-1.5">
+                <label
+                  htmlFor="aiMaterialUrl"
+                  className="flex items-center gap-2 text-sm font-bold text-on-surface mb-1.5"
+                >
                   <LinkIcon className="size-4 text-[#845326]" /> URL o recurso web (opcional)
                 </label>
                 <input
@@ -1358,7 +1365,9 @@ export default function ProjectDetailPage({
 
               {/* Mensaje informativo cuando ambos campos están vacíos */}
               <div className="rounded-xl bg-[#f5e5d9]/50 border border-[#E8DCD1] p-3 text-xs text-on-surface-variant leading-relaxed">
-                💡 <span className="font-semibold text-on-surface">Nota:</span> Ambos campos son opcionales. Si los dejas vacíos, Komo se basará en el objetivo y descripción de tu proyecto.
+                💡 <span className="font-semibold text-on-surface">Nota:</span> Ambos campos son
+                opcionales. Si los dejas vacíos, Komo se basará en el objetivo y descripción de tu
+                proyecto.
               </div>
 
               <div className="mt-2 flex gap-3">
