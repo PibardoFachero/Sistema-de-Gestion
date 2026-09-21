@@ -46,27 +46,12 @@ export default function ProyectosPage() {
           });
 
           setProyectos(mapped);
-
-          // Mantener sincronizado localStorage para SidebarNav
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('komorebi_projects', JSON.stringify(mapped));
-          }
         } else {
-          if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('komorebi_projects');
-            if (saved) {
-              setProyectos(JSON.parse(saved) as Project[]);
-            }
-          }
+          setProyectos([]);
         }
       } catch (error) {
         console.error('Error cargando proyectos desde Supabase:', error);
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            setProyectos(JSON.parse(saved) as Project[]);
-          }
-        }
+        setProyectos([]);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -98,19 +83,14 @@ export default function ProyectosPage() {
     const updated = proyectos.filter((p) => p.id !== id);
     setProyectos(updated);
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('komorebi_projects', JSON.stringify(updated));
-      window.dispatchEvent(new Event('projects_updated'));
-    }
+    window.dispatchEvent(new Event('projects_updated'));
 
     try {
       const result = await deleteProjectAction(id);
       if (!result.success) {
         console.error('Error al borrar proyecto en Supabase:', result.error);
         setProyectos(previous);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('komorebi_projects', JSON.stringify(previous));
-        }
+        window.dispatchEvent(new Event('projects_updated'));
       }
     } catch (error) {
       console.error('Error al invocar deleteProjectAction:', error);

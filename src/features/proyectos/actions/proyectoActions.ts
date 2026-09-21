@@ -148,7 +148,9 @@ export async function getProjectsAction() {
 
     const { data: projects, error } = await supabase
       .from('projects')
-      .select('*, tareas(id, completado, duracion, titulo)')
+      .select(
+        'id, user_id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, material_url, minutos_diarios, progreso, completado',
+      )
       .eq('user_id', user.id);
 
     if (error) {
@@ -156,7 +158,34 @@ export async function getProjectsAction() {
       return { success: false, error: error.message, projects: [] };
     }
 
-    return { success: true, projects: projects || [] };
+    const projectRows = (projects ?? []) as ProjectRecord[];
+    const projectIds = projectRows.map((project) => project.id);
+    if (projectIds.length === 0) return { success: true, projects: [] };
+
+    const { data: taskRows, error: tasksError } = await supabase
+      .from('tareas')
+      .select('id, id_proyecto, titulo, duracion, completado')
+      .in('id_proyecto', projectIds);
+
+    if (tasksError) {
+      console.error('Error cargando tareas de projects:', tasksError);
+      return { success: false, error: tasksError.message, projects: [] };
+    }
+
+    const tasksByProject = new Map<string, TaskRecord[]>();
+    for (const task of (taskRows ?? []) as TaskRecord[]) {
+      const tasks = tasksByProject.get(task.id_proyecto) ?? [];
+      tasks.push(task);
+      tasksByProject.set(task.id_proyecto, tasks);
+    }
+
+    return {
+      success: true,
+      projects: projectRows.map((project) => ({
+        ...project,
+        tareas: tasksByProject.get(project.id) ?? [],
+      })),
+    };
   } catch (error: unknown) {
     console.error('Error en getProjectsAction:', error);
     const msg = error instanceof Error ? error.message : 'Error inesperado.';

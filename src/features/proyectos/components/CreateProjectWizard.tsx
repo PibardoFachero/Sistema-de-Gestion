@@ -160,21 +160,8 @@ export function CreateProjectWizard() {
 
       const createdProject = result.project;
 
-      // 3. Sincronizar localStorage para compatibilidad inmediata con componentes clientes (como SidebarNav)
-      if (typeof window !== 'undefined') {
-        const existing = localStorage.getItem('komorebi_projects');
-        const projects = existing ? JSON.parse(existing) : [];
-        projects.unshift({
-          id: createdProject.id,
-          name: createdProject.titulo,
-          importance: createdProject.prioridad,
-          tasksCount: 0,
-          progress: 0,
-          createdAt: createdProject.fecha_limite || new Date().toISOString(),
-        });
-        localStorage.setItem('komorebi_projects', JSON.stringify(projects));
-        window.dispatchEvent(new Event('projects_updated'));
-      }
+      // Actualizar los componentes que muestran el listado desde Supabase.
+      window.dispatchEvent(new Event('projects_updated'));
 
       router.push(`/proyectos/${createdProject.id}`);
     } catch (error: unknown) {
