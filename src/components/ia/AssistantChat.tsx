@@ -46,7 +46,11 @@ type AssistantChatProps = {
   onNewConversation?: () => void;
   onDeleteConversation?: (conversationId: string) => void;
   onCreateProject?: (tasks: GeneratedTaskItem[], title?: string) => Promise<void> | void;
-  onUpdateProject?: (projectId: string, tasks: GeneratedTaskItem[], title?: string) => Promise<string | void> | void;
+  onUpdateProject?: (
+    projectId: string,
+    tasks: GeneratedTaskItem[],
+    title?: string,
+  ) => Promise<string | void> | void;
   onSend?: SendAssistantMessage;
   onClearContext?: () => void;
 };
@@ -84,15 +88,18 @@ export function AssistantChat({
 
   const isConnected = Boolean(onSend);
 
-  // Sincronizar mensajes cuando cambian desde el padre
-  useEffect(() => {
+  // Sincronizar estado cuando cambian las props desde el padre
+  const [prevMessages, setPrevMessages] = useState(messages);
+  if (messages !== prevMessages) {
+    setPrevMessages(messages);
     setConversation(messages);
-  }, [messages]);
+  }
 
-  // Sincronizar conversación activa
-  useEffect(() => {
+  const [prevActiveConvId, setPrevActiveConvId] = useState(activeConversationId);
+  if (activeConversationId !== prevActiveConvId) {
+    setPrevActiveConvId(activeConversationId);
     setCurrentConvId(activeConversationId);
-  }, [activeConversationId]);
+  }
 
   // Scroll automático hacia el final del chat
   useEffect(() => {
@@ -157,7 +164,8 @@ export function AssistantChat({
 
     try {
       const response = await onSend({
-        content: content.trim() || (fileToSend ? `Analiza el documento adjunto: ${fileToSend.name}` : ''),
+        content:
+          content.trim() || (fileToSend ? `Analiza el documento adjunto: ${fileToSend.name}` : ''),
         context,
         fileAttachment: fileToSend || undefined,
         conversationId: currentConvId,
@@ -497,7 +505,8 @@ export function AssistantChat({
               Contexto controlado
             </div>
             <p className="text-xs leading-relaxed text-on-surface-variant">
-              Este chat tiene acceso a tus proyectos actuales y a la información de {context.label.toLowerCase()} para responder de forma personalizada.
+              Este chat tiene acceso a tus proyectos actuales y a la información de{' '}
+              {context.label.toLowerCase()} para responder de forma personalizada.
             </p>
           </Card>
         </aside>
@@ -560,7 +569,9 @@ function ChatHistoryCard({
                   className="flex flex-1 items-center gap-2 overflow-hidden text-left"
                   title={conv.title}
                 >
-                  <MessageSquare className={cn('size-3.5 shrink-0', isActive ? 'text-primary' : 'text-outline')} />
+                  <MessageSquare
+                    className={cn('size-3.5 shrink-0', isActive ? 'text-primary' : 'text-outline')}
+                  />
                   <span className="truncate max-w-[190px]">{conv.title}</span>
                 </button>
                 {onDelete && (
@@ -618,13 +629,17 @@ function ChatMessage({
   message: AssistantMessage;
   userProjects?: UserProjectItem[];
   onCreateProject?: (tasks: GeneratedTaskItem[], title?: string) => Promise<void> | void;
-  onUpdateProject?: (projectId: string, tasks: GeneratedTaskItem[], title?: string) => Promise<string | void> | void;
+  onUpdateProject?: (
+    projectId: string,
+    tasks: GeneratedTaskItem[],
+    title?: string,
+  ) => Promise<string | void> | void;
 }) {
   const isAssistant = message.role === 'assistant';
   const file = message.fileAttachment || (message.contextData?.file as FileAttachment | undefined);
   const tasks = message.tasks || (message.contextData?.tasks as GeneratedTaskItem[] | undefined);
   const planTitle = message.planTitle || (message.contextData?.planTitle as string | undefined);
-  
+
   // Detección de si la consulta fue meramente informativa
   const resolvedIntent = message.intent || (message.contextData?.intent as string | undefined);
   const isInformational = resolvedIntent === 'informational' || (!resolvedIntent && !tasks);
@@ -652,11 +667,15 @@ function ChatMessage({
   };
 
   const handleUpdateExisting = async () => {
-    if (!tasks || tasks.length === 0 || !onUpdateProject || !selectedProjectId || isUpdatingProject) return;
+    if (!tasks || tasks.length === 0 || !onUpdateProject || !selectedProjectId || isUpdatingProject)
+      return;
     setIsUpdatingProject(true);
     try {
       const res = await onUpdateProject(selectedProjectId, tasks, planTitle);
-      const projName = typeof res === 'string' ? res : (userProjects.find(p => p.id === selectedProjectId)?.titulo || 'Proyecto');
+      const projName =
+        typeof res === 'string'
+          ? res
+          : userProjects.find((p) => p.id === selectedProjectId)?.titulo || 'Proyecto';
       setUpdatedProjectName(projName);
     } finally {
       setIsUpdatingProject(false);
@@ -733,9 +752,7 @@ function ChatMessage({
                       className="rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-2.5 text-xs transition-colors hover:border-primary/40 shadow-2xs"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-semibold text-on-surface leading-tight">
-                          {title}
-                        </span>
+                        <span className="font-semibold text-on-surface leading-tight">{title}</span>
                         {dur && (
                           <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-surface-container px-2 py-0.5 text-[10px] font-medium text-on-surface-variant">
                             <Clock className="size-2.5 text-primary" />
@@ -771,7 +788,10 @@ function ChatMessage({
                 {updatedProjectName ? (
                   <div className="flex items-center gap-2 rounded-xl bg-status-success-bg p-2.5 text-xs font-semibold text-status-success">
                     <Check className="size-4" />
-                    <span>¡Proyecto &quot;{updatedProjectName}&quot; actualizado con {tasks.length} nuevas tareas!</span>
+                    <span>
+                      ¡Proyecto &quot;{updatedProjectName}&quot; actualizado con {tasks.length}{' '}
+                      nuevas tareas!
+                    </span>
                   </div>
                 ) : projectCreated ? (
                   <div className="flex items-center gap-2 rounded-xl bg-status-success-bg p-2.5 text-xs font-semibold text-status-success">
@@ -831,7 +851,11 @@ function ChatMessage({
                     className="w-full gap-2 text-xs"
                   >
                     <FolderPlus className="size-3.5 text-primary" />
-                    <span>{isCreatingProject ? 'Creando proyecto...' : 'Crear como proyecto en Komorebi'}</span>
+                    <span>
+                      {isCreatingProject
+                        ? 'Creando proyecto...'
+                        : 'Crear como proyecto en Komorebi'}
+                    </span>
                   </Button>
                 ) : null}
               </div>

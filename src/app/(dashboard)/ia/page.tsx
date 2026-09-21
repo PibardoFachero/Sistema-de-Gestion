@@ -165,7 +165,11 @@ export default function IAPage() {
 
     // 1. Si no hay conversación activa, crear una nueva en Supabase
     if (!convId) {
-      const initialTitle = (params.content || params.fileAttachment?.name || 'Nueva conversación').slice(0, 45);
+      const initialTitle = (
+        params.content ||
+        params.fileAttachment?.name ||
+        'Nueva conversación'
+      ).slice(0, 45);
       const convRes = await createConversationAction(initialTitle);
       if (!convRes.success || !convRes.data) {
         throw new Error(convRes.error || 'No se pudo iniciar la conversación');
@@ -227,18 +231,17 @@ export default function IAPage() {
 
     const cleanReply = parsed.reply;
     const aiTitle = parsed.title;
-    
+
     // Solo preservar tareas si la intención no era puramente informativa
-    const aiTasks = intentResult.intent !== 'informational'
-      ? (parsed.tasks as GeneratedTaskItem[] | undefined)
-      : undefined;
+    const aiTasks =
+      intentResult.intent !== 'informational'
+        ? (parsed.tasks as GeneratedTaskItem[] | undefined)
+        : undefined;
 
     // 6. Si la IA proporcionó un título para la conversación, actualizar la tabla conversations
     if (aiTitle && convId) {
       void updateConversationTitleAction(convId, aiTitle);
-      setConversations((prev) =>
-        prev.map((c) => (c.id === convId ? { ...c, title: aiTitle } : c)),
-      );
+      setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, title: aiTitle } : c)));
     }
 
     // 7. Guardar mensaje del asistente en la tabla messages con metadatos de intención

@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import type { AssistantMessage } from '@/components/ia/types';
+import type { AssistantMessage, FileAttachment, GeneratedTaskItem } from '@/components/ia/types';
 
 export interface ConversationSummary {
   id: string;
@@ -84,10 +84,10 @@ export async function getConversationMessagesAction(conversationId: string): Pro
         createdAt: row.created_at,
         conversationId: row.conversation_id,
         contextData,
-        tasks: contextData.tasks as any,
+        tasks: (contextData.tasks as unknown as GeneratedTaskItem[]) || undefined,
         planTitle: (contextData.planTitle as string) || undefined,
-        fileAttachment: contextData.file as any,
-        intent: (contextData.intent as any) || undefined,
+        fileAttachment: (contextData.file as unknown as FileAttachment) || undefined,
+        intent: (contextData.intent as AssistantMessage['intent']) || undefined,
         targetProjectId: (contextData.targetProjectId as string) || undefined,
         targetProjectTitle: (contextData.targetProjectTitle as string) || undefined,
       };
@@ -116,7 +116,9 @@ export async function createConversationAction(title?: string): Promise<{
       return { success: false, error: 'Usuario no autenticado' };
     }
 
-    const cleanTitle = (title && title.trim().length > 0 ? title.trim() : 'Nueva conversación').slice(0, 80);
+    const cleanTitle = (
+      title && title.trim().length > 0 ? title.trim() : 'Nueva conversación'
+    ).slice(0, 80);
 
     const { data, error } = await supabase
       .from('conversations')
@@ -195,10 +197,10 @@ export async function saveMessageAction(params: {
       createdAt: data.created_at,
       conversationId: data.conversation_id,
       contextData: ctx,
-      tasks: (ctx.tasks as any) || undefined,
+      tasks: (ctx.tasks as unknown as GeneratedTaskItem[]) || undefined,
       planTitle: (ctx.planTitle as string) || undefined,
-      fileAttachment: (ctx.file as any) || undefined,
-      intent: (ctx.intent as any) || undefined,
+      fileAttachment: (ctx.file as unknown as FileAttachment) || undefined,
+      intent: (ctx.intent as AssistantMessage['intent']) || undefined,
       targetProjectId: (ctx.targetProjectId as string) || undefined,
       targetProjectTitle: (ctx.targetProjectTitle as string) || undefined,
     };
@@ -451,10 +453,7 @@ export async function addTasksToExistingProjectAction(params: {
         newProgreso = Math.round((completed / allTasks.length) * 100);
       }
 
-      await supabase
-        .from('projects')
-        .update({ progreso: newProgreso })
-        .eq('id', project.id);
+      await supabase.from('projects').update({ progreso: newProgreso }).eq('id', project.id);
 
       return {
         success: true,
@@ -502,5 +501,3 @@ export async function getUserProjectsForChatAction(): Promise<{
     return { success: false, data: [] };
   }
 }
-
-

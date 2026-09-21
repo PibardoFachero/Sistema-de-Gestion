@@ -132,7 +132,10 @@ export async function createProjectAction(input: CreateProjectInput) {
           minutos_diarios: project.minutos_diarios,
         });
       } catch (n8nErr) {
-        console.warn('Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:', n8nErr);
+        console.warn(
+          'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
+          n8nErr,
+        );
       }
     }
 

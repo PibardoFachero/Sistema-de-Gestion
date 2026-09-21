@@ -112,7 +112,9 @@ export function detectMessageIntent(
   // 2. Si pide crear explícitamente un proyecto o plan nuevo (tiene precedencia sobre actualización genérica)
   const hasExplicitCreate =
     CREATE_PROJECT_TRIGGERS.some((tr) => normalized.includes(tr)) ||
-    ((normalized.includes('crear') || normalized.includes('crea') || normalized.includes('nuevo')) &&
+    ((normalized.includes('crear') ||
+      normalized.includes('crea') ||
+      normalized.includes('nuevo')) &&
       (normalized.includes('proyecto') || normalized.includes('plan')));
 
   if (hasExplicitCreate && !matchedProject) {
@@ -131,7 +133,14 @@ export function detectMessageIntent(
       normalized.includes('incorpor')) &&
       (normalized.includes('tarea') || normalized.includes('proyecto')));
 
-  if (hasUpdateTrigger || (matchedProject && (normalized.includes('tarea') || normalized.includes('actualiz') || normalized.includes('agreg') || normalized.includes('añad')))) {
+  if (
+    hasUpdateTrigger ||
+    (matchedProject &&
+      (normalized.includes('tarea') ||
+        normalized.includes('actualiz') ||
+        normalized.includes('agreg') ||
+        normalized.includes('añad')))
+  ) {
     return {
       intent: 'update_project',
       targetProject: matchedProject || userProjects[0],

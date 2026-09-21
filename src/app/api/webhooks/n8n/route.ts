@@ -54,7 +54,9 @@ export async function POST(request: Request) {
   try {
     const { data: projects } = await supabase
       .from('projects')
-      .select('id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, progreso, completado, tareas(id, titulo, duracion, completado, resources)')
+      .select(
+        'id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, progreso, completado, tareas(id, titulo, duracion, completado, resources)',
+      )
       .eq('user_id', auth.user.id)
       .order('progreso', { ascending: true });
 

@@ -51,13 +51,37 @@ function extractResourcesFromRecord(record: Record<string, unknown>): string | u
   if (!record || typeof record !== 'object') return undefined;
 
   const resourceKeys = [
-    'resources', 'resource', 'resourceUrl', 'resource_url',
-    'url_recomendada', 'urlRecomendada', 'recommended_url', 'recommendedUrl',
-    'url', 'urls', 'link', 'links', 'enlace', 'enlaces',
-    'material', 'materiales', 'material_url', 'materialUrl',
-    'recurso', 'recursos', 'recurso_url', 'recursoUrl',
-    'source_url', 'sourceUrl', 'web_url', 'webUrl',
-    'href', 'link_recomendado', 'referencia', 'documentacion', 'docs'
+    'resources',
+    'resource',
+    'resourceUrl',
+    'resource_url',
+    'url_recomendada',
+    'urlRecomendada',
+    'recommended_url',
+    'recommendedUrl',
+    'url',
+    'urls',
+    'link',
+    'links',
+    'enlace',
+    'enlaces',
+    'material',
+    'materiales',
+    'material_url',
+    'materialUrl',
+    'recurso',
+    'recursos',
+    'recurso_url',
+    'recursoUrl',
+    'source_url',
+    'sourceUrl',
+    'web_url',
+    'webUrl',
+    'href',
+    'link_recomendado',
+    'referencia',
+    'documentacion',
+    'docs',
   ];
 
   const foundUrls: string[] = [];
@@ -186,9 +210,21 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
           isTaskArray = true;
           candidates.push({
             titulo: String(titulo),
-            descripcion: String(record.descripcion || record.description || record.detalle || record.details || ''),
-            duracion: (record.duracion || record.duration || record.tiempo || record.minutos || record.time || record.minutes || record.duration_minutes) as number | string | undefined,
-            fecha_inicio: (record.fecha_inicio || record.startDate || record.fecha || record.date || record.due_date) as string | undefined,
+            descripcion: String(
+              record.descripcion || record.description || record.detalle || record.details || '',
+            ),
+            duracion: (record.duracion ||
+              record.duration ||
+              record.tiempo ||
+              record.minutos ||
+              record.time ||
+              record.minutes ||
+              record.duration_minutes) as number | string | undefined,
+            fecha_inicio: (record.fecha_inicio ||
+              record.startDate ||
+              record.fecha ||
+              record.date ||
+              record.due_date) as string | undefined,
             prioridad: (record.prioridad || record.priority) as string | undefined,
             url_recomendada: extractedUrl,
             resources: extractedUrl,
@@ -205,7 +241,21 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
 
       // Si no era un array de tareas directamente, puede ser el formato de n8n [ { output: ... } ] o [ { json: ... } ]
       const first = rawResponse[0] as Record<string, unknown>;
-      for (const nestedKey of ['tasks', 'tareas', 'items', 'data', 'plan', 'output', 'json', 'reply', 'text', 'message', 'response', 'result', 'body']) {
+      for (const nestedKey of [
+        'tasks',
+        'tareas',
+        'items',
+        'data',
+        'plan',
+        'output',
+        'json',
+        'reply',
+        'text',
+        'message',
+        'response',
+        'result',
+        'body',
+      ]) {
         if (first[nestedKey]) {
           const nestedResult = parseTasksFromN8nResponse(first[nestedKey]);
           if (nestedResult.length > 0) return nestedResult;
@@ -241,7 +291,10 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
     }
 
     // Si no se pudo parsear como JSON, intentar parsear lista de texto con viñetas o números
-    const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = trimmed
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     const textTasks: GeneratedTaskCandidate[] = [];
 
     for (const line of lines) {
@@ -282,7 +335,21 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
   if (typeof rawResponse === 'object' && rawResponse !== null) {
     const obj = rawResponse as Record<string, unknown>;
 
-    for (const key of ['tasks', 'tareas', 'items', 'data', 'plan', 'output', 'rows', 'result', 'reply', 'text', 'response', 'message', 'body']) {
+    for (const key of [
+      'tasks',
+      'tareas',
+      'items',
+      'data',
+      'plan',
+      'output',
+      'rows',
+      'result',
+      'reply',
+      'text',
+      'response',
+      'message',
+      'body',
+    ]) {
       if (key in obj && obj[key]) {
         const candidate = parseTasksFromN8nResponse(obj[key]);
         if (candidate.length > 0) return candidate;
@@ -351,7 +418,9 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
         `avanzando hacia los siguientes pasos, conceptos o prácticas para cumplir el objetivo del proyecto.`;
     }
 
-    const materialPart = project.material_url ? ` Recurso o enlace de referencia suministrado: ${project.material_url}.` : '';
+    const materialPart = project.material_url
+      ? ` Recurso o enlace de referencia suministrado: ${project.material_url}.`
+      : '';
     const filePart = project.file_content
       ? ` Documento de referencia adjunto ("${project.file_name || 'archivo'}"):\n--- INICIO DEL DOCUMENTO ---\n${project.file_content}\n--- FIN DEL DOCUMENTO ---\nPor favor toma en cuenta este documento para extraer o estructurar las tareas del proyecto.`
       : '';
@@ -428,7 +497,14 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
     // 3. Procesar cuerpo de la respuesta de n8n
     const contentType = response.headers.get('content-type') || '';
     const rawText = await response.text();
-    console.log('[n8n] HTTP Status:', response.status, '| Content-Type:', contentType, '| Raw Body:', rawText);
+    console.log(
+      '[n8n] HTTP Status:',
+      response.status,
+      '| Content-Type:',
+      contentType,
+      '| Raw Body:',
+      rawText,
+    );
 
     let responseBody: unknown = rawText;
     if (rawText && rawText.trim().length > 0) {
@@ -448,10 +524,7 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
 
     if (!taskCandidates || taskCandidates.length === 0) {
       // Si n8n no devolvió las tareas en el JSON, verificar si su nodo de Supabase las insertó directamente en la BD
-      const { data: dbTasks } = await db
-        .from('tareas')
-        .select('*')
-        .eq('id_proyecto', project.id);
+      const { data: dbTasks } = await db.from('tareas').select('*').eq('id_proyecto', project.id);
 
       if (dbTasks && dbTasks.length > 0) {
         return {
@@ -464,10 +537,11 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
 
       console.warn('Respuesta recibida de n8n sin tareas estructuradas:', responseBody);
       const rawPreview =
-        typeof responseBody === 'string'
-          ? responseBody
-          : JSON.stringify(responseBody);
-      const snippet = rawPreview && rawPreview.length > 250 ? `${rawPreview.slice(0, 250)}...` : (rawPreview || 'vacía');
+        typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
+      const snippet =
+        rawPreview && rawPreview.length > 250
+          ? `${rawPreview.slice(0, 250)}...`
+          : rawPreview || 'vacía';
 
       return {
         success: false,
@@ -524,8 +598,11 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
     const tasksToInsert = candidatesToUse.map((candidate, index) => {
       const titulo = (candidate.titulo || candidate.title || `Tarea ${index + 1}`).trim();
       const descripcion = (candidate.descripcion || candidate.description || '').trim() || null;
-      const duracion = parseDurationMinutes(candidate.duracion || candidate.duration, defaultDuration);
-      
+      const duracion = parseDurationMinutes(
+        candidate.duracion || candidate.duration,
+        defaultDuration,
+      );
+
       let fechaInicio: string | null = null;
       const rawDate = candidate.fecha_inicio || candidate.startDate;
       if (rawDate) {
@@ -548,10 +625,17 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       }
 
       const resources =
-        (candidate.resources || candidate.resourceUrl || candidate.resource_url || candidate.url_recomendada || '').trim() ||
+        (
+          candidate.resources ||
+          candidate.resourceUrl ||
+          candidate.resource_url ||
+          candidate.url_recomendada ||
+          ''
+        ).trim() ||
         (project.material_url?.trim() ?? null) ||
         null;
-      const prioridad = candidate.prioridad || candidate.priority || project.prioridad || 'Prioritario';
+      const prioridad =
+        candidate.prioridad || candidate.priority || project.prioridad || 'Prioritario';
 
       return {
         id: crypto.randomUUID(),
