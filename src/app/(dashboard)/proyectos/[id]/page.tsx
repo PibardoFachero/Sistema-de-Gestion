@@ -30,15 +30,6 @@ interface ProjectDetailState {
   fecha_limite?: string | null;
 }
 
-interface LocalProjectStorageItem {
-  id: string;
-  name: string;
-  importance?: string;
-  progress?: number;
-  tasksCount?: number;
-  createdAt?: string;
-}
-
 const CHIGUI_MASCOTS = [
   'chigui-celebrate',
   'chigui-focus',
@@ -358,24 +349,6 @@ export default function ProjectDetailPage({
               tasks: tareasList,
               fecha_limite: p.fecha_limite || null,
             });
-          } else {
-            if (typeof window !== 'undefined') {
-              const saved = localStorage.getItem('komorebi_projects');
-              if (saved) {
-                const list: LocalProjectStorageItem[] = JSON.parse(saved);
-                const found = list.find((item) => item.id === id);
-                if (found) {
-                  setProject({
-                    id: found.id,
-                    title: found.name,
-                    priority: found.importance || 'Normal',
-                    cuteImage: 'imagendechiwiconcafe',
-                    progress: found.progress || 0,
-                    tasks: [],
-                  });
-                }
-              }
-            }
           }
         })
         .catch((error) => {
@@ -422,17 +395,7 @@ export default function ProjectDetailPage({
             : null,
         );
 
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            const list: LocalProjectStorageItem[] = JSON.parse(saved);
-            const updatedList = list.map((item) =>
-              item.id === project.id ? { ...item, progress: res.progreso } : item,
-            );
-            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
-            window.dispatchEvent(new Event('projects_updated'));
-          }
-        }
+        window.dispatchEvent(new Event('projects_updated'));
       }
     } catch (error) {
       console.error('Error actualizando estado de tarea en Supabase:', error);
@@ -479,19 +442,7 @@ export default function ProjectDetailPage({
             : null,
         );
 
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            const list: LocalProjectStorageItem[] = JSON.parse(saved);
-            const updatedList = list.map((item) =>
-              item.id === project.id
-                ? { ...item, progress: res.progreso, tasksCount: updatedTasks.length }
-                : item,
-            );
-            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
-            window.dispatchEvent(new Event('projects_updated'));
-          }
-        }
+        window.dispatchEvent(new Event('projects_updated'));
       } else {
         setProject((prev) =>
           prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null,
@@ -527,15 +478,7 @@ export default function ProjectDetailPage({
         return;
       }
 
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('komorebi_projects');
-        if (saved) {
-          const projects: LocalProjectStorageItem[] = JSON.parse(saved);
-          const updated = projects.filter((p) => p.id !== project.id);
-          localStorage.setItem('komorebi_projects', JSON.stringify(updated));
-          window.dispatchEvent(new Event('projects_updated'));
-        }
-      }
+      window.dispatchEvent(new Event('projects_updated'));
 
       setIsDeleteProjectModalOpen(false);
       router.push('/proyectos');
@@ -632,23 +575,7 @@ export default function ProjectDetailPage({
             : null,
         );
 
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            const list: LocalProjectStorageItem[] = JSON.parse(saved);
-            const updatedList = list.map((item) =>
-              item.id === project.id
-                ? {
-                    ...item,
-                    progress: res.progreso ?? item.progress,
-                    tasksCount: updatedTasks.length,
-                  }
-                : item,
-            );
-            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
-            window.dispatchEvent(new Event('projects_updated'));
-          }
-        }
+        window.dispatchEvent(new Event('projects_updated'));
 
         setNewTaskTitle('');
         setNewTaskDescription('');
@@ -764,23 +691,7 @@ export default function ProjectDetailPage({
             : null,
         );
 
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('komorebi_projects');
-          if (saved) {
-            const list: LocalProjectStorageItem[] = JSON.parse(saved);
-            const updatedList = list.map((item) =>
-              item.id === project.id
-                ? {
-                    ...item,
-                    progress: res.progreso ?? item.progress,
-                    tasksCount: updatedTasks.length,
-                  }
-                : item,
-            );
-            localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
-            window.dispatchEvent(new Event('projects_updated'));
-          }
-        }
+        window.dispatchEvent(new Event('projects_updated'));
 
         setTaskToEdit(null);
       } else {

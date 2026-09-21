@@ -32,6 +32,7 @@ export async function Sidebar({ initialUser }: SidebarProps) {
               src="/images/mascot/chigui-focus.png"
               alt="Logo"
               fill
+              sizes="40px"
               className="object-contain p-0.5"
             />
           </div>

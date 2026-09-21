@@ -16,8 +16,9 @@ export interface ProjectData {
   priority: string;
   knowledge?: string;
   materials?: Record<string, unknown> | string;
-  dailyMinutes: number;
-  [key: string]: unknown;
+  dailyMinutes: number | string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; // Allow other fields from the 7 steps
 }
 
 /**
@@ -35,7 +36,7 @@ export const createProject = async (projectData: ProjectData) => {
       typeof projectData.materials === 'string'
         ? projectData.materials
         : JSON.stringify(projectData.materials || {}),
-    minutos_diarios: projectData.dailyMinutes || 30,
+    minutos_diarios: Number(projectData.dailyMinutes) || 30,
   });
 
   if (!result.success || !result.project) {

@@ -98,6 +98,16 @@ export function CreateProjectWizard() {
     setErrorMessage(null);
 
     try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const configuredTimeStr = answers[6]
+        ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim()
+        : '30';
+
       // 1. Preparar material_url con URLs y nombres de hasta 3 archivos
       const filesNames = (answers[5]?.files || []).filter(Boolean);
       const validUrls = (answers[5]?.urls || []).filter(
@@ -114,12 +124,31 @@ export function CreateProjectWizard() {
 
       const dailyMinutes = calculateDailyMinutes(answers[6]);
 
+      const projectName = answers[0]?.trim() || 'Proyecto Sin Nombre';
+      const objective = answers[1]?.trim() || '';
+      const deadline = answers[2] || '';
+      const priority = answers[3] || 'Prioritario';
+
+      // Llamada webhook n8n usando la Ruta API local (no bloqueante, evita CORS)
+      fetch('/api/webhooks/n8n', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user?.id || 'usuario_no_autenticado',
+          nombre_proyecto: projectName,
+          meta: objective,
+          fecha_limite: deadline,
+          prioridad: priority,
+          horario_configurado: configuredTimeStr,
+        }),
+      }).catch((err) => console.error('Error enviando webhook n8n:', err));
+
       // 2. Guardar en Supabase usando la Server Action
       const result = await createProjectAction({
-        titulo: answers[0]?.trim() || 'Proyecto Sin Nombre',
-        objetivo: answers[1]?.trim() || '',
-        fecha_limite: answers[2] || '',
-        prioridad: answers[3] || 'Prioritario',
+        titulo: projectName,
+        objetivo: objective,
+        fecha_limite: deadline,
+        prioridad: priority,
         nivel_conocimiento: answers[4] || '',
         material_url: materialUrl || undefined,
         minutos_diarios: dailyMinutes,
@@ -131,21 +160,8 @@ export function CreateProjectWizard() {
 
       const createdProject = result.project;
 
-      // 3. Sincronizar localStorage para compatibilidad inmediata con componentes clientes (como SidebarNav)
-      if (typeof window !== 'undefined') {
-        const existing = localStorage.getItem('komorebi_projects');
-        const projects = existing ? JSON.parse(existing) : [];
-        projects.unshift({
-          id: createdProject.id,
-          name: createdProject.titulo,
-          importance: createdProject.prioridad,
-          tasksCount: 0,
-          progress: 0,
-          createdAt: createdProject.fecha_limite || new Date().toISOString(),
-        });
-        localStorage.setItem('komorebi_projects', JSON.stringify(projects));
-        window.dispatchEvent(new Event('projects_updated'));
-      }
+      // Actualizar los componentes que muestran el listado desde Supabase.
+      window.dispatchEvent(new Event('projects_updated'));
 
       router.push(`/proyectos/${createdProject.id}`);
     } catch (error: unknown) {
@@ -563,6 +579,7 @@ export function CreateProjectWizard() {
                 src="/images/mascot/imagendechiwiconcafe.png"
                 alt="Mr. Chiwi con Café"
                 fill
+                sizes="(max-width: 768px) 224px, 256px"
                 priority
                 className="object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
               />

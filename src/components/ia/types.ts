@@ -1,4 +1,4 @@
-export type AssistantScope = 'general' | 'project' | 'topic' | 'calendar';
+export type AssistantScope = 'general' | 'project' | 'topic' | 'calendar' | 'analytics';
 
 export type AssistantMessage = {
   id: string;
@@ -13,6 +13,10 @@ export type AssistantContext = {
   description: string;
   label: string;
   suggestions?: string[];
+  analyticsContext?: {
+    view: AnalyticsMetricId;
+    period: 'week';
+  };
 };
 
 export const GENERAL_ASSISTANT_CONTEXT: AssistantContext = {
@@ -32,3 +36,4 @@ export type SendAssistantMessage = (input: {
   content: string;
   context: AssistantContext;
 }) => Promise<AssistantMessage>;
+import type { AnalyticsMetricId } from '@/features/analytics/data/types';

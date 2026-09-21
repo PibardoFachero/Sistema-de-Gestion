@@ -26,12 +26,14 @@ type AssistantChatProps = {
   context?: AssistantContext;
   messages?: AssistantMessage[];
   onSend?: SendAssistantMessage;
+  onClearContext?: () => void;
 };
 
 export function AssistantChat({
   context = GENERAL_ASSISTANT_CONTEXT,
   messages = [],
   onSend,
+  onClearContext,
 }: AssistantChatProps) {
   const [conversation, setConversation] = useState(messages);
   const [draft, setDraft] = useState('');
@@ -97,6 +99,24 @@ export function AssistantChat({
           {isConnected ? 'Listo para conversar' : 'Conexión pendiente'}
         </span>
       </header>
+
+      {context.scope === 'analytics' && context.analyticsContext && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2 text-xs text-on-surface-variant">
+          <span className="rounded-full bg-primary px-2.5 py-1 font-bold text-on-primary">
+            Contexto: Analítica · {context.label}
+          </span>
+          <span>Se enviará solo la vista y el período, no tus títulos ni notas.</span>
+          {onClearContext && (
+            <button
+              type="button"
+              onClick={onClearContext}
+              className="ml-auto rounded-lg px-2 py-1 font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              Modo general
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <Card className="flex min-h-[38rem] flex-col overflow-hidden p-0">
