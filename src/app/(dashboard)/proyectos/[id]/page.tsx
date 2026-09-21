@@ -112,7 +112,6 @@ function checkScheduleConflict(
   return { hasConflict: false, message: null };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function ProjectDetailPage({
   params,
 }: {
@@ -183,18 +182,6 @@ export default function ProjectDetailPage({
       next[index] = val;
       return next;
     });
-  };
-
-  const handleDeleteProject = () => {
-    if (typeof window !== 'undefined' && project) {
-      const saved = localStorage.getItem('komorebi_projects');
-      if (saved) {
-        const projects = JSON.parse(saved);
-        const updated = projects.filter((p: { id: string }) => p.id !== project.id);
-        localStorage.setItem('komorebi_projects', JSON.stringify(updated));
-        window.dispatchEvent(new Event('projects_updated'));
-      }
-    }
   };
 
   const handleOpenEditModal = (task: Task) => {
