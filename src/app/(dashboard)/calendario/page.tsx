@@ -15,13 +15,15 @@ interface Availability {
   startTime: string;
   endTime: string;
   label: string;
-  type?: 'libre' | 'descanso' | 'trabajo';
+  type?: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad';
 }
 
 const COLOR_MAP = {
   libre: { bg: 'bg-[#C8D6AF]', hover: 'hover:bg-[#B5C59A]', text: 'text-[#3A4A28]', border: 'border-[#3A4A28]/20', bgPale: 'bg-[#C8D6AF]/30' },
+  estudiando: { bg: 'bg-[#BBD0F4]', hover: 'hover:bg-[#A4BFE6]', text: 'text-[#203D6B]', border: 'border-[#203D6B]/20', bgPale: 'bg-[#BBD0F4]/30' },
+  trabajo: { bg: 'bg-[#F4C2BA]', hover: 'hover:bg-[#E5B0A7]', text: 'text-[#6B3229]', border: 'border-[#6B3229]/20', bgPale: 'bg-[#F4C2BA]/30' },
   descanso: { bg: 'bg-[#F9EBB2]', hover: 'hover:bg-[#E8D9A0]', text: 'text-[#5C4F1A]', border: 'border-[#5C4F1A]/20', bgPale: 'bg-[#F9EBB2]/30' },
-  trabajo: { bg: 'bg-[#F4C2BA]', hover: 'hover:bg-[#E5B0A7]', text: 'text-[#6B3229]', border: 'border-[#6B3229]/20', bgPale: 'bg-[#F4C2BA]/30' }
+  otra_actividad: { bg: 'bg-[#E1C6F5]', hover: 'hover:bg-[#CFAEE8]', text: 'text-[#4A2D69]', border: 'border-[#4A2D69]/20', bgPale: 'bg-[#E1C6F5]/30' }
 };
 
 // ARREGLO GLOBAL MAESTRO (Para lógica de rangos)
@@ -50,7 +52,7 @@ export default function CalendarioPage() {
   
   const [editingCell, setEditingCell] = useState<{ date: string, time: string } | null>(null);
   const [editLabel, setEditLabel] = useState('');
-  const [editType, setEditType] = useState<'libre' | 'descanso' | 'trabajo'>('libre');
+  const [editType, setEditType] = useState<'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad'>('libre');
   
   const [selectionStart, setSelectionStart] = useState<{ date: string, time: string, action: 'add' | 'remove', isMacro: boolean } | null>(null);
 
@@ -261,7 +263,7 @@ export default function CalendarioPage() {
     }
   };
 
-  const handleEditLabel = (dateStr: string, timeStr: string, currentLabel: string, currentType: 'libre' | 'descanso' | 'trabajo', e: React.MouseEvent) => {
+  const handleEditLabel = (dateStr: string, timeStr: string, currentLabel: string, currentType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad', e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingCell({ date: dateStr, time: timeStr });
     setEditLabel(currentLabel === 'Libre' ? '' : currentLabel);
@@ -376,8 +378,8 @@ export default function CalendarioPage() {
     const selectionStartDayIndex = selectionStart ? days.findIndex(d => format(d, 'yyyy-MM-dd') === selectionStart.date) : -1;
 
     return (
-      <div className="flex flex-col animate-in fade-in duration-300 w-full max-w-6xl mx-auto h-[calc(100vh-140px)]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
+      <div className="flex flex-col animate-in fade-in duration-300 w-full max-w-6xl mx-auto h-full min-h-[calc(100vh-140px)]">
+        <div className="sticky top-0 z-[40] bg-[#FDFBF9] py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 shrink-0">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => {
@@ -512,8 +514,8 @@ export default function CalendarioPage() {
 
         {/* Contenedor del Grid */}
         <div className="flex-1 overflow-y-auto bg-white border border-[#EAE3DC] rounded-[20px] shadow-sm relative custom-scrollbar select-none" onMouseLeave={() => setHoveredTimeStr(null)}>
-          <div className="sticky top-0 z-20 flex bg-surface-container-lowest border-b border-[#EAE3DC] shadow-sm">
-            <div className="w-[100px] min-w-[100px] border-r border-[#EAE3DC] bg-surface-container-lowest"></div>
+          <div className="sticky top-0 z-[20] flex bg-white border-b border-[#EAE3DC] shadow-sm">
+            <div className="sticky left-0 top-0 z-[30] w-[100px] min-w-[100px] border-r border-[#EAE3DC] bg-white"></div>
             <div className="flex-1 grid grid-cols-7 min-w-[500px]">
               {days.map((day) => {
                 const isToday = isSameDay(day, new Date());
@@ -548,7 +550,7 @@ export default function CalendarioPage() {
                   <div 
                     key={`time-${time}`} 
                     className={`
-                      h-[22px] relative flex justify-end items-center pr-3 group transition-colors cursor-default
+                      ${isHourStart ? 'min-h-[48px]' : 'min-h-[32px]'} relative flex justify-end items-center pr-3 group transition-colors cursor-default
                       ${isHourStart ? 'border-b border-[#EAE3DC]' : ''}
                       ${isHourEnd ? 'mb-3' : ''}
                       ${isHovered ? 'bg-[#f5e5d9]/60' : ''}
@@ -630,7 +632,7 @@ export default function CalendarioPage() {
                           key={`cell-${dateStr}-${timeStr}`} 
                           onMouseEnter={() => setHoveredTimeStr(timeStr)}
                           className={`
-                            h-[22px] relative group transition-colors box-border
+                            ${isHourStart ? 'min-h-[48px]' : 'min-h-[32px]'} relative group transition-colors box-border
                             ${isHourStart ? 'border-b border-[#EAE3DC]' : 'border-b border-dashed border-[#EAE3DC]/40'}
                             ${isHourEnd ? 'mb-3' : ''}
                             ${isPast ? '' : 'cursor-pointer'}
@@ -684,10 +686,12 @@ export default function CalendarioPage() {
                                 className="w-full text-xs font-bold text-on-surface bg-[#FDFBF9] border border-[#EAE3DC] rounded-md p-1.5 focus:outline-none focus:border-[#845326]"
                                 placeholder="Nota..."
                               />
-                              <div className="flex gap-2 justify-center">
+                              <div className="flex gap-2 justify-center flex-wrap px-2">
                                  <button onClick={() => setEditType('libre')} className={`w-6 h-6 rounded border ${editType === 'libre' ? 'border-[#845326] ring-2 ring-[#C8D6AF]/50' : 'border-[#EAE3DC]'} bg-[#C8D6AF]`} title="Libre"></button>
-                                 <button onClick={() => setEditType('descanso')} className={`w-6 h-6 rounded border ${editType === 'descanso' ? 'border-[#845326] ring-2 ring-[#F9EBB2]/50' : 'border-[#EAE3DC]'} bg-[#F9EBB2]`} title="Descanso"></button>
+                                 <button onClick={() => setEditType('estudiando')} className={`w-6 h-6 rounded border ${editType === 'estudiando' ? 'border-[#845326] ring-2 ring-[#BBD0F4]/50' : 'border-[#EAE3DC]'} bg-[#BBD0F4]`} title="Estudiando"></button>
                                  <button onClick={() => setEditType('trabajo')} className={`w-6 h-6 rounded border ${editType === 'trabajo' ? 'border-[#845326] ring-2 ring-[#F4C2BA]/50' : 'border-[#EAE3DC]'} bg-[#F4C2BA]`} title="Trabajo"></button>
+                                 <button onClick={() => setEditType('descanso')} className={`w-6 h-6 rounded border ${editType === 'descanso' ? 'border-[#845326] ring-2 ring-[#F9EBB2]/50' : 'border-[#EAE3DC]'} bg-[#F9EBB2]`} title="Descanso"></button>
+                                 <button onClick={() => setEditType('otra_actividad')} className={`w-6 h-6 rounded border ${editType === 'otra_actividad' ? 'border-[#845326] ring-2 ring-[#E1C6F5]/50' : 'border-[#EAE3DC]'} bg-[#E1C6F5]`} title="Otra actividad"></button>
                               </div>
                               <button onClick={saveEditedLabel} className="w-full bg-[#845326] text-white text-xs font-bold py-1.5 rounded-lg hover:bg-[#6c421f] transition-colors">
                                 Guardar
@@ -705,18 +709,26 @@ export default function CalendarioPage() {
         </div>
 
         {/* LEYENDA VISUAL DE COLORES */}
-        <div className="flex justify-center gap-6 mt-4 pb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex justify-center flex-wrap gap-x-6 gap-y-4 mt-6 mb-4 px-4 pb-6">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="w-4 h-4 rounded bg-[#C8D6AF] border border-[#3A4A28]/20"></div>
             <span className="text-xs font-bold text-[#845326]">Libre</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-4 h-4 rounded bg-[#BBD0F4] border border-[#203D6B]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Estudiando</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-4 h-4 rounded bg-[#F4C2BA] border border-[#6B3229]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Trabajo</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <div className="w-4 h-4 rounded bg-[#F9EBB2] border border-[#5C4F1A]/20"></div>
             <span className="text-xs font-bold text-[#845326]">Descanso</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-[#F4C2BA] border border-[#6B3229]/20"></div>
-            <span className="text-xs font-bold text-[#845326]">Trabajo</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-4 h-4 rounded bg-[#E1C6F5] border border-[#4A2D69]/20"></div>
+            <span className="text-xs font-bold text-[#845326]">Otra actividad</span>
           </div>
         </div>
 
