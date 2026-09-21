@@ -8,9 +8,7 @@ export interface ResendVerificationResponse {
   error?: string;
 }
 
-export async function resendVerificationEmail(
-  email: string,
-): Promise<ResendVerificationResponse> {
+export async function resendVerificationEmail(email: string): Promise<ResendVerificationResponse> {
   const trimmedEmail = email?.trim().toLowerCase();
 
   if (!trimmedEmail || !trimmedEmail.includes('@')) {
@@ -65,7 +63,8 @@ export async function resendVerificationEmail(
       if (lower.includes('rate limit') || lower.includes('over_email_send_rate_limit')) {
         return {
           success: false,
-          error: 'Por motivos de seguridad, debes esperar un momento antes de solicitar otro correo.',
+          error:
+            'Por motivos de seguridad, debes esperar un momento antes de solicitar otro correo.',
         };
       }
 

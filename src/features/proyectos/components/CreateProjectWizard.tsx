@@ -3,7 +3,18 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as LinkIcon, Plus, Trash2, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Sparkles,
+  Loader2,
+  UploadCloud,
+  Link as LinkIcon,
+  Plus,
+  Trash2,
+  AlertCircle,
+} from 'lucide-react';
 import { createProjectAction } from '@/features/proyectos/actions/proyectoActions';
 
 interface StepMaterials {
@@ -89,7 +100,9 @@ export function CreateProjectWizard() {
     try {
       // 1. Preparar material_url con URLs y nombres de hasta 3 archivos
       const filesNames = (answers[5]?.files || []).filter(Boolean);
-      const validUrls = (answers[5]?.urls || []).filter((u: string) => typeof u === 'string' && u.trim().length > 0);
+      const validUrls = (answers[5]?.urls || []).filter(
+        (u: string) => typeof u === 'string' && u.trim().length > 0,
+      );
       const materialParts: string[] = [];
       if (validUrls.length > 0) {
         materialParts.push(`URLs: ${validUrls.join(', ')}`);
@@ -223,7 +236,9 @@ export function CreateProjectWizard() {
               type="date"
               min={todayStr}
               className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${
-                isPastDate ? 'border-red-400 focus:border-red-500' : 'border-[#E2D9D0] focus:border-[#2C1F14]'
+                isPastDate
+                  ? 'border-red-400 focus:border-red-500'
+                  : 'border-[#E2D9D0] focus:border-[#2C1F14]'
               }`}
               value={answers[2] || ''}
               onChange={(e) => updateAnswer(2, e.target.value)}
@@ -263,7 +278,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
@@ -302,7 +319,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
@@ -317,7 +336,8 @@ export function CreateProjectWizard() {
       case 5: {
         const currentData = answers[5] || { files: [], urls: [''] };
         const files: string[] = currentData.files || [];
-        const urls: string[] = currentData.urls && currentData.urls.length > 0 ? currentData.urls : [''];
+        const urls: string[] =
+          currentData.urls && currentData.urls.length > 0 ? currentData.urls : [''];
 
         const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
           const selectedFiles = e.target.files;
@@ -376,7 +396,9 @@ export function CreateProjectWizard() {
                     <p className="text-sm font-semibold text-[#2C1F14]">
                       Haz click o arrastra tus archivos aquí
                     </p>
-                    <p className="text-xs text-[#845326] mt-0.5">PDF, DOCX, TXT (Máx. 3 archivos)</p>
+                    <p className="text-xs text-[#845326] mt-0.5">
+                      PDF, DOCX, TXT (Máx. 3 archivos)
+                    </p>
                   </div>
                 ) : (
                   <div className="p-3 bg-[#FDFBF9] border border-[#E2D9D0] rounded-xl text-center text-xs font-semibold text-[#845326]">
@@ -392,7 +414,9 @@ export function CreateProjectWizard() {
                         key={idx}
                         className="flex items-center justify-between p-2.5 px-3 bg-white border border-[#E2D9D0] rounded-xl text-xs"
                       >
-                        <span className="truncate max-w-[280px] font-medium text-[#2C1F14]">{file}</span>
+                        <span className="truncate max-w-[280px] font-medium text-[#2C1F14]">
+                          {file}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveFile(idx)}
@@ -458,7 +482,9 @@ export function CreateProjectWizard() {
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
-              En la encuesta indicaste que tienes <span className="text-[#845326]">{onboardingTime}</span> libres al día. ¿Cuánto de ese tiempo puedes dedicarle a este proyecto?
+              En la encuesta indicaste que tienes{' '}
+              <span className="text-[#845326]">{onboardingTime}</span> libres al día. ¿Cuánto de ese
+              tiempo puedes dedicarle a este proyecto?
             </h2>
             <div className="space-y-3 mb-6">
               {mainOptions.map((opt) => {
@@ -481,7 +507,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}

@@ -221,7 +221,8 @@ export function ResetPasswordForm() {
           </div>
           <h2 className="text-xl font-bold text-primary mb-2">¡Contraseña actualizada!</h2>
           <p className="text-sm text-on-surface-variant mb-6 max-w-sm">
-            Tu contraseña ha sido modificada con éxito. Tu sesión se mantendrá abierta y te redirigiremos a tu perfil en unos instantes...
+            Tu contraseña ha sido modificada con éxito. Tu sesión se mantendrá abierta y te
+            redirigiremos a tu perfil en unos instantes...
           </p>
           <Link href="/perfil" className="w-full">
             <Button variant="primary" className="w-full h-11 rounded-xl font-semibold text-sm">

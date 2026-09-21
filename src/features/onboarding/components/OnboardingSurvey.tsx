@@ -26,7 +26,7 @@ export function OnboardingSurvey() {
     if (saveError) setSaveError(null);
     setAnswers((prev) => ({
       ...prev,
-      [currentQuestion.id]: option
+      [currentQuestion.id]: option,
     }));
   };
 
@@ -81,12 +81,10 @@ export function OnboardingSurvey() {
   return (
     <div className="w-[90%] max-w-[1050px] min-h-[80vh] mx-auto flex items-center justify-center py-6 sm:py-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center justify-items-center w-full">
-        
         {/* ========================================================
             COLUMNA IZQUIERDA: Persistente (Mr. Chiwi & Diálogo)
         ======================================================== */}
         <div className="flex flex-col items-center text-center w-full max-w-[420px]">
-          
           {/* Títulos superiores manuscritos */}
           <div className="mb-4">
             <h1 className="font-handwriting text-3xl sm:text-4xl font-bold text-[#2C1F14] tracking-wide leading-tight">
@@ -128,16 +126,13 @@ export function OnboardingSurvey() {
         ======================================================== */}
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white border border-[#EAE3DC] rounded-[20px] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all">
-            
             {/* Encabezado e Indicador de Progreso */}
             <div className="space-y-2.5 mb-6">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#E8DCD1] text-xs font-semibold text-[#2C1F14] uppercase tracking-wider">
                   Paso {currentStep + 1} de {totalSteps}
                 </span>
-                <span className="text-xs font-bold text-[#2C1F14]/70">
-                  {progressPercent}%
-                </span>
+                <span className="text-xs font-bold text-[#2C1F14]/70">{progressPercent}%</span>
               </div>
 
               {/* Barra de Progreso */}
@@ -232,7 +227,6 @@ export function OnboardingSurvey() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

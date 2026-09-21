@@ -5,8 +5,11 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Project, ProjectCard } from '@/features/proyectos/components/ProjectCard';
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
-import { getProjectsAction, deleteProjectAction, ProjectRecord } from '@/features/proyectos/actions/proyectoActions';
-
+import {
+  getProjectsAction,
+  deleteProjectAction,
+  ProjectRecord,
+} from '@/features/proyectos/actions/proyectoActions';
 
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Project[]>([]);
@@ -28,7 +31,9 @@ export default function ProyectosPage() {
             const tasksCount = tareas.length;
             const completedCount = tareas.filter((t) => t.completado).length;
             const calculatedProgress =
-              tasksCount === 0 ? (p.progreso ?? 0) : Math.round((completedCount / tasksCount) * 100);
+              tasksCount === 0
+                ? (p.progreso ?? 0)
+                : Math.round((completedCount / tasksCount) * 100);
 
             return {
               id: p.id,
@@ -144,7 +149,8 @@ export default function ProyectosPage() {
           </div>
           <h1 className="mb-3 text-3xl font-bold text-on-surface">¡Empieza tu nuevo proyecto!</h1>
           <p className="max-w-md text-on-surface-variant">
-            Crea tu primer espacio de estudio o trabajo y organiza todas tus tareas de forma sencilla.
+            Crea tu primer espacio de estudio o trabajo y organiza todas tus tareas de forma
+            sencilla.
           </p>
           <Link
             href="/proyectos/nuevo"

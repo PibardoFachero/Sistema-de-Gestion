@@ -57,7 +57,7 @@ function checkScheduleConflict(
   newTimeStr: string,
   newDurationMinutes: number,
   existingTasks: Task[],
-  excludeTaskId?: string
+  excludeTaskId?: string,
 ): ScheduleConflictResult {
   if (!newDateStr || !newTimeStr) {
     return { hasConflict: false, message: null };
@@ -77,7 +77,8 @@ function checkScheduleConflict(
     const exStart = new Date(t.startDate).getTime();
     if (isNaN(exStart)) continue;
 
-    const exDurMin = typeof t.duration === 'number' ? t.duration : parseInt(String(t.duration)) || 30;
+    const exDurMin =
+      typeof t.duration === 'number' ? t.duration : parseInt(String(t.duration)) || 30;
     const exEnd = exStart + exDurMin * 60 * 1000;
 
     // Caso 1: Fecha y hora exactamente igual
@@ -214,7 +215,8 @@ export default function ProjectDetailPage({
     }
 
     // Desglosar duración
-    const durNum = typeof task.duration === 'number' ? task.duration : parseInt(String(task.duration)) || 30;
+    const durNum =
+      typeof task.duration === 'number' ? task.duration : parseInt(String(task.duration)) || 30;
     if (durNum >= 60 && durNum % 60 === 0) {
       setEditDurationValue(String(durNum / 60));
       setEditDurationUnit('horas');
@@ -250,7 +252,13 @@ export default function ProjectDetailPage({
           if (!isMounted) return;
           if (res.success && res.project) {
             const p = res.project;
-            const tareasList: Task[] = (p.tareas as (TaskRecord & { resources?: string; recurso_url?: string; material_url?: string })[] || []).map((t) => ({
+            const tareasList: Task[] = (
+              (p.tareas as (TaskRecord & {
+                resources?: string;
+                recurso_url?: string;
+                material_url?: string;
+              })[]) || []
+            ).map((t) => ({
               id: t.id,
               title: t.titulo,
               description: t.descripcion || '',
@@ -266,7 +274,9 @@ export default function ProjectDetailPage({
             const totalTasks = tareasList.length;
             const completedTasks = tareasList.filter((t) => t.isCompleted).length;
             const calculatedProgress =
-              totalTasks === 0 ? (p.progreso ?? 0) : Math.round((completedTasks / totalTasks) * 100);
+              totalTasks === 0
+                ? (p.progreso ?? 0)
+                : Math.round((completedTasks / totalTasks) * 100);
             const isCompleted = p.completado || (totalTasks > 0 && completedTasks === totalTasks);
 
             setProject({
@@ -321,14 +331,14 @@ export default function ProjectDetailPage({
 
     // Actualización optimista en interfaz
     const updatedTasks = project.tasks.map((t) =>
-      t.id === taskId ? { ...t, isCompleted: newStatus } : t
+      t.id === taskId ? { ...t, isCompleted: newStatus } : t,
     );
     const completedCount = updatedTasks.filter((t) => t.isCompleted).length;
     const optimisticProgress =
       updatedTasks.length === 0 ? 0 : Math.round((completedCount / updatedTasks.length) * 100);
 
     setProject((prev) =>
-      prev ? { ...prev, progress: optimisticProgress, tasks: updatedTasks } : null
+      prev ? { ...prev, progress: optimisticProgress, tasks: updatedTasks } : null,
     );
 
     try {
@@ -337,11 +347,11 @@ export default function ProjectDetailPage({
         setProject((prev) =>
           prev
             ? {
-              ...prev,
-              progress: res.progreso,
-              completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
-            }
-            : null
+                ...prev,
+                progress: res.progreso,
+                completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
+              }
+            : null,
         );
 
         if (typeof window !== 'undefined') {
@@ -349,7 +359,7 @@ export default function ProjectDetailPage({
           if (saved) {
             const list: LocalProjectStorageItem[] = JSON.parse(saved);
             const updatedList = list.map((item) =>
-              item.id === project.id ? { ...item, progress: res.progreso } : item
+              item.id === project.id ? { ...item, progress: res.progreso } : item,
             );
             localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
             window.dispatchEvent(new Event('projects_updated'));
@@ -385,7 +395,7 @@ export default function ProjectDetailPage({
       updatedTasks.length === 0 ? 0 : Math.round((completedCount / updatedTasks.length) * 100);
 
     setProject((prev) =>
-      prev ? { ...prev, progress: optimisticProgress, tasks: updatedTasks } : null
+      prev ? { ...prev, progress: optimisticProgress, tasks: updatedTasks } : null,
     );
 
     try {
@@ -394,11 +404,11 @@ export default function ProjectDetailPage({
         setProject((prev) =>
           prev
             ? {
-              ...prev,
-              progress: res.progreso,
-              completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
-            }
-            : null
+                ...prev,
+                progress: res.progreso,
+                completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
+              }
+            : null,
         );
 
         if (typeof window !== 'undefined') {
@@ -408,7 +418,7 @@ export default function ProjectDetailPage({
             const updatedList = list.map((item) =>
               item.id === project.id
                 ? { ...item, progress: res.progreso, tasksCount: updatedTasks.length }
-                : item
+                : item,
             );
             localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
             window.dispatchEvent(new Event('projects_updated'));
@@ -416,13 +426,13 @@ export default function ProjectDetailPage({
         }
       } else {
         setProject((prev) =>
-          prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null
+          prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null,
         );
       }
     } catch (error) {
       console.error('Error eliminando tarea en Supabase:', error);
       setProject((prev) =>
-        prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null
+        prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null,
       );
     } finally {
       setIsDeletingTask(false);
@@ -481,7 +491,9 @@ export default function ProjectDetailPage({
         return;
       }
       if (maxProjectDate && taskStartDate > maxProjectDate) {
-        setTaskErrorMessage(`El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`);
+        setTaskErrorMessage(
+          `El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`,
+        );
         return;
       }
     } else {
@@ -501,7 +513,7 @@ export default function ProjectDetailPage({
         taskStartDate,
         taskStartTime,
         calculatedDurationMinutes,
-        project.tasks || []
+        project.tasks || [],
       );
 
       if (conflict.hasConflict) {
@@ -535,7 +547,8 @@ export default function ProjectDetailPage({
           description: res.task.descripcion || '',
           duration: res.task.duracion,
           startDate: res.task.fecha_inicio || fullStartDateTime,
-          resourceUrl: (res.task as TaskRecord & { resources?: string }).resources || combinedUrls || null,
+          resourceUrl:
+            (res.task as TaskRecord & { resources?: string }).resources || combinedUrls || null,
           isCompleted: false,
         };
 
@@ -543,12 +556,12 @@ export default function ProjectDetailPage({
         setProject((prev) =>
           prev
             ? {
-              ...prev,
-              progress: res.progreso ?? prev.progress,
-              completado: false,
-              tasks: updatedTasks,
-            }
-            : null
+                ...prev,
+                progress: res.progreso ?? prev.progress,
+                completado: false,
+                tasks: updatedTasks,
+              }
+            : null,
         );
 
         if (typeof window !== 'undefined') {
@@ -558,11 +571,11 @@ export default function ProjectDetailPage({
             const updatedList = list.map((item) =>
               item.id === project.id
                 ? {
-                  ...item,
-                  progress: res.progreso ?? item.progress,
-                  tasksCount: updatedTasks.length,
-                }
-                : item
+                    ...item,
+                    progress: res.progreso ?? item.progress,
+                    tasksCount: updatedTasks.length,
+                  }
+                : item,
             );
             localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
             window.dispatchEvent(new Event('projects_updated'));
@@ -606,7 +619,9 @@ export default function ProjectDetailPage({
       }
       const maxProjectDate = project.fecha_limite ? project.fecha_limite.split('T')[0] : null;
       if (maxProjectDate && editTaskStartDate > maxProjectDate) {
-        setEditErrorMessage(`El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`);
+        setEditErrorMessage(
+          `El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`,
+        );
         return;
       }
     } else {
@@ -623,7 +638,7 @@ export default function ProjectDetailPage({
       editTaskStartTime,
       calculatedDurationMinutes,
       project.tasks || [],
-      taskToEdit.id
+      taskToEdit.id,
     );
 
     if (conflict.hasConflict) {
@@ -661,23 +676,24 @@ export default function ProjectDetailPage({
           description: res.task.descripcion || '',
           duration: res.task.duracion,
           startDate: res.task.fecha_inicio || fullStartDateTime,
-          resourceUrl: (res.task as TaskRecord & { resources?: string }).resources || combinedUrls || null,
+          resourceUrl:
+            (res.task as TaskRecord & { resources?: string }).resources || combinedUrls || null,
           isCompleted: taskToEdit.isCompleted,
         };
 
         const updatedTasks = project.tasks.map((t) =>
-          t.id === taskToEdit.id ? updatedTaskItem : t
+          t.id === taskToEdit.id ? updatedTaskItem : t,
         );
 
         setProject((prev) =>
           prev
             ? {
-              ...prev,
-              progress: res.progreso ?? prev.progress,
-              completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
-              tasks: updatedTasks,
-            }
-            : null
+                ...prev,
+                progress: res.progreso ?? prev.progress,
+                completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
+                tasks: updatedTasks,
+              }
+            : null,
         );
 
         if (typeof window !== 'undefined') {
@@ -687,11 +703,11 @@ export default function ProjectDetailPage({
             const updatedList = list.map((item) =>
               item.id === project.id
                 ? {
-                  ...item,
-                  progress: res.progreso ?? item.progress,
-                  tasksCount: updatedTasks.length,
-                }
-                : item
+                    ...item,
+                    progress: res.progreso ?? item.progress,
+                    tasksCount: updatedTasks.length,
+                  }
+                : item,
             );
             localStorage.setItem('komorebi_projects', JSON.stringify(updatedList));
             window.dispatchEvent(new Event('projects_updated'));
@@ -757,20 +773,21 @@ export default function ProjectDetailPage({
     taskStartDate,
     taskStartTime,
     currentDurationMin,
-    project.tasks || []
+    project.tasks || [],
   );
 
   const numericEditDuration = Math.max(1, Math.round(Number(editDurationValue)) || 1);
-  const currentEditDurationMin = editDurationUnit === 'horas' ? numericEditDuration * 60 : numericEditDuration;
+  const currentEditDurationMin =
+    editDurationUnit === 'horas' ? numericEditDuration * 60 : numericEditDuration;
 
   const liveEditScheduleConflict = taskToEdit
     ? checkScheduleConflict(
-      editTaskStartDate,
-      editTaskStartTime,
-      currentEditDurationMin,
-      project.tasks || [],
-      taskToEdit.id
-    )
+        editTaskStartDate,
+        editTaskStartTime,
+        currentEditDurationMin,
+        project.tasks || [],
+        taskToEdit.id,
+      )
     : { hasConflict: false, message: null };
 
   return (
@@ -862,7 +879,9 @@ export default function ProjectDetailPage({
 
       {project.tasks.length === 0 ? (
         <div className="bg-white border border-[#E8DCD1] rounded-2xl p-8 text-center">
-          <p className="text-sm font-semibold text-on-surface mb-2">Aún no hay tareas registradas</p>
+          <p className="text-sm font-semibold text-on-surface mb-2">
+            Aún no hay tareas registradas
+          </p>
           <p className="text-xs text-on-surface-variant mb-4">
             Comienza agregando tu primera tarea de estudio para este proyecto.
           </p>
@@ -982,7 +1001,10 @@ export default function ProjectDetailPage({
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="taskStartDate" className="block text-xs font-semibold text-gray-500 mb-1">
+                    <label
+                      htmlFor="taskStartDate"
+                      className="block text-xs font-semibold text-gray-500 mb-1"
+                    >
                       Día de inicio
                     </label>
                     <input
@@ -998,7 +1020,10 @@ export default function ProjectDetailPage({
                   </div>
 
                   <div>
-                    <label htmlFor="taskStartTime" className="block text-xs font-semibold text-gray-500 mb-1">
+                    <label
+                      htmlFor="taskStartTime"
+                      className="block text-xs font-semibold text-gray-500 mb-1"
+                    >
                       Hora de inicio
                     </label>
                     <input
@@ -1013,7 +1038,8 @@ export default function ProjectDetailPage({
                 </div>
                 {project?.fecha_limite && (
                   <p className="mt-1.5 text-[11px] text-gray-500">
-                    * Debe estar dentro del rango hasta la fecha límite del proyecto ({project.fecha_limite.split('T')[0]}).
+                    * Debe estar dentro del rango hasta la fecha límite del proyecto (
+                    {project.fecha_limite.split('T')[0]}).
                   </p>
                 )}
               </div>
@@ -1062,7 +1088,8 @@ export default function ProjectDetailPage({
               {/* Sección URLs recomendadas dinámicas (mismo formato que el wizard) */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-on-surface mb-2">
-                  <LinkIcon className="size-4 text-[#845326]" /> Enlaces y URLs recomendadas (opcional)
+                  <LinkIcon className="size-4 text-[#845326]" /> Enlaces y URLs recomendadas
+                  (opcional)
                 </label>
 
                 <div className="space-y-2.5">
@@ -1105,7 +1132,9 @@ export default function ProjectDetailPage({
                   <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
                   <div>
                     <span className="font-bold block text-amber-950">Advertencia de horario:</span>
-                    <span className="text-amber-800 mt-0.5 block leading-relaxed">{liveScheduleConflict.message}</span>
+                    <span className="text-amber-800 mt-0.5 block leading-relaxed">
+                      {liveScheduleConflict.message}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1120,7 +1149,9 @@ export default function ProjectDetailPage({
                 </button>
                 <button
                   type="submit"
-                  disabled={!newTaskTitle.trim() || isSubmittingTask || liveScheduleConflict.hasConflict}
+                  disabled={
+                    !newTaskTitle.trim() || isSubmittingTask || liveScheduleConflict.hasConflict
+                  }
                   className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-98"
                 >
                   {isSubmittingTask ? 'Guardando...' : 'Guardar Tarea'}
@@ -1153,7 +1184,10 @@ export default function ProjectDetailPage({
 
             <form onSubmit={handleEditTask} className="flex flex-col gap-5">
               <div>
-                <label htmlFor="editTaskTitle" className="block text-sm font-bold text-on-surface mb-2">
+                <label
+                  htmlFor="editTaskTitle"
+                  className="block text-sm font-bold text-on-surface mb-2"
+                >
                   Título de la tarea
                 </label>
                 <input
@@ -1190,7 +1224,10 @@ export default function ProjectDetailPage({
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="editTaskStartDate" className="block text-xs font-semibold text-gray-500 mb-1">
+                    <label
+                      htmlFor="editTaskStartDate"
+                      className="block text-xs font-semibold text-gray-500 mb-1"
+                    >
                       Día de inicio
                     </label>
                     <input
@@ -1206,7 +1243,10 @@ export default function ProjectDetailPage({
                   </div>
 
                   <div>
-                    <label htmlFor="editTaskStartTime" className="block text-xs font-semibold text-gray-500 mb-1">
+                    <label
+                      htmlFor="editTaskStartTime"
+                      className="block text-xs font-semibold text-gray-500 mb-1"
+                    >
                       Hora de inicio
                     </label>
                     <input
@@ -1221,7 +1261,8 @@ export default function ProjectDetailPage({
                 </div>
                 {project?.fecha_limite && (
                   <p className="mt-1.5 text-[11px] text-gray-500">
-                    * Debe estar dentro del rango hasta la fecha límite del proyecto ({project.fecha_limite.split('T')[0]}).
+                    * Debe estar dentro del rango hasta la fecha límite del proyecto (
+                    {project.fecha_limite.split('T')[0]}).
                   </p>
                 )}
               </div>
@@ -1270,7 +1311,8 @@ export default function ProjectDetailPage({
               {/* Sección URLs recomendadas dinámicas (mismo formato que el wizard) */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-on-surface mb-2">
-                  <LinkIcon className="size-4 text-[#845326]" /> Enlaces y URLs recomendadas (opcional)
+                  <LinkIcon className="size-4 text-[#845326]" /> Enlaces y URLs recomendadas
+                  (opcional)
                 </label>
 
                 <div className="space-y-2.5">
@@ -1313,7 +1355,9 @@ export default function ProjectDetailPage({
                   <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
                   <div>
                     <span className="font-bold block text-amber-950">Advertencia de horario:</span>
-                    <span className="text-amber-800 mt-0.5 block leading-relaxed">{liveEditScheduleConflict.message}</span>
+                    <span className="text-amber-800 mt-0.5 block leading-relaxed">
+                      {liveEditScheduleConflict.message}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1328,7 +1372,11 @@ export default function ProjectDetailPage({
                 </button>
                 <button
                   type="submit"
-                  disabled={!editTaskTitle.trim() || isSubmittingEdit || liveEditScheduleConflict.hasConflict}
+                  disabled={
+                    !editTaskTitle.trim() ||
+                    isSubmittingEdit ||
+                    liveEditScheduleConflict.hasConflict
+                  }
                   className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-98"
                 >
                   {isSubmittingEdit ? 'Guardando...' : 'Guardar Cambios'}

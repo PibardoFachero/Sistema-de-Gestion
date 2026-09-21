@@ -65,7 +65,10 @@ export async function createProjectAction(input: CreateProjectInput) {
       today.setHours(0, 0, 0, 0);
       const selected = new Date(`${input.fecha_limite}T00:00:00`);
       if (selected < today) {
-        return { success: false, error: 'La fecha límite no puede ser anterior al día de creación.' };
+        return {
+          success: false,
+          error: 'La fecha límite no puede ser anterior al día de creación.',
+        };
       }
     }
 
@@ -78,7 +81,9 @@ export async function createProjectAction(input: CreateProjectInput) {
         user_id: user.id,
         titulo: input.titulo.trim(),
         objetivo: input.objetivo.trim(),
-        fecha_limite: input.fecha_limite ? new Date(`${input.fecha_limite}T00:00:00Z`).toISOString() : null,
+        fecha_limite: input.fecha_limite
+          ? new Date(`${input.fecha_limite}T00:00:00Z`).toISOString()
+          : null,
         prioridad: input.prioridad || 'Prioritario',
         nivel_conocimiento: input.nivel_conocimiento || '',
         material_url: input.material_url || null,
@@ -202,7 +207,11 @@ export async function getProjectDetailAction(id: string) {
  * toggleTaskStatusAction
  * Actualiza el campo 'completado' (boolean) de la tarea y recalcula el 'progreso' en 'projects'.
  */
-export async function toggleTaskStatusAction(taskId: string, isCompleted: boolean, projectId: string) {
+export async function toggleTaskStatusAction(
+  taskId: string,
+  isCompleted: boolean,
+  projectId: string,
+) {
   try {
     const supabase = await createClient();
     const {
@@ -436,10 +445,7 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
     const adminDb = getAdminClient();
     const db = adminDb || supabase;
 
-    const { error: deleteError } = await db
-      .from('tareas')
-      .delete()
-      .eq('id', taskId);
+    const { error: deleteError } = await db.from('tareas').delete().eq('id', taskId);
 
     if (deleteError) {
       return { success: false, error: deleteError.message };
@@ -675,4 +681,3 @@ export async function updateTaskAction(data: {
     return { success: false, error: msg };
   }
 }
-

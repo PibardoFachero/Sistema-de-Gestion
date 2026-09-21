@@ -28,19 +28,24 @@ export async function Sidebar({ initialUser }: SidebarProps) {
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-primary/10 p-1 rounded-lg text-primary flex items-center justify-center w-10 h-10 relative">
-            <Image 
-              src="/images/mascot/chigui-focus.png" 
-              alt="Logo" 
-              fill 
+            <Image
+              src="/images/mascot/chigui-focus.png"
+              alt="Logo"
+              fill
               className="object-contain p-0.5"
             />
           </div>
           <div>
             <h2 className="font-bold text-primary tracking-tight leading-tight">Komorebi</h2>
-            <p className="text-[10px] uppercase font-semibold text-accent-amber tracking-wider">Study Studio</p>
+            <p className="text-[10px] uppercase font-semibold text-accent-amber tracking-wider">
+              Study Studio
+            </p>
           </div>
         </div>
-        <button className="text-outline hover:text-primary transition-colors cursor-pointer" aria-label="Colapsar menú">
+        <button
+          className="text-outline hover:text-primary transition-colors cursor-pointer"
+          aria-label="Colapsar menú"
+        >
           <PanelLeftClose className="size-5" />
         </button>
       </div>

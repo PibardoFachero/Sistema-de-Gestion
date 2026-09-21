@@ -1,11 +1,11 @@
-import { 
-  createProjectAction, 
-  toggleTaskStatusAction, 
-  createTaskAction, 
-  deleteTaskAction, 
+import {
+  createProjectAction,
+  toggleTaskStatusAction,
+  createTaskAction,
+  deleteTaskAction,
   deleteProjectAction,
   getProjectsAction,
-  getProjectDetailAction
+  getProjectDetailAction,
 } from '@/features/proyectos/actions/proyectoActions';
 
 export interface ProjectData {
@@ -30,7 +30,10 @@ export const createProject = async (projectData: ProjectData) => {
     fecha_limite: projectData.deadline || '',
     prioridad: projectData.priority || 'Prioritario',
     nivel_conocimiento: projectData.knowledge || '',
-    material_url: typeof projectData.materials === 'string' ? projectData.materials : JSON.stringify(projectData.materials || {}),
+    material_url:
+      typeof projectData.materials === 'string'
+        ? projectData.materials
+        : JSON.stringify(projectData.materials || {}),
     minutos_diarios: projectData.dailyMinutes || 30,
   });
 
@@ -45,7 +48,11 @@ export const createProject = async (projectData: ProjectData) => {
  * toggleTaskStatus
  * Actualiza el campo 'completado' en la tabla 'tareas' y recalcula 'progreso' en 'projects'.
  */
-export const toggleTaskStatus = async (taskId: string, isCompleted: boolean, projectId?: string) => {
+export const toggleTaskStatus = async (
+  taskId: string,
+  isCompleted: boolean,
+  projectId?: string,
+) => {
   if (!projectId) {
     console.warn('toggleTaskStatus: projectId no proporcionado.');
   }
@@ -59,5 +66,5 @@ export {
   deleteTaskAction,
   deleteProjectAction,
   getProjectsAction,
-  getProjectDetailAction
+  getProjectDetailAction,
 };

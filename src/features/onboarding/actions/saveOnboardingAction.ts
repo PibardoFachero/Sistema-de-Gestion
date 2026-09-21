@@ -18,7 +18,7 @@ export interface SaveOnboardingResponse {
 }
 
 export async function saveOnboardingAnswers(
-  answers: OnboardingAnswersInput
+  answers: OnboardingAnswersInput,
 ): Promise<SaveOnboardingResponse> {
   try {
     const supabase = await createClient();

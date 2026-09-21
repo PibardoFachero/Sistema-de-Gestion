@@ -32,17 +32,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <FolderKanban className="size-4" />
             </div>
             <div>
-              <h2 className="font-bold text-primary tracking-tight text-sm leading-none">Komorebi</h2>
-              <p className="text-[9px] uppercase font-semibold text-accent-amber tracking-wider">Study Studio</p>
+              <h2 className="font-bold text-primary tracking-tight text-sm leading-none">
+                Komorebi
+              </h2>
+              <p className="text-[9px] uppercase font-semibold text-accent-amber tracking-wider">
+                Study Studio
+              </p>
             </div>
           </div>
           <UserProfileButton initialUser={user} compact />
         </header>
 
         <main id="contenido" className="flex-1 pb-20 md:pb-0 max-w-full overflow-x-hidden">
-          <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-10">
-            {children}
-          </div>
+          <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-10">{children}</div>
         </main>
       </div>
 

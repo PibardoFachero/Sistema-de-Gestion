@@ -63,7 +63,10 @@ function extractUrls(rawUrl?: string | null): string[] {
   return rawUrl
     .split(/[\s,|;\n]+/)
     .map((u) => u.trim())
-    .filter((u) => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://') || u.includes('.')));
+    .filter(
+      (u) =>
+        u.length > 0 && (u.startsWith('http://') || u.startsWith('https://') || u.includes('.')),
+    );
 }
 
 export function TaskItemCard({
@@ -165,7 +168,12 @@ export function TaskItemCard({
           <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-on-surface-variant bg-[#FDFBF9] px-2.5 py-1 rounded-lg border border-[#E8DCD1]/60">
             <Calendar className="size-3.5 text-[#845326]" />
             <span>
-              inicio: {task.startDate ? formatStartDate(task.startDate) : (task.timeSlot && task.timeSlot !== 'Hito de estudio' ? task.timeSlot : 'Por definir')}
+              inicio:{' '}
+              {task.startDate
+                ? formatStartDate(task.startDate)
+                : task.timeSlot && task.timeSlot !== 'Hito de estudio'
+                  ? task.timeSlot
+                  : 'Por definir'}
             </span>
           </div>
 
@@ -179,7 +187,9 @@ export function TaskItemCard({
         {/* Debajo del apartado de fecha de inicio: URLs recomendadas para la tarea */}
         {recommendedUrls.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-1.5 border-t border-[#E8DCD1]/50">
-            <span className="text-[11px] font-bold text-[#845326]/80 uppercase tracking-wider">Recursos:</span>
+            <span className="text-[11px] font-bold text-[#845326]/80 uppercase tracking-wider">
+              Recursos:
+            </span>
             {recommendedUrls.map((url, idx) => {
               const label = url
                 .replace(/^https?:\/\/(www\.)?/, '')
@@ -195,7 +205,9 @@ export function TaskItemCard({
                   title={`URL recomendada: ${url}`}
                 >
                   <ExternalLink className="size-3 shrink-0" />
-                  <span className="truncate">{task.resourceName && recommendedUrls.length === 1 ? task.resourceName : label}</span>
+                  <span className="truncate">
+                    {task.resourceName && recommendedUrls.length === 1 ? task.resourceName : label}
+                  </span>
                 </a>
               );
             })}
