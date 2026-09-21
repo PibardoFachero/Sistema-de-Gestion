@@ -7,7 +7,13 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
   height?: 'sm' | 'md';
 }
 
-export function ProgressBar({ progress, color = 'amber', height = 'md', className, ...props }: ProgressBarProps) {
+export function ProgressBar({
+  progress,
+  color = 'amber',
+  height = 'md',
+  className,
+  ...props
+}: ProgressBarProps) {
   const colors = {
     primary: 'bg-primary',
     amber: 'bg-accent-amber',
@@ -21,7 +27,14 @@ export function ProgressBar({ progress, color = 'amber', height = 'md', classNam
   };
 
   return (
-    <div className={cn('w-full overflow-hidden rounded-full bg-outline-variant/20', heights[height], className)} {...props}>
+    <div
+      className={cn(
+        'w-full overflow-hidden rounded-full bg-outline-variant/20',
+        heights[height],
+        className,
+      )}
+      {...props}
+    >
       <div
         className={cn('h-full rounded-full transition-all duration-500 ease-out', colors[color])}
         style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}

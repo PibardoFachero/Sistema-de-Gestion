@@ -19,38 +19,38 @@
   --color-on-surface-variant: #4f453e;
   --color-inverse-surface: #372f27;
   --color-inverse-on-surface: #feeee2;
-  
+
   --color-outline: #81756d;
   --color-outline-variant: #d2c4bb;
-  
+
   --color-primary: #322011;
   --color-on-primary: #ffffff;
   --color-primary-container: #4a3525;
   --color-on-primary-container: #bb9d88;
   --color-inverse-primary: #e1c0aa;
-  
+
   --color-secondary: #845326;
   --color-on-secondary: #ffffff;
   --color-secondary-container: #febc85;
   --color-on-secondary-container: #78491d;
-  
+
   --color-tertiary: #3f1900;
   --color-on-tertiary: #ffffff;
   --color-tertiary-container: #602900;
   --color-on-tertiary-container: #ef8946;
-  
+
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
-  
+
   --color-background: #fff8f4;
   --color-on-background: #221a13;
 
   /* Accent & status colors manually added based on DESIGN.md description */
   --color-accent-amber: #c68b59;
   --color-accent-umber: #d97736;
-  
+
   --color-status-success: #3d7a5a;
   --color-status-success-bg: #eaf4ee;
   --color-status-attention: #c07d2b;
@@ -86,7 +86,8 @@ body {
 }
 
 @keyframes blob-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0px, 0px) scale(1);
   }
   33% {
@@ -114,18 +115,36 @@ body {
 }
 
 @keyframes morph {
-  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-  50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  0%,
+  100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  50% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
 }
 
 @keyframes glowPastel {
-  0%   { border-color: #E8B4B8; box-shadow: 0 0 25px rgba(232, 180, 184, 0.5); }
-  33%  { border-color: #C8D6AF; box-shadow: 0 0 25px rgba(200, 214, 175, 0.5); }
-  66%  { border-color: #D8C4E0; box-shadow: 0 0 25px rgba(216, 196, 224, 0.5); }
-  100% { border-color: #F7D6BF; box-shadow: 0 0 25px rgba(247, 214, 191, 0.5); }
+  0% {
+    border-color: #e8b4b8;
+    box-shadow: 0 0 25px rgba(232, 180, 184, 0.5);
+  }
+  33% {
+    border-color: #c8d6af;
+    box-shadow: 0 0 25px rgba(200, 214, 175, 0.5);
+  }
+  66% {
+    border-color: #d8c4e0;
+    box-shadow: 0 0 25px rgba(216, 196, 224, 0.5);
+  }
+  100% {
+    border-color: #f7d6bf;
+    box-shadow: 0 0 25px rgba(247, 214, 191, 0.5);
+  }
 }
 
 .animate-morph-glow {
-  animation: morph 8s ease-in-out infinite, glowPastel 15s alternate infinite;
+  animation:
+    morph 8s ease-in-out infinite,
+    glowPastel 15s alternate infinite;
 }
-

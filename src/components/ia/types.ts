@@ -19,7 +19,8 @@ export const GENERAL_ASSISTANT_CONTEXT: AssistantContext = {
   scope: 'general',
   title: 'Asistente general',
   label: 'tu espacio de aprendizaje',
-  description: 'Un espacio para consultar, organizar ideas y recibir acompañamiento en tu recorrido de aprendizaje.',
+  description:
+    'Un espacio para consultar, organizar ideas y recibir acompañamiento en tu recorrido de aprendizaje.',
   suggestions: [
     '¿Qué debería priorizar esta semana?',
     'Ayúdame a preparar una sesión de estudio',

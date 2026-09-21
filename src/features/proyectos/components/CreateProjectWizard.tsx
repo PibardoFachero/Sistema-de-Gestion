@@ -3,32 +3,68 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2, UploadCloud, Link as LinkIcon, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Sparkles,
+  Loader2,
+  UploadCloud,
+  Link as LinkIcon,
+  Plus,
+  Trash2,
+  AlertCircle,
+} from 'lucide-react';
+import { createProjectAction } from '@/features/proyectos/actions/proyectoActions';
+
+interface StepMaterials {
+  files: string[];
+  urls: string[];
+}
+
+interface StepDailyTime {
+  mainOption?: string;
+  subOption?: string;
+}
+
+type WizardAnswers = {
+  0?: string;
+  1?: string;
+  2?: string;
+  3?: string;
+  4?: string;
+  5?: StepMaterials;
+  6?: StepDailyTime;
+};
 
 export function CreateProjectWizard() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [answers, setAnswers] = useState<WizardAnswers>({});
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const totalSteps = 7;
-  const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
-
+  // Inicializar tiempo de onboarding desde localStorage sin llamar setState en useEffect
   const [onboardingTime] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('komorebi_onboarding_answers');
-      if (saved) {
-        try {
+      try {
+        const saved = localStorage.getItem('komorebi_onboarding_answers');
+        if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed[5]) return parsed[5];
-        } catch (e) {
-          console.error('Error parsing onboarding answers', e);
+          if (parsed && parsed[5]) {
+            return String(parsed[5]);
+          }
         }
+      } catch (e) {
+        console.error('Error parsing onboarding answers', e);
       }
     }
     return 'unas horas';
   });
+
+  const totalSteps = 7;
+  const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -44,33 +80,52 @@ export function CreateProjectWizard() {
     }
   };
 
+  const calculateDailyMinutes = (ans6?: StepDailyTime): number => {
+    if (!ans6?.mainOption) return 30;
+    if (ans6.mainOption === 'Menos de 1 hora diaria') {
+      if (ans6.subOption === 'Menos de 30 minutos') return 20;
+      if (ans6.subOption === '30 minutos') return 30;
+      if (ans6.subOption === 'Más de 30 minutos') return 45;
+      return 30;
+    }
+    if (ans6.mainOption === 'Entre 1 a 2 horas') return 90;
+    if (ans6.mainOption === 'Más de 2 horas') return 150;
+    return 30;
+  };
+
   const handleComplete = async () => {
     setIsFinishing(true);
-    
+    setErrorMessage(null);
+
     try {
-      const { createProject } = await import('@/services/proyectoServices');
       const { createClient } = await import('@/lib/supabase/client');
-      
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const configuredTime = answers[6] 
+
+      const configuredTimeStr = answers[6] 
         ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim() 
         : '30';
 
-      const newProjectData = {
-        id: Date.now().toString(),
-        projectName: answers[0] || 'Proyecto Sin Nombre',
-        objective: answers[1] || '',
-        deadline: answers[2] || '',
-        priority: answers[3] || 'Normal',
-        knowledge: answers[4] || '',
-        materials: answers[5] || {},
-        dailyMinutes: configuredTime,
-        tasksCount: 0,
-        progress: 0,
-        createdAt: new Date().toISOString(),
-      };
+      // 1. Preparar material_url con URLs y nombres de hasta 3 archivos
+      const filesNames = (answers[5]?.files || []).filter(Boolean);
+      const validUrls = (answers[5]?.urls || []).filter(
+        (u: string) => typeof u === 'string' && u.trim().length > 0,
+      );
+      const materialParts: string[] = [];
+      if (validUrls.length > 0) {
+        materialParts.push(`URLs: ${validUrls.join(', ')}`);
+      }
+      if (filesNames.length > 0) {
+        materialParts.push(`Archivos: ${filesNames.join(', ')}`);
+      }
+      const materialUrl = materialParts.join(' | ') || (validUrls[0] ?? '');
+
+      const dailyMinutes = calculateDailyMinutes(answers[6]);
+
+      const projectName = answers[0]?.trim() || 'Proyecto Sin Nombre';
+      const objective = answers[1]?.trim() || '';
+      const deadline = answers[2] || '';
+      const priority = answers[3] || 'Prioritario';
 
       // Llamada webhook n8n usando la Ruta API local (no bloqueante, evita CORS)
       fetch('/api/webhooks/n8n', {
@@ -78,43 +133,57 @@ export function CreateProjectWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user?.id || 'usuario_no_autenticado',
-          nombre_proyecto: newProjectData.projectName,
-          meta: newProjectData.objective,
-          fecha_limite: newProjectData.deadline,
-          prioridad: newProjectData.priority,
-          horario_configurado: newProjectData.dailyMinutes,
+          nombre_proyecto: projectName,
+          meta: objective,
+          fecha_limite: deadline,
+          prioridad: priority,
+          horario_configurado: configuredTimeStr,
         })
       }).catch(err => console.error('Error enviando webhook n8n:', err));
-      
-      // Llamada al servicio simulado
-      const result = await createProject(newProjectData);
-      // Usar el ID devuelto por el servicio, o el local
-      const projectId = result.success && result.id !== 'proj-new' ? result.id : newProjectData.id;
-      
+
+      // 2. Guardar en Supabase usando la Server Action
+      const result = await createProjectAction({
+        titulo: projectName,
+        objetivo: objective,
+        fecha_limite: deadline,
+        prioridad: priority,
+        nivel_conocimiento: answers[4] || '',
+        material_url: materialUrl || undefined,
+        minutos_diarios: dailyMinutes,
+      });
+
+      if (!result.success || !result.project) {
+        throw new Error(result.error || 'Error al guardar el proyecto en Supabase');
+      }
+
+      const createdProject = result.project;
+
+      // 3. Sincronizar localStorage para compatibilidad inmediata con componentes clientes (como SidebarNav)
       if (typeof window !== 'undefined') {
         const existing = localStorage.getItem('komorebi_projects');
         const projects = existing ? JSON.parse(existing) : [];
-        projects.push({
-          id: projectId,
-          name: newProjectData.projectName,
-          importance: newProjectData.priority,
+        projects.unshift({
+          id: createdProject.id,
+          name: createdProject.titulo,
+          importance: createdProject.prioridad,
           tasksCount: 0,
           progress: 0,
-          createdAt: newProjectData.createdAt,
+          createdAt: createdProject.fecha_limite || new Date().toISOString(),
         });
         localStorage.setItem('komorebi_projects', JSON.stringify(projects));
         window.dispatchEvent(new Event('projects_updated'));
       }
 
-      router.push(`/proyectos/${projectId}`);
-    } catch (error) {
+      router.push(`/proyectos/${createdProject.id}`);
+    } catch (error: unknown) {
       console.error('Error creating project:', error);
+      const msg = error instanceof Error ? error.message : 'No fue posible crear el proyecto.';
+      setErrorMessage(msg);
       setIsFinishing(false);
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateAnswer = (step: number, value: any) => {
+  const updateAnswer = <K extends keyof WizardAnswers>(step: K, value: WizardAnswers[K]) => {
     setAnswers((prev) => ({ ...prev, [step]: value }));
   };
 
@@ -126,14 +195,12 @@ export function CreateProjectWizard() {
       case 1:
         return !!answers[1] && answers[1].trim().length > 0 && answers[1].length <= 250;
       case 2:
-        return !!answers[2];
+        return !!answers[2] && answers[2] >= todayStr;
       case 3:
         return !!answers[3];
       case 4:
         return !!answers[4];
       case 5:
-        // Opcional, o requiere al menos uno? El prompt no dice que sea obligatorio.
-        // Lo dejaremos siempre habilitado para avanzar.
         return true;
       case 6:
         if (!answers[6]?.mainOption) return false;
@@ -186,6 +253,7 @@ export function CreateProjectWizard() {
           </div>
         );
       case 2:
+        const isPastDate = answers[2] && answers[2] < todayStr;
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
@@ -193,13 +261,25 @@ export function CreateProjectWizard() {
             </h2>
             <input
               type="date"
-              className="w-full p-4 rounded-2xl border-[1.5px] border-[#E2D9D0] bg-white text-[#2C1F14] focus:border-[#2C1F14] focus:ring-0 outline-none transition-all"
+              min={todayStr}
+              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${
+                isPastDate
+                  ? 'border-red-400 focus:border-red-500'
+                  : 'border-[#E2D9D0] focus:border-[#2C1F14]'
+              }`}
               value={answers[2] || ''}
               onChange={(e) => updateAnswer(2, e.target.value)}
             />
-            <p className="mt-3 text-sm text-[#845326]">
-              * Esta fecha nos ayudará a evaluar la viabilidad de tus metas.
-            </p>
+            {isPastDate ? (
+              <p className="mt-2.5 text-xs text-red-600 font-semibold flex items-center gap-1.5">
+                <AlertCircle className="size-3.5" />
+                La fecha límite no puede ser anterior al día de creación.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-[#845326]">
+                * Esta fecha nos ayudará a evaluar la viabilidad de tus metas.
+              </p>
+            )}
           </div>
         );
       case 3: {
@@ -225,7 +305,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
@@ -241,7 +323,7 @@ export function CreateProjectWizard() {
         const options = [
           'Ninguno (Parto desde cero absoluto).',
           'Básico (Conozco la teoría o algunos conceptos sueltos).',
-          'Intermedio (Ya he practicado, pero necesito profundizar o estructurarme).'
+          'Intermedio (Ya he practicado, pero necesito profundizar o estructurarme).',
         ];
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -264,7 +346,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
@@ -277,43 +361,141 @@ export function CreateProjectWizard() {
         );
       }
       case 5: {
-        const currentData = answers[5] || { files: null, url: '' };
+        const currentData = answers[5] || { files: [], urls: [''] };
+        const files: string[] = currentData.files || [];
+        const urls: string[] =
+          currentData.urls && currentData.urls.length > 0 ? currentData.urls : [''];
+
+        const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const selectedFiles = e.target.files;
+          if (!selectedFiles) return;
+
+          const newFileNames = Array.from(selectedFiles).map((f) => f.name);
+          const combined = [...files, ...newFileNames].slice(0, 3);
+          updateAnswer(5, { ...currentData, files: combined });
+        };
+
+        const handleRemoveFile = (indexToRemove: number) => {
+          const updated = files.filter((_, idx) => idx !== indexToRemove);
+          updateAnswer(5, { ...currentData, files: updated });
+        };
+
+        const handleUrlChange = (index: number, val: string) => {
+          const updated = [...urls];
+          updated[index] = val;
+          updateAnswer(5, { ...currentData, urls: updated });
+        };
+
+        const handleAddUrl = () => {
+          updateAnswer(5, { ...currentData, urls: [...urls, ''] });
+        };
+
+        const handleRemoveUrl = (indexToRemove: number) => {
+          const updated = urls.filter((_, idx) => idx !== indexToRemove);
+          updateAnswer(5, { ...currentData, urls: updated.length > 0 ? updated : [''] });
+        };
+
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
               ¿Tienes algún material base, índice de libro o temario que debamos seguir?
             </h2>
-            
+
             <div className="space-y-5">
-              <div className="border-2 border-dashed border-[#E2D9D0] rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-[#FDFBF9] hover:bg-[#F5EFE9] transition-colors cursor-pointer relative">
-                <input
-                  type="file"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files) {
-                      updateAnswer(5, { ...currentData, files: Array.from(files).map(f => f.name).join(', ') });
-                    }
-                  }}
-                />
-                <UploadCloud className="size-8 text-[#845326] mb-2" />
-                <p className="text-sm font-semibold text-[#2C1F14]">
-                  {currentData.files ? currentData.files : 'Sube tus archivos aquí'}
-                </p>
-                <p className="text-xs text-[#845326] mt-1">PDF, DOCX, TXT</p>
+              {/* Sección Subida de Archivos (Máx 3) */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-bold text-[#2C1F14]">Archivos adjuntos</label>
+                  <span className="text-xs font-semibold text-[#845326] bg-[#f5e5d9] px-2 py-0.5 rounded-full">
+                    {files.length}/3 archivos
+                  </span>
+                </div>
+
+                {files.length < 3 ? (
+                  <div className="border-2 border-dashed border-[#E2D9D0] rounded-2xl p-5 flex flex-col items-center justify-center text-center bg-[#FDFBF9] hover:bg-[#F5EFE9] transition-colors cursor-pointer relative">
+                    <input
+                      type="file"
+                      multiple
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={handleFileUpload}
+                    />
+                    <UploadCloud className="size-7 text-[#845326] mb-1.5" />
+                    <p className="text-sm font-semibold text-[#2C1F14]">
+                      Haz click o arrastra tus archivos aquí
+                    </p>
+                    <p className="text-xs text-[#845326] mt-0.5">
+                      PDF, DOCX, TXT (Máx. 3 archivos)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-[#FDFBF9] border border-[#E2D9D0] rounded-xl text-center text-xs font-semibold text-[#845326]">
+                    Has alcanzado el límite de 3 archivos adjuntos.
+                  </div>
+                )}
+
+                {/* Lista de archivos cargados */}
+                {files.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {files.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2.5 px-3 bg-white border border-[#E2D9D0] rounded-xl text-xs"
+                      >
+                        <span className="truncate max-w-[280px] font-medium text-[#2C1F14]">
+                          {file}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(idx)}
+                          className="text-red-500 hover:text-red-700 p-1 rounded-md transition-colors cursor-pointer"
+                          title="Eliminar archivo"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
+              {/* Sección URLs Dinámicas */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-[#2C1F14] mb-2">
-                  <LinkIcon className="size-4" /> O añade una URL de referencia
+                <label className="flex items-center gap-2 text-sm font-bold text-[#2C1F14] mb-2">
+                  <LinkIcon className="size-4 text-[#845326]" /> Enlaces y URLs de referencia
                 </label>
-                <input
-                  type="url"
-                  placeholder="https://ejemplo.com/temario"
-                  className="w-full p-4 rounded-2xl border-[1.5px] border-[#E2D9D0] bg-white text-[#2C1F14] focus:border-[#2C1F14] focus:ring-0 outline-none transition-all"
-                  value={currentData.url || ''}
-                  onChange={(e) => updateAnswer(5, { ...currentData, url: e.target.value })}
-                />
+
+                <div className="space-y-2.5">
+                  {urls.map((url, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://ejemplo.com/temario"
+                        className="flex-1 p-3 rounded-xl border-[1.5px] border-[#E2D9D0] bg-white text-[#2C1F14] placeholder-[#A0958A] focus:border-[#2C1F14] focus:ring-0 outline-none text-sm transition-all"
+                        value={url}
+                        onChange={(e) => handleUrlChange(idx, e.target.value)}
+                      />
+                      {urls.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUrl(idx)}
+                          className="p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                          title="Eliminar enlace"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddUrl}
+                  className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-[#845326] hover:text-[#433022] bg-[#f5e5d9] hover:bg-[#E8DCD1] px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Añadir otra URL</span>
+                </button>
               </div>
             </div>
           </div>
@@ -327,7 +509,9 @@ export function CreateProjectWizard() {
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
-              En la encuesta indicaste que tienes <span className="text-[#845326]">{onboardingTime}</span> libres al día. ¿Cuánto de ese tiempo puedes dedicarle a este proyecto?
+              En la encuesta indicaste que tienes{' '}
+              <span className="text-[#845326]">{onboardingTime}</span> libres al día. ¿Cuánto de ese
+              tiempo puedes dedicarle a este proyecto?
             </h2>
             <div className="space-y-3 mb-6">
               {mainOptions.map((opt) => {
@@ -336,7 +520,10 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => {
-                      updateAnswer(6, { mainOption: opt, subOption: opt !== 'Menos de 1 hora diaria' ? '' : currentData.subOption });
+                      updateAnswer(6, {
+                        mainOption: opt,
+                        subOption: opt !== 'Menos de 1 hora diaria' ? '' : currentData.subOption,
+                      });
                     }}
                     className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
                       isSelected
@@ -347,7 +534,9 @@ export function CreateProjectWizard() {
                     <span>{opt}</span>
                     <span
                       className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? 'border-[#2C1F14] bg-[#2C1F14] text-white' : 'border-[#E2D9D0] bg-transparent'
+                        isSelected
+                          ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
+                          : 'border-[#E2D9D0] bg-transparent'
                       }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
@@ -390,9 +579,8 @@ export function CreateProjectWizard() {
   };
 
   return (
-    <div className="w-[90%] max-w-[1050px] min-h-[80vh] mx-auto flex items-center justify-center py-6 sm:py-10">
+    <div className="w-[90%] max-w-[1050px] min-h-[80vh] mx-auto flex flex-col justify-center py-6 sm:py-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center justify-items-center w-full">
-        
         {/* COLUMNA IZQUIERDA: Persistente */}
         <div className="flex flex-col items-center text-center w-full max-w-[420px]">
           <div className="mb-6">
@@ -421,26 +609,13 @@ export function CreateProjectWizard() {
         {/* COLUMNA DERECHA: Formulario / Preguntas */}
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white border border-[#EAE3DC] rounded-[20px] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition-all relative">
-            
-            {/* Botón Cerrar */}
-            <button
-              type="button"
-              onClick={() => router.push('/proyectos')}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Cerrar y volver a proyectos"
-            >
-              <X className="size-5" />
-            </button>
-            
             {/* Encabezado e Indicador de Progreso */}
             <div className="space-y-2.5 mb-6">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#E8DCD1] text-xs font-semibold text-[#2C1F14] uppercase tracking-wider">
                   Paso {currentStep + 1} de {totalSteps}
                 </span>
-                <span className="text-xs font-bold text-[#2C1F14]/70">
-                  {progressPercent}%
-                </span>
+                <span className="text-xs font-bold text-[#2C1F14]/70">{progressPercent}%</span>
               </div>
 
               {/* Barra de Progreso */}
@@ -452,10 +627,16 @@ export function CreateProjectWizard() {
               </div>
             </div>
 
+            {/* Mensaje de error si falla la creación */}
+            {errorMessage && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             {/* Contenido Dinámico de la Pregunta */}
-            <div className="min-h-[280px]">
-              {renderStepContent()}
-            </div>
+            <div className="min-h-[280px]">{renderStepContent()}</div>
 
             {/* Botones de Navegación Inferior */}
             <div className="flex items-center justify-between pt-6 mt-2 border-t border-[#EAE3DC]">
@@ -463,7 +644,7 @@ export function CreateProjectWizard() {
                 type="button"
                 onClick={handlePrev}
                 disabled={currentStep === 0}
-                className="rounded-[25px] bg-[#E8DCD1] hover:bg-[#dfd1c4] text-[#2C1F14] px-5 py-2.5 font-semibold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 active:scale-[0.99]"
+                className="rounded-[25px] bg-[#E8DCD1] hover:bg-[#dfd1c4] text-[#2C1F14] px-5 py-2.5 font-semibold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 active:scale-[0.99] cursor-pointer"
               >
                 <ArrowLeft className="size-3.5" />
                 <span>Anterior</span>
@@ -473,7 +654,7 @@ export function CreateProjectWizard() {
                 type="button"
                 onClick={handleNext}
                 disabled={!canGoNext() || isFinishing}
-                className="rounded-[25px] bg-[#2C1F14] hover:bg-[#433022] text-white px-6 py-2.5 font-semibold text-xs sm:text-sm shadow-sm transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5"
+                className="rounded-[25px] bg-[#2C1F14] hover:bg-[#433022] text-white px-6 py-2.5 font-semibold text-xs sm:text-sm shadow-sm transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 cursor-pointer"
               >
                 {isFinishing ? (
                   <>
@@ -493,10 +674,21 @@ export function CreateProjectWizard() {
                 )}
               </button>
             </div>
-
           </div>
         </div>
+      </div>
 
+      {/* Botón Volver a Proyectos abajo a la izquierda en el recuadro general */}
+      <div className="mt-8 flex justify-start w-full">
+        <button
+          type="button"
+          onClick={() => router.push('/proyectos')}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold text-[#845326] bg-[#f5e5d9] hover:bg-[#E8DCD1] hover:text-[#433022] transition-all shadow-xs cursor-pointer active:scale-95"
+          aria-label="Volver a Proyectos"
+        >
+          <ArrowLeft className="size-4" />
+          <span>Volver a Proyectos</span>
+        </button>
       </div>
     </div>
   );

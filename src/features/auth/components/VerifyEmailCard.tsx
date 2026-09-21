@@ -216,7 +216,8 @@ export function VerifyEmailCard({ initialEmail }: VerifyEmailCardProps = {}) {
         </p>
         <p className="text-xs text-outline pt-1">
           💡 <strong>Nota:</strong> Hasta que confirmes tu correo no podrás acceder al onboarding ni
-          a tus herramientas de estudio. Revisa también tu carpeta de <em>Spam</em> o <em>Promociones</em>.
+          a tus herramientas de estudio. Revisa también tu carpeta de <em>Spam</em> o{' '}
+          <em>Promociones</em>.
         </p>
       </div>
 
@@ -282,10 +283,7 @@ export function VerifyEmailCard({ initialEmail }: VerifyEmailCardProps = {}) {
           </Link>
         </div>
         <div>
-          <Link
-            href="/login"
-            className="text-outline hover:text-on-surface transition-colors"
-          >
+          <Link href="/login" className="text-outline hover:text-on-surface transition-colors">
             ← Volver a Iniciar Sesión
           </Link>
         </div>
