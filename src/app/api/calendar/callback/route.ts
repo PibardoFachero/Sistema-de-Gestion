@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForTokens, encryptTokens, GCAL_COOKIE_NAME } from '@/lib/google-calendar';
+import {
+  exchangeCodeForTokens,
+  encryptTokens,
+  getAppBaseUrl,
+  GCAL_COOKIE_NAME,
+} from '@/lib/google-calendar';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
+  const baseUrl = getAppBaseUrl(origin);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const state = searchParams.get('state') || '/calendario';
 
   // Sanitizar ruta de redirección relativa para evitar Open Redirects
   const safeReturnPath = state.startsWith('/') ? state : '/calendario';
-  const redirectTarget = `${origin}${safeReturnPath}`;
+  const redirectTarget = `${baseUrl}${safeReturnPath}`;
 
   if (error) {
     const errorUrl = new URL(redirectTarget);
