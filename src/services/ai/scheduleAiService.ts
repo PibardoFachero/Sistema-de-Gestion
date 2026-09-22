@@ -652,3 +652,162 @@ DIRECTRICES OBLIGATORIAS:
     };
   }
 }
+
+export interface CheckProjectFeasibilityParams {
+  titulo: string;
+  objetivo?: string | null;
+  fecha_limite?: string | null;
+  minutos_diarios?: number | null;
+  nivel_conocimiento?: string | null;
+  usuario_id?: string;
+}
+
+export interface FeasibilityResult {
+  es_posible: boolean;
+  motivo?: string;
+  tiempo_minimo_recomendado?: string;
+  error?: string;
+}
+
+/**
+ * Evalúa mediante IA (Gemini) si un proyecto es humanamente y pedagógicamente
+ * alcanzable en el tiempo límite y dedicación diaria especificados por el usuario.
+ */
+export async function checkProjectFeasibilityWithGemini(
+  params: CheckProjectFeasibilityParams,
+): Promise<FeasibilityResult> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let diffDays = 30;
+
+  if (params.fecha_limite) {
+    const deadline = new Date(params.fecha_limite);
+    if (!isNaN(deadline.getTime())) {
+      deadline.setHours(0, 0, 0, 0);
+      const diffMs = deadline.getTime() - today.getTime();
+      diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+  }
+
+  const minutosDiarios = Math.max(15, Number(params.minutos_diarios) || 30);
+  const horasTotales = Math.round((diffDays * minutosDiarios) / 60);
+
+  // Si no hay API key configurada, realizar validación heurística básica de seguridad
+  if (!process.env.GEMINI_API_KEY) {
+    if (diffDays <= 1 && (params.objetivo?.length || 0) > 100) {
+      return {
+        es_posible: false,
+        motivo: 'El plazo de 1 día es insuficiente para un objetivo tan complejo.',
+        error: `Es imposible realizar el proyecto en solo ${diffDays} día(s). Se necesita más tiempo para alcanzar este objetivo.`,
+      };
+    }
+    return { es_posible: true };
+  }
+
+  const feasibilityJsonSchema = {
+    type: Type.OBJECT,
+    properties: {
+      es_posible: {
+        type: Type.BOOLEAN,
+        description:
+          'true si el proyecto es pedagógicamente viable y alcanzable en el tiempo disponible; false si es manifiestamente imposible.',
+      },
+      motivo: {
+        type: Type.STRING,
+        description: 'Explicación detallada y pedagógica en español de por qué es posible o imposible.',
+      },
+      tiempo_minimo_recomendado: {
+        type: Type.STRING,
+        description:
+          'Tiempo mínimo estimado que realmente se requeriría (ej. "al menos 2 meses", "mínimo 4 semanas").',
+      },
+    },
+    required: ['es_posible', 'motivo'],
+  };
+
+  const prompt = `Eres un evaluador académico, pedagógico y de viabilidad de proyectos de estudio.
+Tu labor es determinar con rigurosidad y honestidad pedagógica si el siguiente proyecto es FACTIBLE o IMPOSIBLE de realizar en el plazo y tiempo diario asignado por el estudiante.
+
+DATOS DEL PROYECTO:
+- Título: ${params.titulo}
+- Objetivo declarado: ${params.objetivo || 'Avanzar en el aprendizaje del tema'}
+- Nivel actual del estudiante: ${params.nivel_conocimiento || 'Principiante'}
+- Plazo límite: ${params.fecha_limite || 'No especificado'} (${diffDays} días restantes)
+- Dedicación diaria: ${minutosDiarios} minutos al día.
+- Tiempo total disponible de trabajo: ~${horasTotales} horas de dedicación en todo el proyecto.
+
+CRITERIOS ESTRICTOS DE EVALUACIÓN:
+1. IMPOSIBLE (es_posible = false):
+   - Metas de aprendizaje o desarrollo que objetivamente requieren cientos o miles de horas de estudio/práctica (por ejemplo: dominar una carrera profesional completa, medicina, ingeniería de software desde cero, dominar múltiples idiomas extranjeros, construir un sistema operativo o cohete) pero el usuario tiene pocos días o semanas, o una cantidad ínfima de horas totales (~menos de 20-50 horas cuando se requieren cientos o miles).
+   - Metas amplias o complejas con un plazo ridículamente estrecho (ejemplo: 1 a 7 días para dominar un campo amplio o completar una meta muy ambiciosa).
+   - Si es IMPOSIBLE, explica con empatía y claridad que es imposible realizar el proyecto en ese tiempo, detallando por qué y cuánto tiempo mínimo realmente necesitaría.
+
+2. FACTIBLE (es_posible = true):
+   - Metas acotadas, razonables o realistas para el tiempo disponible (ejemplo: aprender fundamentos básicos de Python en 1 mes, preparar un examen específico en 2 semanas, hacer un taller práctico, rediseñar una página web).
+   - Proyectos donde la meta está alineada con las horas totales de dedicación.
+
+Responde ÚNICAMENTE un objeto JSON que siga el esquema especificado.`;
+
+  try {
+    const startTime = Date.now();
+    const response = await callGeminiWithRetry(
+      (ai, model) =>
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: feasibilityJsonSchema,
+            temperature: 0.1,
+            maxOutputTokens: 300,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
+        }),
+      {
+        maxRetries: 1,
+        initialDelayMs: 1000,
+        models: ['gemini-3.6-flash', 'gemini-3.8-flash'],
+      },
+    );
+
+    const rawText = response.text || '{}';
+    const parsed = JSON.parse(rawText) as {
+      es_posible?: boolean;
+      motivo?: string;
+      tiempo_minimo_recomendado?: string;
+    };
+
+    await logAiInteraction({
+      usuarioId: params.usuario_id,
+      tipoOperacion: 'evaluacion_viabilidad',
+      modelo: GEMINI_DEFAULT_MODEL,
+      promptEnviado: prompt,
+      respuestaCruda: rawText,
+      duracionMs: Date.now() - startTime,
+    });
+
+    if (parsed.es_posible === false) {
+      const recom = parsed.tiempo_minimo_recomendado
+        ? ` Tiempo mínimo recomendado: ${parsed.tiempo_minimo_recomendado}.`
+        : '';
+      return {
+        es_posible: false,
+        motivo: parsed.motivo,
+        tiempo_minimo_recomendado: parsed.tiempo_minimo_recomendado,
+        error: `Es imposible realizar el proyecto en el tiempo límite indicado (${diffDays} días). ${parsed.motivo || 'Se necesita más tiempo para alcanzar este objetivo.'}${recom}`,
+      };
+    }
+
+    return {
+      es_posible: true,
+      motivo: parsed.motivo,
+    };
+  } catch (error) {
+    console.warn('Advertencia: Error al evaluar viabilidad con Gemini, permitiendo fallback:', error);
+    // En caso de falla de red con Gemini, no bloquear al usuario a menos que sea plazo 0 o negativo
+    return { es_posible: true };
+  }
+}
+

@@ -6,6 +6,7 @@ import type {
   ResetPasswordFormData,
 } from '@/features/auth/types/auth.types';
 import { createClient } from '@/lib/supabase/server';
+import { hashPasswordForBackend } from '@/lib/auth/passwordSecurity';
 
 export async function updatePassword(
   formData: ResetPasswordFormData,
@@ -39,8 +40,11 @@ export async function updatePassword(
       };
     }
 
+    // [ENCRIPTACIÓN EN EL BACKEND]: Cifrar la nueva contraseña antes de persistir
+    const hashedPassword = hashPasswordForBackend(password);
+
     const { error } = await supabase.auth.updateUser({
-      password,
+      password: hashedPassword,
     });
 
     if (error) {

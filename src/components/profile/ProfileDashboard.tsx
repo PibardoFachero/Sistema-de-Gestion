@@ -40,11 +40,7 @@ import {
   AREAS_PRIORITARIAS_OPTIONS,
 } from '@/features/profile/data/learningOptions';
 import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from '@/features/profile/data/countryCodes';
-import {
-  formatPhoneNumber,
-  parsePhoneNumber,
-  validatePhoneNumber,
-} from '@/features/profile/utils/phoneValidation';
+import { formatPhoneNumber, parsePhoneNumber } from '@/features/profile/utils/phoneValidation';
 import { updateProfileIdentity } from '@/features/profile/actions/updateProfileIdentityAction';
 import { updateLearningPreferences } from '@/features/profile/actions/updateLearningPreferencesAction';
 import { verifyTelegramOtp } from '@/features/profile/actions/verifyTelegramOtpAction';
@@ -239,16 +235,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
 
     const trimmedNumber = phoneNumber.trim();
     const fullPhone = trimmedNumber ? formatPhoneNumber(phonePrefix, trimmedNumber) : null;
-
-    if (trimmedNumber) {
-      const phoneValidation = validatePhoneNumber(fullPhone);
-      if (!phoneValidation.isValid) {
-        setPhoneInputError(phoneValidation.error || 'Número de teléfono no válido.');
-        setIdentityError(phoneValidation.error || 'Por favor verifica el número telefónico.');
-        return;
-      }
-    }
-
     const displayName = `${firstName} ${lastName}`.trim() || username;
 
     startSavingIdentity(async () => {

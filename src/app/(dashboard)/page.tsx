@@ -74,31 +74,7 @@ export default async function HomePage() {
       .in('id_proyecto', projectIds);
 
     if (allTareas) {
-      // 1. upcomingTasks (limit 3, pending)
-      const pendingTareas = allTareas
-        .filter((t) => !t.completado)
-        .sort((a, b) => {
-          if (!a.fecha_inicio) return 1;
-          if (!b.fecha_inicio) return -1;
-          return new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime();
-        });
-
-      totalPendingTasks = pendingTareas.length;
-
-      upcomingTasks = pendingTareas.slice(0, 3).map((t) => {
-        const project = projects.find((p) => p.id === t.id_proyecto);
-        return {
-          id: t.id,
-          titulo: t.titulo,
-          duracion: t.duracion,
-          prioridad: t.prioridad,
-          fecha_inicio: t.fecha_inicio,
-          project_titulo: project?.titulo || null,
-          id_proyecto: t.id_proyecto,
-        };
-      });
-
-      // 2. Cálculos de métricas
+      // 1. Cálculos de fechas para la semana y para el día de hoy
       const now = new Date();
       const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0 for Monday, 6 for Sunday
       const weekStart = new Date(now);
@@ -113,6 +89,34 @@ export default async function HomePage() {
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date(now);
       todayEnd.setHours(23, 59, 59, 999);
+
+      // Total de tareas pendientes globales del usuario
+      totalPendingTasks = allTareas.filter((t) => !t.completado).length;
+
+      // 2. upcomingTasks: Mostrar ÚNICAMENTE las tareas asignadas en el día actual
+      const todayPendingTareas = allTareas
+        .filter((t) => {
+          if (t.completado || !t.fecha_inicio) return false;
+          const d = new Date(t.fecha_inicio);
+          if (isNaN(d.getTime())) return false;
+          return d >= todayStart && d <= todayEnd;
+        })
+        .sort((a, b) => {
+          return new Date(a.fecha_inicio!).getTime() - new Date(b.fecha_inicio!).getTime();
+        });
+
+      upcomingTasks = todayPendingTareas.map((t) => {
+        const project = projects.find((p) => p.id === t.id_proyecto);
+        return {
+          id: t.id,
+          titulo: t.titulo,
+          duracion: t.duracion,
+          prioridad: t.prioridad,
+          fecha_inicio: t.fecha_inicio,
+          project_titulo: project?.titulo || null,
+          id_proyecto: t.id_proyecto,
+        };
+      });
 
       let weeklyMinutes = 0;
       let totalCompletedTasks = 0;

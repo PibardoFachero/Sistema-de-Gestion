@@ -42,6 +42,7 @@ export default function ProyectosPage() {
               tasksCount,
               progress: calculatedProgress,
               createdAt: p.fecha_limite || new Date().toISOString(),
+              fechaLimite: p.fecha_limite,
             };
           });
 
