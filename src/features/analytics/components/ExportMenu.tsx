@@ -30,7 +30,7 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
       const metricTitle = metricTitles[activeMetric];
       const seriesData = data.series[activeMetric];
 
-      const response = await fetch('/api/ai/analytics-report', {
+      const response = await fetch(process.env.NEXT_PUBLIC_N8N_ANALYTICS_WEBHOOK_URL as string, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
