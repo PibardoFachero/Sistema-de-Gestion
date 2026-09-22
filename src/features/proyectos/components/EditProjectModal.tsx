@@ -64,7 +64,8 @@ export function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditPr
       }
     } catch (err: unknown) {
       console.error('Error al actualizar proyecto:', err);
-      const msg = err instanceof Error ? err.message : 'Error inesperado al conectar con el servidor.';
+      const msg =
+        err instanceof Error ? err.message : 'Error inesperado al conectar con el servidor.';
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -85,9 +86,7 @@ export function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditPr
           <X className="size-5" />
         </button>
 
-        <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] mb-1">
-          Editar Proyecto
-        </h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] mb-1">Editar Proyecto</h2>
         <p className="text-xs sm:text-sm text-[#845326] mb-6">
           Modifica el nombre, descripción y fecha límite de tu proyecto.
         </p>
@@ -123,7 +122,10 @@ export function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditPr
 
           {/* Objetivo / Descripción */}
           <div>
-            <label htmlFor="projectObjective" className="block text-sm font-bold text-[#2C1F14] mb-1.5">
+            <label
+              htmlFor="projectObjective"
+              className="block text-sm font-bold text-[#2C1F14] mb-1.5"
+            >
               Descripción u objetivo
             </label>
             <textarea
@@ -143,7 +145,10 @@ export function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditPr
 
           {/* Fecha Límite */}
           <div>
-            <label htmlFor="projectDeadline" className="block text-sm font-bold text-[#2C1F14] mb-1.5">
+            <label
+              htmlFor="projectDeadline"
+              className="block text-sm font-bold text-[#2C1F14] mb-1.5"
+            >
               Fecha límite
             </label>
             <div className="relative">

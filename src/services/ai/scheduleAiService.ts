@@ -497,7 +497,10 @@ DIRECTRICES OBLIGATORIAS:
               hora_inicio: { type: Type.STRING, description: 'HH:MM militar' },
               hora_fin: { type: Type.STRING, description: 'HH:MM militar' },
               prioridad: { type: Type.STRING, description: 'Prioritario, Normal, etc.' },
-              url_recomendada: { type: Type.STRING, description: 'Enlace web recomendado o documentación' },
+              url_recomendada: {
+                type: Type.STRING,
+                description: 'Enlace web recomendado o documentación',
+              },
             },
             required: ['titulo', 'duracion_minutos', 'fecha', 'hora_inicio', 'hora_fin'],
           },
@@ -613,19 +616,14 @@ DIRECTRICES OBLIGATORIAS:
       };
     });
 
-    const { error: insertEventsErr } = await db
-      .from('eventos_calendario')
-      .insert(eventsToInsert);
+    const { error: insertEventsErr } = await db.from('eventos_calendario').insert(eventsToInsert);
 
     if (insertEventsErr) {
       console.warn('Advertencia insertando eventos de calendario:', insertEventsErr);
     }
 
     // 8. Actualizar progreso del proyecto a 0%
-    await db
-      .from('projects')
-      .update({ progreso: 0, completado: false })
-      .eq('id', project.id);
+    await db.from('projects').update({ progreso: 0, completado: false }).eq('id', project.id);
 
     // 9. Registrar log de interacción IA
     await logAiInteraction({
@@ -726,7 +724,8 @@ export async function checkProjectFeasibilityWithGemini(
       },
       motivo: {
         type: Type.STRING,
-        description: 'Explicación detallada y pedagógica en español de por qué es posible o imposible.',
+        description:
+          'Explicación detallada y pedagógica en español de por qué es posible o imposible.',
       },
       tiempo_minimo_recomendado: {
         type: Type.STRING,
@@ -817,9 +816,11 @@ Responde ÚNICAMENTE un objeto JSON que siga el esquema especificado.`;
       motivo: parsed.motivo,
     };
   } catch (error) {
-    console.warn('Advertencia: Error al evaluar viabilidad con Gemini, permitiendo fallback:', error);
+    console.warn(
+      'Advertencia: Error al evaluar viabilidad con Gemini, permitiendo fallback:',
+      error,
+    );
     // En caso de falla de red con Gemini, no bloquear al usuario a menos que sea plazo 0 o negativo
     return { es_posible: true };
   }
 }
-

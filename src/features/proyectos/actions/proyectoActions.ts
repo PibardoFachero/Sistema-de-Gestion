@@ -128,7 +128,10 @@ export async function updateProjectAction(input: UpdateProjectInput) {
       return { success: false, error: 'El nombre del proyecto es obligatorio.' };
     }
     if (trimmedTitle.length > 50) {
-      return { success: false, error: 'El nombre del proyecto no puede superar los 50 caracteres.' };
+      return {
+        success: false,
+        error: 'El nombre del proyecto no puede superar los 50 caracteres.',
+      };
     }
 
     const trimmedObjective = input.objetivo ? input.objetivo.trim() : '';
@@ -233,7 +236,10 @@ export async function createProjectAction(input: CreateProjectInput) {
       return { success: false, error: 'El nombre del proyecto es obligatorio.' };
     }
     if (trimmedTitle.length > 50) {
-      return { success: false, error: 'El nombre del proyecto no puede superar los 50 caracteres.' };
+      return {
+        success: false,
+        error: 'El nombre del proyecto no puede superar los 50 caracteres.',
+      };
     }
 
     // Validar descripción en backend
@@ -746,7 +752,10 @@ export async function createTaskAction(data: {
       return { success: false, error: 'El título de la tarea es obligatorio.' };
     }
     if (trimmedTitle.length > 100) {
-      return { success: false, error: 'El título de la tarea no puede exceder los 100 caracteres.' };
+      return {
+        success: false,
+        error: 'El título de la tarea no puede exceder los 100 caracteres.',
+      };
     }
 
     // Comprobación de fecha y conflictos de horario en el backend
@@ -895,7 +904,9 @@ export async function createTaskAction(data: {
       try {
         const startIso = new Date(parsedFechaInicio).toISOString();
         const durMin = Math.max(15, Number(task.duracion) || 30);
-        const endIso = new Date(new Date(parsedFechaInicio).getTime() + durMin * 60 * 1000).toISOString();
+        const endIso = new Date(
+          new Date(parsedFechaInicio).getTime() + durMin * 60 * 1000,
+        ).toISOString();
         await db.from('eventos_calendario').insert({
           id: crypto.randomUUID(),
           usuario_id: user.id,
@@ -1187,7 +1198,10 @@ export async function updateTaskAction(data: {
       return { success: false, error: 'El título de la tarea es obligatorio.' };
     }
     if (trimmedTitle.length > 100) {
-      return { success: false, error: 'El título de la tarea no puede exceder los 100 caracteres.' };
+      return {
+        success: false,
+        error: 'El título de la tarea no puede exceder los 100 caracteres.',
+      };
     }
 
     // Comprobación de fecha y conflictos de horario con otras tareas del proyecto (excluyendo la tarea actual)

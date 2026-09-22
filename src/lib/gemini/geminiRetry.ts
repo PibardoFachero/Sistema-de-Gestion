@@ -59,9 +59,10 @@ export async function callGeminiWithRetry<T>(
   const initialDelayMs = options.initialDelayMs ?? 1000;
   const maxDelayMs = options.maxDelayMs ?? 4000;
   const timeoutMs = options.timeoutMs ?? 15000;
-  const models = options.models && options.models.length > 0
-    ? options.models
-    : [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL];
+  const models =
+    options.models && options.models.length > 0
+      ? options.models
+      : [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL];
 
   let lastError: unknown = null;
   let currentDelay = initialDelayMs;
@@ -74,7 +75,9 @@ export async function callGeminiWithRetry<T>(
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutHandle = setTimeout(() => {
-          reject(new Error(`Timeout de Gemini (${timeoutMs}ms) excedido para modelo ${currentModel}`));
+          reject(
+            new Error(`Timeout de Gemini (${timeoutMs}ms) excedido para modelo ${currentModel}`),
+          );
         }, timeoutMs);
       });
 
@@ -95,9 +98,7 @@ export async function callGeminiWithRetry<T>(
         break;
       }
 
-      console.info(
-        `[Gemini Retry] Esperando ${currentDelay}ms antes del siguiente reintento...`,
-      );
+      console.info(`[Gemini Retry] Esperando ${currentDelay}ms antes del siguiente reintento...`);
       await delay(currentDelay);
       currentDelay = Math.min(currentDelay * 2, maxDelayMs);
     }

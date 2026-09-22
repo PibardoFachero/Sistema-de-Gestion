@@ -10,6 +10,7 @@ Este documento detalla los endpoints, la arquitectura y los contratos de entrada
 - **Autenticación**: Sesión de Supabase requerida (Cookie auth o Bearer token).
 
 ### Payload de Entrada (Request Body)
+
 ```json
 {
   "nombre_proyecto": "Sistema de Gestión con IA",
@@ -30,13 +31,12 @@ Este documento detalla los endpoints, la arquitectura y los contratos de entrada
       "textoExtraido": "Módulo 1: Setup y Arquitectura. Módulo 2: Modelado DB Postgres. Módulo 3: Integración Gemini AI."
     }
   ],
-  "enlaces": [
-    "https://github.com/ingsamuell/Sistema-de-Gestion"
-  ]
+  "enlaces": ["https://github.com/ingsamuell/Sistema-de-Gestion"]
 }
 ```
 
 ### Payload de Salida (Respuesta Exitosa `200 OK`)
+
 ```json
 {
   "success": true,
@@ -90,6 +90,7 @@ Este documento detalla los endpoints, la arquitectura y los contratos de entrada
 - **Autenticación**: Solo el usuario autenticado puede modificar su propia disponibilidad (`user.id === :id`).
 
 ### Payload de Entrada (Request Body)
+
 ```json
 {
   "proyecto_id": "a81dfcb9-317a-4c28-9844-325ea031e5f1",
@@ -117,6 +118,7 @@ Este documento detalla los endpoints, la arquitectura y los contratos de entrada
 ```
 
 ### Payload de Salida (Respuesta Exitosa `200 OK`)
+
 ```json
 {
   "success": true,

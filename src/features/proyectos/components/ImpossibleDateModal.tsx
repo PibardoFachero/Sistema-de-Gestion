@@ -74,7 +74,10 @@ export function ImpossibleDateModal({
         </div>
 
         {/* Título */}
-        <h3 id="impossible-date-title" className="text-xl font-bold text-[#2C1F14] mb-2 leading-tight">
+        <h3
+          id="impossible-date-title"
+          className="text-xl font-bold text-[#2C1F14] mb-2 leading-tight"
+        >
           Fecha límite no viable
         </h3>
 
@@ -94,7 +97,8 @@ export function ImpossibleDateModal({
         )}
 
         <p className="text-xs text-gray-500 mb-6 leading-normal">
-          Te hemos redirigido a la selección de fecha límite para que puedas elegir un plazo más amplio y alcanzar tu objetivo con éxito.
+          Te hemos redirigido a la selección de fecha límite para que puedas elegir un plazo más
+          amplio y alcanzar tu objetivo con éxito.
         </p>
 
         {/* Botón de acción para cerrar y ajustar fecha */}

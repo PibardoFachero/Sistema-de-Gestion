@@ -53,7 +53,10 @@ interface Availability {
   eventId?: string;
 }
 
-const COLOR_MAP: Record<string, { bg: string; hover: string; text: string; border: string; bgPale: string }> = {
+const COLOR_MAP: Record<
+  string,
+  { bg: string; hover: string; text: string; border: string; bgPale: string }
+> = {
   libre: {
     bg: 'bg-[#C8D6AF]',
     hover: 'hover:bg-[#B5C59A]',
@@ -259,10 +262,7 @@ export default function CalendarioPage() {
                 endIdx !== -1 && endIdx > fromIdx
                   ? endIdx
                   : fromIdx +
-                    Math.max(
-                      1,
-                      Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)),
-                    );
+                    Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)));
 
               for (let i = fromIdx; i < toIdx; i++) {
                 const slot = TIME_SLOTS[i];
@@ -572,56 +572,77 @@ export default function CalendarioPage() {
       if (data.bloques && data.bloques.length > 0) {
         // Calcular la semana activa actual
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-        const weekDays = eachDayOfInterval({ start, end: endOfWeek(currentDate, { weekStartsOn: 1 }) });
+        const weekDays = eachDayOfInterval({
+          start,
+          end: endOfWeek(currentDate, { weekStartsOn: 1 }),
+        });
 
         const mappedAvails: Availability[] = [];
 
-        data.bloques.forEach((b: { dia_semana: number; hora_inicio: string; hora_fin: string; tipo: string; etiqueta?: string }) => {
-          // Mapear dia_semana (0: Domingo, 1: Lunes.. 6: Sábado) al día correspondiente en la semana visible
-          const targetDay = weekDays.find((d) => d.getDay() === b.dia_semana);
-          if (!targetDay) return;
+        data.bloques.forEach(
+          (b: {
+            dia_semana: number;
+            hora_inicio: string;
+            hora_fin: string;
+            tipo: string;
+            etiqueta?: string;
+          }) => {
+            // Mapear dia_semana (0: Domingo, 1: Lunes.. 6: Sábado) al día correspondiente en la semana visible
+            const targetDay = weekDays.find((d) => d.getDay() === b.dia_semana);
+            if (!targetDay) return;
 
-          const dateStr = format(targetDay, 'yyyy-MM-dd');
-          const dayOfWeekName = format(targetDay, 'EEEE', { locale: es });
+            const dateStr = format(targetDay, 'yyyy-MM-dd');
+            const dayOfWeekName = format(targetDay, 'EEEE', { locale: es });
 
-          // Normalizar horas al slot más cercano
-          const startSlot = b.hora_inicio.length === 5 ? b.hora_inicio : `${b.hora_inicio.padStart(5, '0')}`;
-          const endSlot = b.hora_fin.length === 5 ? b.hora_fin : `${b.hora_fin.padStart(5, '0')}`;
+            // Normalizar horas al slot más cercano
+            const startSlot =
+              b.hora_inicio.length === 5 ? b.hora_inicio : `${b.hora_inicio.padStart(5, '0')}`;
+            const endSlot = b.hora_fin.length === 5 ? b.hora_fin : `${b.hora_fin.padStart(5, '0')}`;
 
-          const startIdx = TIME_SLOTS.indexOf(startSlot);
-          const endIdx = TIME_SLOTS.indexOf(endSlot);
+            const startIdx = TIME_SLOTS.indexOf(startSlot);
+            const endIdx = TIME_SLOTS.indexOf(endSlot);
 
-          const fromIdx = startIdx !== -1 ? startIdx : 0;
-          const toIdx = endIdx !== -1 && endIdx > fromIdx ? endIdx : fromIdx + 12;
+            const fromIdx = startIdx !== -1 ? startIdx : 0;
+            const toIdx = endIdx !== -1 && endIdx > fromIdx ? endIdx : fromIdx + 12;
 
-          let mappedType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'estudiando';
-          const rawTipo = String(b.tipo || '').toLowerCase();
-          if (rawTipo.includes('estudio') || rawTipo.includes('estudiando') || rawTipo.includes('clase')) {
-            mappedType = 'estudiando';
-          } else if (rawTipo.includes('trabajo') || rawTipo.includes('ocupado') || rawTipo.includes('laboral')) {
-            mappedType = 'trabajo';
-          } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
-            mappedType = 'descanso';
-          } else if (rawTipo.includes('libre')) {
-            mappedType = 'libre';
-          } else {
-            mappedType = 'otra_actividad';
-          }
-
-          for (let i = fromIdx; i < toIdx; i++) {
-            const slot = TIME_SLOTS[i];
-            if (slot && slot !== '24:00') {
-              mappedAvails.push({
-                date: dateStr,
-                dayOfWeek: dayOfWeekName,
-                startTime: slot,
-                endTime: TIME_SLOTS[i + 1] || '24:00',
-                label: b.etiqueta || 'Clase/Actividad',
-                type: mappedType,
-              });
+            let mappedType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
+              'estudiando';
+            const rawTipo = String(b.tipo || '').toLowerCase();
+            if (
+              rawTipo.includes('estudio') ||
+              rawTipo.includes('estudiando') ||
+              rawTipo.includes('clase')
+            ) {
+              mappedType = 'estudiando';
+            } else if (
+              rawTipo.includes('trabajo') ||
+              rawTipo.includes('ocupado') ||
+              rawTipo.includes('laboral')
+            ) {
+              mappedType = 'trabajo';
+            } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
+              mappedType = 'descanso';
+            } else if (rawTipo.includes('libre')) {
+              mappedType = 'libre';
+            } else {
+              mappedType = 'otra_actividad';
             }
-          }
-        });
+
+            for (let i = fromIdx; i < toIdx; i++) {
+              const slot = TIME_SLOTS[i];
+              if (slot && slot !== '24:00') {
+                mappedAvails.push({
+                  date: dateStr,
+                  dayOfWeek: dayOfWeekName,
+                  startTime: slot,
+                  endTime: TIME_SLOTS[i + 1] || '24:00',
+                  label: b.etiqueta || 'Clase/Actividad',
+                  type: mappedType,
+                });
+              }
+            }
+          },
+        );
 
         if (mappedAvails.length > 0) {
           setAvailabilities((prev) => {
@@ -631,7 +652,9 @@ export default function CalendarioPage() {
           });
         }
 
-        setUploadSuccessMsg(`¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`);
+        setUploadSuccessMsg(
+          `¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`,
+        );
         setTimeout(() => {
           setShowUploadModal(false);
           setUploadFile(null);
@@ -639,7 +662,9 @@ export default function CalendarioPage() {
           setView('week');
         }, 1500);
       } else {
-        setUploadError('La IA no pudo detectar bloques de horario en el documento o imagen. Asegúrate de que las horas y días sean legibles.');
+        setUploadError(
+          'La IA no pudo detectar bloques de horario en el documento o imagen. Asegúrate de que las horas y días sean legibles.',
+        );
       }
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Error inesperado extrayendo el horario');
@@ -1201,8 +1226,12 @@ export default function CalendarioPage() {
                       <Sparkles className="size-5" />
                     </div>
                     <div>
-                      <h3 className="text-base sm:text-lg font-bold text-[#845326]">Cargar Horario con Gemini AI</h3>
-                      <p className="text-xs text-on-surface-variant font-medium">Extrae automáticamente tus materias o turnos</p>
+                      <h3 className="text-base sm:text-lg font-bold text-[#845326]">
+                        Cargar Horario con Gemini AI
+                      </h3>
+                      <p className="text-xs text-on-surface-variant font-medium">
+                        Extrae automáticamente tus materias o turnos
+                      </p>
                     </div>
                   </div>
                   <button
@@ -1236,7 +1265,9 @@ export default function CalendarioPage() {
                   )}
 
                   <p className="text-xs text-on-surface-variant leading-relaxed">
-                    Sube una <strong>foto, captura de pantalla (.png, .jpg) o documento PDF</strong> de tu horario escolar, universitario o laboral. La IA extraerá los días y bloques horarios para que queden reflejados en tu calendario.
+                    Sube una <strong>foto, captura de pantalla (.png, .jpg) o documento PDF</strong>{' '}
+                    de tu horario escolar, universitario o laboral. La IA extraerá los días y
+                    bloques horarios para que queden reflejados en tu calendario.
                   </p>
 
                   <div className="border-2 border-dashed border-[#E2D9D0] rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-[#FDFBF9] hover:bg-[#F5EFE9] transition-colors relative cursor-pointer">
@@ -1266,7 +1297,9 @@ export default function CalendarioPage() {
                     <div className="flex items-center justify-between p-2.5 px-3 bg-surface-container rounded-xl text-xs">
                       <div className="flex items-center gap-2 truncate">
                         <FileText className="size-4 text-[#845326] shrink-0" />
-                        <span className="truncate font-semibold text-on-surface">{uploadFile.name}</span>
+                        <span className="truncate font-semibold text-on-surface">
+                          {uploadFile.name}
+                        </span>
                         <span className="text-[10px] text-on-surface-variant font-medium shrink-0">
                           ({(uploadFile.size / 1024).toFixed(0)} KB)
                         </span>
@@ -1434,7 +1467,7 @@ export default function CalendarioPage() {
                             border: 'border-[#DADCE0]',
                             bgPale: 'bg-[#F1F3F4]/50',
                           }
-                        : (COLOR_MAP[currentType] || COLOR_MAP.estudiando || COLOR_MAP.libre);
+                        : COLOR_MAP[currentType] || COLOR_MAP.estudiando || COLOR_MAP.libre;
 
                       const isMacroPartiallyOccupied =
                         isCollapsedHour && macroAvailCount > 0 && macroAvailCount < 12;

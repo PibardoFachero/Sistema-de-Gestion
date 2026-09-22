@@ -707,7 +707,9 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       .map((t) => {
         const startIso = new Date(t.fecha_inicio!).toISOString();
         const durMin = Math.max(15, Number(t.duracion) || defaultDuration);
-        const endIso = new Date(new Date(t.fecha_inicio!).getTime() + durMin * 60 * 1000).toISOString();
+        const endIso = new Date(
+          new Date(t.fecha_inicio!).getTime() + durMin * 60 * 1000,
+        ).toISOString();
         return {
           id: crypto.randomUUID(),
           usuario_id: project.user_id,

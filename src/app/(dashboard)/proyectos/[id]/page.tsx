@@ -903,9 +903,13 @@ export default function ProjectDetailPage({
         <div className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-on-surface mb-2">{project.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-on-surface mb-2">
+                {project.title}
+              </h1>
               {project.objective && (
-                <p className="text-sm text-on-surface-variant mb-3 max-w-3xl">{project.objective}</p>
+                <p className="text-sm text-on-surface-variant mb-3 max-w-3xl">
+                  {project.objective}
+                </p>
               )}
             </div>
 

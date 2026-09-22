@@ -13,9 +13,7 @@ export function getGeminiClient(): GoogleGenAI {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      'La variable de entorno GEMINI_API_KEY no está configurada en .env.local',
-    );
+    throw new Error('La variable de entorno GEMINI_API_KEY no está configurada en .env.local');
   }
 
   geminiInstance = new GoogleGenAI({ apiKey });
