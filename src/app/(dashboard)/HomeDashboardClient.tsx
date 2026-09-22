@@ -19,26 +19,40 @@ export interface UpcomingTask {
   prioridad: string | null;
   fecha_inicio: string | null;
   project_titulo: string | null;
+  id_proyecto: string;
 }
 
-const miniChartData = [
-  { day: 'L', value: 2 },
-  { day: 'M', value: 3 },
-  { day: 'X', value: 1 },
-  { day: 'J', value: 4 },
-  { day: 'V', value: 5 },
-  { day: 'S', value: 2 },
-  { day: 'D', value: 6 },
-];
+export interface DashboardMetrics {
+  weeklyHoursText: string;
+  chartData: { day: string; value: number }[];
+  todayCompleted: number;
+  todayTotal: number;
+  globalPace: number;
+}
 
 interface HomeDashboardClientProps {
   displayName: string;
   rachaActiva: number;
   upcomingTasks: UpcomingTask[];
   totalPendingTasks: number;
+  metrics: DashboardMetrics;
 }
 
-export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, totalPendingTasks }: HomeDashboardClientProps) {
+function MetricTooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <div className="group relative flex h-full w-full flex-col">
+      {children}
+      <div className="pointer-events-none absolute -top-12 left-1/2 z-50 flex -translate-x-1/2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        <div className="rounded-xl bg-surface-container-highest px-3 py-2 text-xs font-semibold text-on-surface shadow-xl whitespace-nowrap border border-outline-variant/30">
+          {text}
+        </div>
+        <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-surface-container-highest border-r border-b border-outline-variant/30" />
+      </div>
+    </div>
+  );
+}
+
+export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, totalPendingTasks, metrics }: HomeDashboardClientProps) {
   const [greeting, setGreeting] = useState('¡Buenos días');
   const [currentDate, setCurrentDate] = useState('');
 
@@ -143,64 +157,71 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
       {/* Stats Grid */}
       <motion.section variants={containerVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
-          <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
-            <Badge variant="streak" className="self-start">
-              Racha
-            </Badge>
-            <div className="mt-2">
-              <span className="text-3xl font-bold">
-                {rachaActiva} {rachaActiva === 1 ? 'día' : 'días'}
-              </span>
-            </div>
-            <p className="text-xs text-on-surface-variant mt-auto">Hábito consolidado</p>
-          </Card>
+          <MetricTooltip text="Días consecutivos marcando tareas como completadas">
+            <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
+              <Badge variant="streak" className="self-start">
+                Racha
+              </Badge>
+              <div className="mt-2">
+                <span className="text-3xl font-bold">
+                  {rachaActiva} {rachaActiva === 1 ? 'día' : 'días'}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-auto">Hábito consolidado</p>
+            </Card>
+          </MetricTooltip>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
-          <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-            <Badge className="self-start relative z-10">Esta semana</Badge>
-            <div className="mt-2 relative z-10">
-              <span className="text-3xl font-bold">14h 20m</span>
-            </div>
-            <div className="absolute bottom-0 left-0 w-full h-16 opacity-30 pointer-events-none">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={miniChartData}>
-                  <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
-                  <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center gap-2 mt-auto relative z-10">
-              <ProgressBar progress={79} height="sm" />
-              <span className="text-[10px] text-on-surface-variant font-medium whitespace-nowrap">
-                Meta 18h
-              </span>
-            </div>
-          </Card>
+          <MetricTooltip text="Horas acumuladas de estudio o trabajo durante esta semana">
+            <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+              <Badge className="self-start relative z-10">Esta semana</Badge>
+              <div className="mt-2 relative z-10">
+                <span className="text-3xl font-bold">{metrics.weeklyHoursText}</span>
+              </div>
+              <div className="absolute bottom-0 left-0 w-full h-16 opacity-30 pointer-events-none">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={metrics.chartData}>
+                    <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
+                    <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center gap-2 mt-auto relative z-10">
+                <p className="text-xs text-on-surface-variant mt-auto">Actividad de L a D</p>
+              </div>
+            </Card>
+          </MetricTooltip>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
-          <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
-            <Badge variant="success" className="self-start">
-              Progreso hoy
-            </Badge>
-            <div className="mt-2">
-              <span className="text-3xl font-bold">2 / 5</span>
-            </div>
-            <p className="text-xs text-on-surface-variant mt-auto">40% completado</p>
-          </Card>
+          <MetricTooltip text="Tareas terminadas hoy en relación a lo planificado para el día">
+            <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
+              <Badge variant="success" className="self-start">
+                Progreso hoy
+              </Badge>
+              <div className="mt-2">
+                <span className="text-3xl font-bold">{metrics.todayCompleted} / {metrics.todayTotal}</span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-auto">
+                {metrics.todayTotal > 0 ? `${Math.round((metrics.todayCompleted / metrics.todayTotal) * 100)}% completado` : 'Sin tareas asignadas'}
+              </p>
+            </Card>
+          </MetricTooltip>
         </motion.div>
 
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
-          <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
-            <Badge className="self-start">Ritmo Global</Badge>
-            <div className="mt-2">
-              <span className="text-3xl font-bold">88%</span>
-            </div>
-            <p className="text-xs text-status-success font-medium mt-auto flex items-center gap-1">
-              <CheckCircle2 className="size-3" /> +4% vs semana ant.
-            </p>
-          </Card>
+          <MetricTooltip text="Tasa global de éxito: total de tareas completadas de tu cuenta">
+            <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
+              <Badge className="self-start">Ritmo Global</Badge>
+              <div className="mt-2">
+                <span className="text-3xl font-bold">{metrics.globalPace}%</span>
+              </div>
+              <p className="text-xs text-status-success font-medium mt-auto flex items-center gap-1">
+                Tasa de cumplimiento
+              </p>
+            </Card>
+          </MetricTooltip>
         </motion.div>
       </motion.section>
 
@@ -215,9 +236,11 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
                 : `${upcomingTasks.length} pendientes por abordar`}
             </p>
           </div>
-          <Button variant="ghost" className="gap-2 text-sm">
-            Ver todas <ArrowRight className="size-4" />
-          </Button>
+          <Link href="/proyectos">
+            <Button variant="ghost" className="gap-2 text-sm">
+              Ver todas <ArrowRight className="size-4" />
+            </Button>
+          </Link>
         </div>
 
         <motion.div variants={containerVariants} className="space-y-4">
@@ -259,9 +282,11 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
                     </div>
 
                     <div className="flex items-center gap-3 mt-6">
-                      <Button variant={isPriority ? 'primary' : 'secondary'} className={`ml-auto gap-2 ${isPriority ? 'group-hover:scale-105 transition-transform' : 'group-hover:bg-primary group-hover:text-on-primary transition-colors'}`}>
-                        Iniciar tarea <Play className={`size-4 fill-current ${!isPriority && 'group-hover:text-on-primary'}`} />
-                      </Button>
+                      <Link href={`/proyectos/${task.id_proyecto}`} className="ml-auto block">
+                        <Button variant={isPriority ? 'primary' : 'secondary'} className={`gap-2 w-full ${isPriority ? 'group-hover:scale-105 transition-transform' : 'group-hover:bg-primary group-hover:text-on-primary transition-colors'}`}>
+                          Iniciar tarea <Play className={`size-4 fill-current ${!isPriority && 'group-hover:text-on-primary'}`} />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </Card>
