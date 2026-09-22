@@ -329,6 +329,7 @@ export async function createProjectAction(input: CreateProjectInput) {
     // Si la URL del webhook de n8n está configurada, generamos automáticamente
     // el plan de tareas inicial y lo guardamos en la tabla 'tareas' de Supabase.
     // =========================================================================
+    let tasksGenerated = false;
     if (process.env.N8N_WEBHOOK_URL) {
       try {
         const n8nResult = await generateProjectTasksFromN8n({
@@ -348,6 +349,8 @@ export async function createProjectAction(input: CreateProjectInput) {
             'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
             n8nResult.error,
           );
+        } else {
+          tasksGenerated = true;
         }
       } catch (n8nErr) {
         console.warn(
