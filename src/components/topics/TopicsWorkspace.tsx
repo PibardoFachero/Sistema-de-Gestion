@@ -386,16 +386,7 @@ export function TopicsWorkspace() {
   function handleProjectLinked(project: LinkedProject) {
     if (!selectedTopic) return;
     setTopics((prev) =>
-      prev.map((t) =>
-        t.id === selectedTopic.id
-          ? {
-              ...t,
-              projects: t.projects.some((p) => p.id === project.id)
-                ? t.projects
-                : [...t.projects, project],
-            }
-          : t,
-      ),
+      prev.map((t) => (t.id === selectedTopic.id ? { ...t, projectId: project.id, project } : t)),
     );
     toast.success(`Proyecto "${project.name}" vinculado`);
   }
@@ -406,9 +397,7 @@ export function TopicsWorkspace() {
     if (res.success) {
       setTopics((prev) =>
         prev.map((t) =>
-          t.id === selectedTopic.id
-            ? { ...t, projects: t.projects.filter((p) => p.id !== projectId) }
-            : t,
+          t.id === selectedTopic.id ? { ...t, projectId: undefined, project: undefined } : t,
         ),
       );
       toast.info('Proyecto desvinculado');
@@ -783,23 +772,20 @@ export function TopicsWorkspace() {
                   </Button>
                 </div>
 
-                {selectedTopic.projects.length === 0 ? (
+                {selectedTopic.project ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <ProjectLinkCard
+                      project={selectedTopic.project}
+                      onUnlink={() => handleUnlinkProject(selectedTopic.project!.id)}
+                    />
+                  </div>
+                ) : (
                   <div className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low/40 px-4 py-6 text-center">
                     <FolderKanban className="mx-auto size-6 text-outline" />
                     <p className="mt-2 text-sm font-semibold">Este tema aún no está vinculado</p>
                     <p className="mt-1 text-xs text-on-surface-variant">
                       Vincúlalo a un proyecto para reutilizar sus fuentes y medir el progreso real.
                     </p>
-                  </div>
-                ) : (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {selectedTopic.projects.map((project) => (
-                      <ProjectLinkCard
-                        key={project.id}
-                        project={project}
-                        onUnlink={() => handleUnlinkProject(project.id)}
-                      />
-                    ))}
                   </div>
                 )}
               </Card>
@@ -831,13 +817,15 @@ export function TopicsWorkspace() {
           onClose={() => setIsLinkModalOpen(false)}
           onProjectLinked={handleProjectLinked}
           onProjectUnlinked={(pid) => {
-            setTopics((prev) =>
-              prev.map((t) =>
-                t.id === selectedTopic.id
-                  ? { ...t, projects: t.projects.filter((p) => p.id !== pid) }
-                  : t,
-              ),
-            );
+            if (selectedTopic.project?.id === pid) {
+              setTopics((prev) =>
+                prev.map((t) =>
+                  t.id === selectedTopic.id
+                    ? { ...t, projectId: undefined, project: undefined }
+                    : t,
+                ),
+              );
+            }
           }}
         />
       )}
