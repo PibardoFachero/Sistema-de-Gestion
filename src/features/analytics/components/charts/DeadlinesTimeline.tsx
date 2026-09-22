@@ -44,12 +44,14 @@ export function DeadlinesTimeline({ data }: DeadlinesTimelineProps) {
                 <span className="text-xs opacity-60 font-normal">({deadline.dueDate})</span>
               </p>
             </div>
-            <span 
+            <span
               className={cn(
-                "mt-2 inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-bold sm:mt-0 transition-colors",
-                deadline.tone === 'urgent' ? 'bg-status-urgent-bg text-status-urgent' :
-                deadline.tone === 'attention' ? 'bg-status-attention-bg text-status-attention' :
-                'bg-status-success-bg text-status-success'
+                'mt-2 inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-bold sm:mt-0 transition-colors',
+                deadline.tone === 'urgent'
+                  ? 'bg-status-urgent-bg text-status-urgent'
+                  : deadline.tone === 'attention'
+                    ? 'bg-status-attention-bg text-status-attention'
+                    : 'bg-status-success-bg text-status-success',
               )}
             >
               {deadline.state}

@@ -89,7 +89,8 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
 
       (projectsData || []).forEach((p) => {
         const stats = milestonesByProject[p.id] || { total: 0, completed: 0 };
-        const progress = p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
+        const progress =
+          p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
         projectsMap[p.id] = {
           name: p.titulo,
           description: p.objetivo || '',
@@ -215,8 +216,8 @@ export async function createTopicAction(input: CreateTopicInput): Promise<Action
       lastEdited: 'Creado ahora',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      projectId: data.project_id || undefined,
       sources: [],
-      projects: [],
     };
 
     return { success: true, data: newTopic };

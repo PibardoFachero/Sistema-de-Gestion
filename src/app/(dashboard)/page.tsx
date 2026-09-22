@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { evaluateAndSyncUserStreak } from '@/features/gamification/services/streakService';
 import { HomeDashboardClient } from './HomeDashboardClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Komorebi | Sistema de Gestión de Calendarios con Google OAuth',
@@ -19,13 +23,9 @@ export default async function HomePage() {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('racha_activa, racha_maxima')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  const rachaActiva = typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0;
+  // Evaluar y sincronizar racha del usuario
+  const streakResult = await evaluateAndSyncUserStreak(supabase, user.id);
+  const rachaActiva = streakResult.racha_activa;
 
   const displayName =
     user.user_metadata?.first_name ||
@@ -44,42 +44,49 @@ export default async function HomePage() {
 
   let upcomingTasks: import('./HomeDashboardClient').UpcomingTask[] = [];
   let totalPendingTasks = 0;
-  
+
   // Métricas por defecto
   const metrics = {
     weeklyHoursText: '0h 0m',
     chartData: [
-      { day: 'L', value: 0 }, { day: 'M', value: 0 }, { day: 'X', value: 0 },
-      { day: 'J', value: 0 }, { day: 'V', value: 0 }, { day: 'S', value: 0 }, { day: 'D', value: 0 }
+      { day: 'L', value: 0 },
+      { day: 'M', value: 0 },
+      { day: 'X', value: 0 },
+      { day: 'J', value: 0 },
+      { day: 'V', value: 0 },
+      { day: 'S', value: 0 },
+      { day: 'D', value: 0 },
     ],
     todayCompleted: 0,
     todayTotal: 0,
     globalPace: 0,
   };
-  
+
   if (projects && projects.length > 0) {
-    const projectIds = projects.map(p => p.id);
-    
+    const projectIds = projects.map((p) => p.id);
+
     // Obtener TODAS las tareas para calcular métricas
     const { data: allTareas } = await supabase
       .from('tareas')
-      .select('id, titulo, duracion, prioridad, fecha_inicio, id_proyecto, completado, completed_at')
+      .select(
+        'id, titulo, duracion, prioridad, fecha_inicio, id_proyecto, completado, completed_at',
+      )
       .in('id_proyecto', projectIds);
-      
+
     if (allTareas) {
       // 1. upcomingTasks (limit 3, pending)
       const pendingTareas = allTareas
-        .filter(t => !t.completado)
+        .filter((t) => !t.completado)
         .sort((a, b) => {
           if (!a.fecha_inicio) return 1;
           if (!b.fecha_inicio) return -1;
           return new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime();
         });
-        
+
       totalPendingTasks = pendingTareas.length;
-      
-      upcomingTasks = pendingTareas.slice(0, 3).map(t => {
-        const project = projects.find(p => p.id === t.id_proyecto);
+
+      upcomingTasks = pendingTareas.slice(0, 3).map((t) => {
+        const project = projects.find((p) => p.id === t.id_proyecto);
         return {
           id: t.id,
           titulo: t.titulo,
@@ -93,8 +100,6 @@ export default async function HomePage() {
 
       // 2. Cálculos de métricas
       const now = new Date();
-      // startOfWeek with weekStartsOn: 1 (Monday) is not directly available without date-fns, let's use manual logic or import date-fns
-      // We can use JS Date
       const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0 for Monday, 6 for Sunday
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() - dayOfWeek);
@@ -103,7 +108,7 @@ export default async function HomePage() {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
-      
+
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date(now);
@@ -139,19 +144,24 @@ export default async function HomePage() {
 
       metrics.weeklyHoursText = `${Math.floor(weeklyMinutes / 60)}h ${weeklyMinutes % 60}m`;
       metrics.chartData = [
-        { day: 'L', value: chartMap['L'] }, { day: 'M', value: chartMap['M'] }, { day: 'X', value: chartMap['X'] },
-        { day: 'J', value: chartMap['J'] }, { day: 'V', value: chartMap['V'] }, { day: 'S', value: chartMap['S'] },
-        { day: 'D', value: chartMap['D'] }
+        { day: 'L', value: chartMap['L'] },
+        { day: 'M', value: chartMap['M'] },
+        { day: 'X', value: chartMap['X'] },
+        { day: 'J', value: chartMap['J'] },
+        { day: 'V', value: chartMap['V'] },
+        { day: 'S', value: chartMap['S'] },
+        { day: 'D', value: chartMap['D'] },
       ];
-      metrics.globalPace = allTareas.length > 0 ? Math.round((totalCompletedTasks / allTareas.length) * 100) : 0;
+      metrics.globalPace =
+        allTareas.length > 0 ? Math.round((totalCompletedTasks / allTareas.length) * 100) : 0;
     }
   }
 
   return (
-    <HomeDashboardClient 
-      displayName={displayName} 
-      rachaActiva={rachaActiva} 
-      upcomingTasks={upcomingTasks} 
+    <HomeDashboardClient
+      displayName={displayName}
+      rachaActiva={rachaActiva}
+      upcomingTasks={upcomingTasks}
       totalPendingTasks={totalPendingTasks}
       metrics={metrics}
     />

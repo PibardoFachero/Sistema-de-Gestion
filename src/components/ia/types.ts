@@ -30,6 +30,13 @@ export type UserProjectItem = {
   progreso: number;
 };
 
+export type MessageIntent =
+  | 'informational'
+  | 'update_project'
+  | 'create_project'
+  | 'recommend_topics'
+  | 'confirm_recommendation';
+
 export type AssistantMessage = {
   id: string;
   role: 'assistant' | 'user';
@@ -40,9 +47,13 @@ export type AssistantMessage = {
   fileAttachment?: FileAttachment;
   tasks?: GeneratedTaskItem[];
   planTitle?: string;
-  intent?: 'informational' | 'update_project' | 'create_project';
+  intent?: MessageIntent;
   targetProjectId?: string;
   targetProjectTitle?: string;
+  projectLink?: string;
+  skipQuestions?: number;
+  suggestedTopicTitle?: string;
+  suggestedTopicObjective?: string;
 };
 
 export type ConversationItem = {
@@ -82,6 +93,8 @@ export type SendAssistantMessage = (input: {
   context: AssistantContext;
   fileAttachment?: FileAttachment;
   conversationId?: string | null;
+  history?: AssistantMessage[];
+  lastAssistantMessage?: AssistantMessage | null;
 }) => Promise<{
   message: AssistantMessage;
   conversationId: string;

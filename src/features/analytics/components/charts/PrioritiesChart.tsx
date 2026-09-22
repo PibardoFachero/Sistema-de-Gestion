@@ -22,7 +22,10 @@ export function PrioritiesChart({ data }: PrioritiesChartProps) {
   const activeData = data.filter((item) => item.value > 0);
 
   return (
-    <div className="h-[350px] w-full pt-4 min-w-[34rem] sm:min-w-0" aria-label="Proyectos por prioridad">
+    <div
+      className="h-[350px] w-full pt-4 min-w-[34rem] sm:min-w-0"
+      aria-label="Proyectos por prioridad"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <Pie
@@ -36,8 +39,8 @@ export function PrioritiesChart({ data }: PrioritiesChartProps) {
             animationDuration={1000}
           >
             {activeData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
+              <Cell
+                key={`cell-${index}`}
                 fill={getToneColor(entry.tone)}
                 className="transition-all duration-300 hover:opacity-80 outline-none"
                 stroke="var(--color-surface)"
@@ -45,15 +48,15 @@ export function PrioritiesChart({ data }: PrioritiesChartProps) {
               />
             ))}
           </Pie>
-          <Tooltip 
+          <Tooltip
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 return (
                   <div className="rounded-xl border border-outline-variant/40 bg-surface/95 px-3 py-2 text-sm shadow-md backdrop-blur flex items-center gap-2">
-                    <span 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: getToneColor(data.tone) }} 
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getToneColor(data.tone) }}
                     />
                     <p className="font-bold text-on-surface">{data.name}:</p>
                     <p className="font-semibold text-on-surface-variant">
@@ -65,18 +68,21 @@ export function PrioritiesChart({ data }: PrioritiesChartProps) {
               return null;
             }}
           />
-          <Legend 
-            verticalAlign="bottom" 
+          <Legend
+            verticalAlign="bottom"
             height={36}
             content={({ payload }) => (
               <ul className="flex flex-wrap justify-center gap-6 mt-4">
                 {payload?.map((entry, index) => {
                   const item = activeData[index];
                   return (
-                    <li key={`item-${index}`} className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant">
-                      <span 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: getToneColor(item.tone) }} 
+                    <li
+                      key={`item-${index}`}
+                      className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: getToneColor(item.tone) }}
                       />
                       {entry.value} ({item.value})
                     </li>

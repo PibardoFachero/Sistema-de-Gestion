@@ -120,7 +120,7 @@ export async function createProjectAction(input: CreateProjectInput) {
     // =========================================================================
     if (process.env.N8N_WEBHOOK_URL) {
       try {
-        await generateProjectTasksFromN8n({
+        const n8nResult = await generateProjectTasksFromN8n({
           id: project.id,
           user_id: user.id,
           titulo: project.titulo,
@@ -131,15 +131,23 @@ export async function createProjectAction(input: CreateProjectInput) {
           material_url: project.material_url,
           minutos_diarios: project.minutos_diarios,
         });
+
+        if (!n8nResult.success) {
+          console.warn(
+            'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
+            n8nResult.error,
+          );
+        }
       } catch (n8nErr) {
         console.warn(
-          'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
+          'Advertencia: Excepción al generar tareas con n8n al crear el proyecto:',
           n8nErr,
         );
       }
     }
 
     revalidatePath('/proyectos');
+    revalidatePath('/');
     return { success: true, project };
   } catch (error: unknown) {
     console.error('Error en createProjectAction:', error);
@@ -266,11 +274,12 @@ export async function getProjectDetailAction(id: string) {
 /**
  * toggleTaskStatusAction
  * Actualiza el campo 'completado' (boolean) de la tarea y recalcula el 'progreso' en 'projects'.
+ * Además gestiona la racha: incrementa si se completa a tiempo o restablece a 0 si la tarea expiró.
  */
 export async function toggleTaskStatusAction(
   taskId: string,
   isCompleted: boolean,
-  projectId: string,
+  projectId?: string,
 ) {
   try {
     const supabase = await createClient();
@@ -283,31 +292,100 @@ export async function toggleTaskStatusAction(
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    if (!(await userOwnsProject(supabase, user.id, projectId))) {
+    let targetProjectId = projectId;
+    if (!targetProjectId) {
+      const { data: tRecord } = await supabase
+        .from('tareas')
+        .select('id_proyecto')
+        .eq('id', taskId)
+        .maybeSingle();
+      if (tRecord?.id_proyecto) {
+        targetProjectId = tRecord.id_proyecto;
+      }
+    }
+
+    if (!targetProjectId) {
+      return { success: false, error: 'No se pudo identificar el proyecto de la tarea.' };
+    }
+
+    if (!(await userOwnsProject(supabase, user.id, targetProjectId))) {
       return {
         success: false,
         error: 'No tienes permiso para modificar las tareas de este proyecto.',
       };
     }
 
-    const db = supabase;
-
-    // 1. Actualizar la tarea en la tabla 'tareas'
-    const { error: updateError } = await db
+    // 1. Obtener la tarea antes de modificar para conocer su estado previo y tiempo
+    const { data: existingTask } = await supabase
       .from('tareas')
-      .update({ completado: isCompleted })
+      .select('id, completado, fecha_inicio, duracion')
       .eq('id', taskId)
-      .eq('id_proyecto', projectId);
+      .eq('id_proyecto', targetProjectId)
+      .maybeSingle();
+
+    const wasCompleted = Boolean(existingTask?.completado);
+
+    // 2. Actualizar la tarea en la tabla 'tareas'
+    const nowIso = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from('tareas')
+      .update({
+        completado: isCompleted,
+        completed_at: isCompleted ? nowIso : null,
+      })
+      .eq('id', taskId)
+      .eq('id_proyecto', targetProjectId);
 
     if (updateError) {
       return { success: false, error: updateError.message };
     }
 
-    // 2. Obtener todas las tareas del proyecto para recalcular el porcentaje de progreso
-    const { data: allTasks, error: fetchError } = await db
+    // 3. Gestionar racha del usuario en la tabla 'profiles'
+    let updatedRacha: number;
+    let updatedRachaMaxima: number;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('racha_activa, racha_maxima')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const currentStreak = typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0;
+    const currentMax = typeof profile?.racha_maxima === 'number' ? profile.racha_maxima : 0;
+
+    if (isCompleted && !wasCompleted) {
+      // Al completar una tarea: aumenta siempre el contador de racha
+      updatedRacha = currentStreak + 1;
+      updatedRachaMaxima = Math.max(currentMax, updatedRacha);
+
+      await supabase
+        .from('profiles')
+        .update({
+          racha_activa: updatedRacha,
+          racha_maxima: updatedRachaMaxima,
+        })
+        .eq('id', user.id);
+    } else if (!isCompleted && wasCompleted) {
+      // Al desmarcar una tarea: decrementa la racha sin bajar de 0
+      updatedRacha = Math.max(0, currentStreak - 1);
+      updatedRachaMaxima = currentMax;
+
+      await supabase
+        .from('profiles')
+        .update({
+          racha_activa: updatedRacha,
+        })
+        .eq('id', user.id);
+    } else {
+      updatedRacha = currentStreak;
+      updatedRachaMaxima = currentMax;
+    }
+
+    // 4. Obtener todas las tareas del proyecto para recalcular el porcentaje de progreso
+    const { data: allTasks, error: fetchError } = await supabase
       .from('tareas')
       .select('completado')
-      .eq('id_proyecto', projectId);
+      .eq('id_proyecto', targetProjectId);
 
     let newProgreso = 0;
     let isProjectCompleted = false;
@@ -317,33 +395,42 @@ export async function toggleTaskStatusAction(
       isProjectCompleted = completedCount === allTasks.length;
     }
 
-    // 3. Guardar el nuevo progreso y completado en la tabla 'projects'
+    // 5. Guardar el nuevo progreso y completado en la tabla 'projects'
     try {
-      const { error: projError } = await db
+      const { error: projError } = await supabase
         .from('projects')
         .update({ progreso: newProgreso, completado: isProjectCompleted })
-        .eq('id', projectId)
+        .eq('id', targetProjectId)
         .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await db
+        await supabase
           .from('projects')
           .update({ progreso: newProgreso })
-          .eq('id', projectId)
+          .eq('id', targetProjectId)
           .eq('user_id', user.id);
       }
     } catch {
-      await db
+      await supabase
         .from('projects')
         .update({ progreso: newProgreso })
-        .eq('id', projectId)
+        .eq('id', targetProjectId)
         .eq('user_id', user.id);
     }
 
-    revalidatePath(`/proyectos/${projectId}`);
+    revalidatePath(`/proyectos/${targetProjectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/');
+    revalidatePath('/perfil');
+    revalidatePath('/analitica');
 
-    return { success: true, progreso: newProgreso, completado: isProjectCompleted };
+    return {
+      success: true,
+      progreso: newProgreso,
+      completado: isProjectCompleted,
+      racha_activa: updatedRacha,
+      racha_maxima: updatedRachaMaxima,
+    };
   } catch (error: unknown) {
     console.error('Error en toggleTaskStatusAction:', error);
     const msg = error instanceof Error ? error.message : 'Error inesperado.';
@@ -505,6 +592,7 @@ export async function createTaskAction(data: {
 
     revalidatePath(`/proyectos/${data.projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/');
 
     return { success: true, task, progreso: newProgreso, completado: false };
   } catch (error: unknown) {
@@ -582,8 +670,43 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
         .eq('user_id', user.id);
     }
 
+    // Sincronizar racha de forma consistente: si el usuario ya no tiene tareas completadas, resetear racha a 0
+    try {
+      const { data: userProjects } = await db.from('projects').select('id').eq('user_id', user.id);
+
+      const uProjIds = (userProjects ?? []).map((p) => p.id);
+      if (uProjIds.length > 0) {
+        const { data: remainingCompleted } = await db
+          .from('tareas')
+          .select('id')
+          .in('id_proyecto', uProjIds)
+          .eq('completado', true);
+
+        const totalCompleted = remainingCompleted?.length ?? 0;
+        if (totalCompleted === 0) {
+          await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
+        } else {
+          const { data: prof } = await db
+            .from('profiles')
+            .select('racha_activa')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
+            await db.from('profiles').update({ racha_activa: totalCompleted }).eq('id', user.id);
+          }
+        }
+      } else {
+        await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
+      }
+    } catch (streakSyncErr) {
+      console.error('Error sincronizando racha al eliminar tarea:', streakSyncErr);
+    }
+
     revalidatePath(`/proyectos/${projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/perfil');
+    revalidatePath('/');
 
     return { success: true, progreso: newProgreso, completado: isProjectCompleted };
   } catch (error: unknown) {
@@ -629,7 +752,42 @@ export async function deleteProjectAction(projectId: string) {
       return { success: false, error: projectDeleteError.message };
     }
 
+    // Sincronizar racha de forma consistente: si tras eliminar el proyecto no quedan tareas completadas, resetear racha a 0
+    try {
+      const { data: userProjects } = await db.from('projects').select('id').eq('user_id', user.id);
+
+      const remainingProjIds = (userProjects ?? []).map((p) => p.id);
+      if (remainingProjIds.length > 0) {
+        const { data: remainingCompleted } = await db
+          .from('tareas')
+          .select('id')
+          .in('id_proyecto', remainingProjIds)
+          .eq('completado', true);
+
+        const totalCompleted = remainingCompleted?.length ?? 0;
+        if (totalCompleted === 0) {
+          await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
+        } else {
+          const { data: prof } = await db
+            .from('profiles')
+            .select('racha_activa')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
+            await db.from('profiles').update({ racha_activa: totalCompleted }).eq('id', user.id);
+          }
+        }
+      } else {
+        await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
+      }
+    } catch (streakSyncErr) {
+      console.error('Error sincronizando racha al eliminar proyecto:', streakSyncErr);
+    }
+
     revalidatePath('/proyectos');
+    revalidatePath('/perfil');
+    revalidatePath('/');
     return { success: true };
   } catch (error: unknown) {
     console.error('Error en deleteProjectAction:', error);
@@ -791,6 +949,7 @@ export async function updateTaskAction(data: {
 
     revalidatePath(`/proyectos/${data.projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/');
 
     return {
       success: true,
@@ -867,6 +1026,7 @@ export async function generateTasksWithN8nAction(
 
     revalidatePath(`/proyectos/${projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/');
 
     return {
       success: true,
@@ -878,5 +1038,32 @@ export async function generateTasksWithN8nAction(
     console.error('Error en generateTasksWithN8nAction:', error);
     const msg = error instanceof Error ? error.message : 'Error inesperado al generar tareas.';
     return { success: false, error: msg };
+  }
+}
+
+/**
+ * resetStreakOnOverdueAction
+ * Reinicia la racha activa a 0 cuando una tarea programada expira sin completarse en el plazo establecido.
+ */
+export async function resetStreakOnOverdueAction() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No se encontró una sesión activa.' };
+    }
+
+    await supabase.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
+
+    revalidatePath('/perfil');
+    revalidatePath('/');
+    return { success: true, racha_activa: 0 };
+  } catch (error: unknown) {
+    console.error('Error en resetStreakOnOverdueAction:', error);
+    return { success: false, error: 'Error al reiniciar racha.' };
   }
 }

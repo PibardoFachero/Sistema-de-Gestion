@@ -386,11 +386,7 @@ export function TopicsWorkspace() {
   function handleProjectLinked(project: LinkedProject) {
     if (!selectedTopic) return;
     setTopics((prev) =>
-      prev.map((t) =>
-        t.id === selectedTopic.id
-          ? { ...t, projectId: project.id, project }
-          : t,
-      ),
+      prev.map((t) => (t.id === selectedTopic.id ? { ...t, projectId: project.id, project } : t)),
     );
     toast.success(`Proyecto "${project.name}" vinculado`);
   }
@@ -401,9 +397,7 @@ export function TopicsWorkspace() {
     if (res.success) {
       setTopics((prev) =>
         prev.map((t) =>
-          t.id === selectedTopic.id
-            ? { ...t, projectId: undefined, project: undefined }
-            : t,
+          t.id === selectedTopic.id ? { ...t, projectId: undefined, project: undefined } : t,
         ),
       );
       toast.info('Proyecto desvinculado');

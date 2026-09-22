@@ -90,6 +90,10 @@ export async function getConversationMessagesAction(conversationId: string): Pro
         intent: (contextData.intent as AssistantMessage['intent']) || undefined,
         targetProjectId: (contextData.targetProjectId as string) || undefined,
         targetProjectTitle: (contextData.targetProjectTitle as string) || undefined,
+        projectLink: (contextData.projectLink as string) || undefined,
+        skipQuestions: (contextData.skipQuestions as number) || undefined,
+        suggestedTopicTitle: (contextData.suggestedTopicTitle as string) || undefined,
+        suggestedTopicObjective: (contextData.suggestedTopicObjective as string) || undefined,
       };
     });
 
@@ -203,6 +207,10 @@ export async function saveMessageAction(params: {
       intent: (ctx.intent as AssistantMessage['intent']) || undefined,
       targetProjectId: (ctx.targetProjectId as string) || undefined,
       targetProjectTitle: (ctx.targetProjectTitle as string) || undefined,
+      projectLink: (ctx.projectLink as string) || undefined,
+      skipQuestions: (ctx.skipQuestions as number) || undefined,
+      suggestedTopicTitle: (ctx.suggestedTopicTitle as string) || undefined,
+      suggestedTopicObjective: (ctx.suggestedTopicObjective as string) || undefined,
     };
 
     return { success: true, data: savedMessage };

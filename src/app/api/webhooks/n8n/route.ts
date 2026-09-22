@@ -84,9 +84,21 @@ export async function POST(request: Request) {
     console.warn('Error al cargar proyectos para contexto de Komo:', err);
   }
 
-  const promptConContexto = proyectosContextText
-    ? `${proyectosContextText}Instrucción o consulta del usuario:\n${parsed.data.mensaje}`
-    : parsed.data.mensaje;
+  const systemRulesText =
+    `[REGLAS DE CONDUCTA DE KOMO IA]:\n` +
+    `1. SI EL USUARIO PIDE CREAR UN PROYECTO (ej. "crear proyecto", "crea un proyecto", "iniciar proyecto"):\n` +
+    `   - NO crees el proyecto directamente ni generes tareas automáticas sin hacer preguntas al usuario.\n` +
+    `   - Explica cordialmente que para personalizar su fecha límite, nivel, materiales y horas diarias, debe configurar su proyecto en el formulario.\n` +
+    `   - Proporciona OBLIGATORIAMENTE el enlace: [Crear Proyecto en el Formulario](/proyectos/nuevo)\n` +
+    `2. SI EL USUARIO PIDE RECOMENDACIONES DE TEMAS PARA PROYECTOS (ej. "recomiéndame temas", "ideas de proyectos"):\n` +
+    `   - Brinda tu recomendación de temas con su nombre sugerido y objetivo principal.\n` +
+    `   - Pregúntale explícitamente si está de acuerdo con la propuesta antes de avanzar (ej. "¿Estás de acuerdo con este tema para tu proyecto o prefieres explorar otra opción?").\n` +
+    `3. SI EL USUARIO CONFIRMA O ACEPTA UN TEMA RECOMENDADO PREVIAMENTE (ej. "sí", "de acuerdo", "me parece bien", "vamos con esa"):\n` +
+    `   - Felicítalo por la elección.\n` +
+    `   - Explica que para ahorrarle tiempo se han obviado las 2 primeras preguntas (nombre y objetivo) en el formulario.\n` +
+    `   - Proporciona el enlace al formulario con los datos acordados en la URL: [Completar configuración en el formulario](/proyectos/nuevo?step=2&titulo=TITULO_AQUI&objetivo=OBJETIVO_AQUI)\n\n`;
+
+  const promptConContexto = `${systemRulesText}${proyectosContextText}Instrucción o consulta del usuario:\n${parsed.data.mensaje}`;
 
   try {
     const response = await fetch(webhookUrl, {

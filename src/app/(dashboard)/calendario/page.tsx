@@ -127,48 +127,59 @@ export default function CalendarioPage() {
     { start: Date; end: Date; label: string }[]
   >([]);
 
-  const [isGoogleConnected, setIsGoogleConnected] = useState(() => {
+  const [isMounted, setIsMounted] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('komorebi_availabilities');
         if (saved) {
           const parsed = JSON.parse(saved);
-          return parsed.some((a: Availability) => a.source === 'google');
+          if (parsed.some((a: Availability) => a.source === 'google')) {
+            setIsGoogleConnected(true);
+          }
         }
-      } catch (e) {}
-    }
-    return false;
-  });
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+      } catch (e) {
+        console.error(e);
+      }
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const success = urlParams.get('gcal_success');
       const error = urlParams.get('gcal_error');
-      
+
       if (success === 'true') {
         setIsGoogleConnected(true);
         setToastMessage({ type: 'success', text: 'Google Calendar sincronizado correctamente' });
         window.history.replaceState({}, document.title, window.location.pathname);
-        
+
         // Mock de evento de Google Calendar para previsualizar el estilo
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
         const tomorrowDay = format(tomorrow, 'EEEE', { locale: es });
-        
-        setAvailabilities(prev => {
-          if (prev.some(a => a.source === 'google')) return prev;
+
+        setAvailabilities((prev) => {
+          if (prev.some((a) => a.source === 'google')) return prev;
           const mockEvents: Availability[] = [];
-          for(let m=0; m<60; m+=5) {
+          for (let m = 0; m < 60; m += 5) {
             const mStr = m.toString().padStart(2, '0');
-            const nmStr = (m+5 === 60 ? '00' : (m+5).toString().padStart(2, '0'));
-            const h = 10 + (m+5 === 60 ? 1 : 0);
+            const nmStr = m + 5 === 60 ? '00' : (m + 5).toString().padStart(2, '0');
+            const h = 10 + (m + 5 === 60 ? 1 : 0);
             mockEvents.push({
-              date: tomorrowStr, dayOfWeek: tomorrowDay,
-              startTime: `10:${mStr}`, endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
-              label: 'Reunión Sync', source: 'google'
+              date: tomorrowStr,
+              dayOfWeek: tomorrowDay,
+              startTime: `10:${mStr}`,
+              endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
+              label: 'Reunión Sync',
+              source: 'google',
             });
           }
           return [...prev, ...mockEvents];
@@ -188,16 +199,17 @@ export default function CalendarioPage() {
   }, [toastMessage]);
 
   const handleConnectGoogle = () => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = '/api/auth/google';
   };
 
   const handleDisconnectGoogle = () => {
     setIsGoogleConnected(false);
-    setAvailabilities(prev => prev.filter(a => a.source !== 'google'));
+    setAvailabilities((prev) => prev.filter((a) => a.source !== 'google'));
     setToastMessage({ type: 'success', text: 'Google Calendar desconectado' });
   };
 
-  const activeTimes = new Set(availabilities.map(a => a.startTime));
+  const activeTimes = new Set(availabilities.map((a) => a.startTime));
 
   useEffect(() => {
     localStorage.setItem('komorebi_availabilities', JSON.stringify(availabilities));
@@ -241,18 +253,30 @@ export default function CalendarioPage() {
               Selecciona un mes para configurar tus horas de estudio o trabajo.
             </p>
           </div>
-          
-          <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto">
-            {!isGoogleConnected ? (
+
+          <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto min-h-[42px] flex items-center justify-end">
+            {!isMounted ? null : !isGoogleConnected ? (
               <button
                 onClick={handleConnectGoogle}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-[#5F6368] hover:bg-gray-50 border border-gray-200 rounded-xl font-semibold shadow-sm transition-all w-full sm:w-auto"
               >
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
                 </svg>
                 <span className="truncate">Conectar Google Calendar</span>
               </button>
@@ -261,8 +285,12 @@ export default function CalendarioPage() {
                 onClick={handleDisconnectGoogle}
                 className="group flex items-center justify-center gap-2 px-4 py-2 bg-[#E6F4EA] text-[#137333] hover:bg-[#FCE8E6] hover:text-[#C5221F] border border-[#CEEAD6] hover:border-[#FAD2CF] rounded-xl font-semibold shadow-sm transition-all w-full sm:w-auto"
               >
-                <span className="group-hover:hidden flex items-center gap-2"><Check className="size-4" /> Conectado a Google</span>
-                <span className="hidden group-hover:flex items-center gap-2"><X className="size-4" /> Desconectar</span>
+                <span className="group-hover:hidden flex items-center gap-2">
+                  <Check className="size-4" /> Conectado a Google
+                </span>
+                <span className="hidden group-hover:flex items-center gap-2">
+                  <X className="size-4" /> Desconectar
+                </span>
               </button>
             )}
           </div>
@@ -401,11 +429,11 @@ export default function CalendarioPage() {
     let exists = false;
     let hasGoogle = false;
     for (let i = clickStartIdx; i <= clickEndIdx; i++) {
-       const a = availabilities.find(a => a.date === dateStr && a.startTime === TIME_SLOTS[i]);
-       if (a) {
-         if (a.source === 'google') hasGoogle = true;
-         exists = true; 
-       }
+      const a = availabilities.find((a) => a.date === dateStr && a.startTime === TIME_SLOTS[i]);
+      if (a) {
+        if (a.source === 'google') hasGoogle = true;
+        exists = true;
+      }
     }
 
     if (hasGoogle) return; // Deshabilitar edición y selección para bloques de Google Calendar
@@ -907,16 +935,27 @@ export default function CalendarioPage() {
                       const effectiveAvail = isCollapsedHour ? macroFirstAvail : avail;
                       const isGoogleEvent = effectiveAvail?.source === 'google';
                       const currentType = effectiveAvail?.type || 'libre';
-                      
-                      const colorTheme = isGoogleEvent 
-                        ? { bg: 'bg-[#F1F3F4]', hover: 'hover:bg-[#E8EAED]', text: 'text-[#5F6368]', border: 'border-[#DADCE0]', bgPale: 'bg-[#F1F3F4]/50' } 
+
+                      const colorTheme = isGoogleEvent
+                        ? {
+                            bg: 'bg-[#F1F3F4]',
+                            hover: 'hover:bg-[#E8EAED]',
+                            text: 'text-[#5F6368]',
+                            border: 'border-[#DADCE0]',
+                            bgPale: 'bg-[#F1F3F4]/50',
+                          }
                         : COLOR_MAP[currentType];
 
                       const isMacroPartiallyOccupied =
                         isCollapsedHour && macroAvailCount > 0 && macroAvailCount < 12;
                       const isOccupied = avail || (isCollapsedHour && macroAvailCount === 12);
-                      const displayLabel = effectiveAvail?.label && effectiveAvail.label !== 'Libre' ? effectiveAvail.label : (isGoogleEvent ? 'Ocupado' : '');
-                      
+                      const displayLabel =
+                        effectiveAvail?.label && effectiveAvail.label !== 'Libre'
+                          ? effectiveAvail.label
+                          : isGoogleEvent
+                            ? 'Ocupado'
+                            : '';
+
                       return (
                         <div
                           key={`cell-${dateStr}-${timeStr}`}
@@ -943,23 +982,48 @@ export default function CalendarioPage() {
                             <div className="absolute inset-0 flex items-center justify-between px-1 overflow-hidden pointer-events-none z-0">
                               <div className="flex items-center gap-1 overflow-hidden">
                                 {isGoogleEvent && (
-                                  <svg className="w-3 h-3 shrink-0 text-[#5F6368] opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24">
-                                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                  <svg
+                                    className="w-3 h-3 shrink-0 text-[#5F6368] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                    />
+                                    <path
+                                      fill="currentColor"
+                                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                    />
+                                    <path
+                                      fill="currentColor"
+                                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                    />
+                                    <path
+                                      fill="currentColor"
+                                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                    />
                                   </svg>
                                 )}
-                                <span className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}>
+                                <span
+                                  className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}
+                                >
                                   {displayLabel}
                                 </span>
                               </div>
-                              
+
                               {!isGoogleEvent && (
                                 <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
                                   {!isPast && (
-                                    <button 
-                                      onClick={(e) => handleEditLabel(dateStr, timeStr, effectiveAvail!.label, currentType, e)}
+                                    <button
+                                      onClick={(e) =>
+                                        handleEditLabel(
+                                          dateStr,
+                                          timeStr,
+                                          effectiveAvail!.label,
+                                          currentType,
+                                          e,
+                                        )
+                                      }
                                       className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
                                       title="Editar"
                                     >
@@ -1066,11 +1130,16 @@ export default function CalendarioPage() {
       {view === 'month' ? renderMonthlyGrid() : renderWeeklyGrid()}
 
       {toastMessage && (
-        <div className={`fixed bottom-8 right-8 z-[100] px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 ${
-          toastMessage.type === 'success' ? 'bg-[#34A853] text-white' : 'bg-[#EA4335] text-white'
-        }`}>
+        <div
+          className={`fixed bottom-8 right-8 z-[100] px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 ${
+            toastMessage.type === 'success' ? 'bg-[#34A853] text-white' : 'bg-[#EA4335] text-white'
+          }`}
+        >
           <span className="font-bold text-sm">{toastMessage.text}</span>
-          <button onClick={() => setToastMessage(null)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+          <button
+            onClick={() => setToastMessage(null)}
+            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+          >
             <X className="size-4" />
           </button>
         </div>

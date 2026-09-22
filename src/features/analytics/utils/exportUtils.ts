@@ -1,29 +1,29 @@
 import { saveAs } from 'file-saver';
 
 // Utilizamos importaciones dinámicas (await import(...)) en el momento de la acción
-// para evitar que Next.js intente renderizar librerías pesadas como jsPDF o ExcelJS 
+// para evitar que Next.js intente renderizar librerías pesadas como jsPDF o ExcelJS
 // en el servidor (SSR), lo que causa errores como "Module not found: Can't resolve '../internals/task'".
 
 export async function captureChartImage(elementId: string): Promise<string | null> {
   const element = document.getElementById(elementId);
   if (!element) return null;
-  
+
   const html2canvas = (await import('html2canvas')).default;
-  
-  const canvas = await html2canvas(element, { 
+
+  const canvas = await html2canvas(element, {
     backgroundColor: '#fff8f4', // --color-surface
     scale: 2, // High resolution
   });
-  
+
   return canvas.toDataURL('image/png');
 }
 
 export async function exportAsImage(elementId: string, aiText: string, title: string) {
   const chartImage = await captureChartImage(elementId);
   if (!chartImage) return;
-  
+
   const html2canvas = (await import('html2canvas')).default;
-  
+
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.left = '-9999px';
@@ -33,7 +33,7 @@ export async function exportAsImage(elementId: string, aiText: string, title: st
   container.style.padding = '40px';
   container.style.color = '#221a13';
   container.style.fontFamily = 'sans-serif';
-  
+
   const header = document.createElement('h1');
   header.innerText = `Reporte Analítico: ${title}`;
   header.style.fontSize = '24px';
@@ -62,8 +62,8 @@ export async function exportAsImage(elementId: string, aiText: string, title: st
   textSection.style.fontSize = '15px';
   textSection.style.lineHeight = '1.6';
   textSection.style.color = '#4f453e';
-  
-  aiText.split('\n\n').forEach(paragraph => {
+
+  aiText.split('\n\n').forEach((paragraph) => {
     const p = document.createElement('p');
     p.innerText = paragraph.trim();
     p.style.marginBottom = '12px';
@@ -76,7 +76,7 @@ export async function exportAsImage(elementId: string, aiText: string, title: st
   try {
     const finalCanvas = await html2canvas(container, { scale: 2 });
     const finalImage = finalCanvas.toDataURL('image/png');
-    
+
     const link = document.createElement('a');
     link.download = `Reporte_${title.replace(/\s+/g, '_')}.png`;
     link.href = finalImage;
@@ -101,7 +101,7 @@ export async function exportAsPDF(elementId: string, aiText: string, title: stri
   yPosition += 40;
 
   // Add Chart Image
-  const contentWidth = 595.28 - (margin * 2);
+  const contentWidth = 595.28 - margin * 2;
   const imgProps = pdf.getImageProperties(chartImage);
   const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
@@ -115,16 +115,21 @@ export async function exportAsPDF(elementId: string, aiText: string, title: stri
 
   pdf.setFontSize(12);
   pdf.setTextColor(79, 69, 62);
-  
+
   const textLines = pdf.splitTextToSize(aiText, contentWidth);
   pdf.text(textLines, margin, yPosition);
 
   pdf.save(`Reporte_${title.replace(/\s+/g, '_')}.pdf`);
 }
 
-export async function exportAsExcel(elementId: string, aiText: string, title: string, rawData: any[]) {
+export async function exportAsExcel(
+  elementId: string,
+  aiText: string,
+  title: string,
+  rawData: Record<string, unknown>[],
+) {
   const chartImage = await captureChartImage(elementId);
-  
+
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Reporte Analítico');
@@ -156,16 +161,16 @@ export async function exportAsExcel(elementId: string, aiText: string, title: st
 
     sheet.addImage(imageId, {
       tl: { col: 1, row: currentStartRow - 1 },
-      ext: { width: 600, height: 300 }
+      ext: { width: 600, height: 300 },
     });
-    
+
     currentStartRow = currentStartRow + 17;
   }
 
   // Add Data Table
   if (rawData && rawData.length > 0) {
     const headers = Object.keys(rawData[0]);
-    
+
     sheet.mergeCells(`B${currentStartRow}:D${currentStartRow}`);
     const tableTitle = sheet.getCell(`B${currentStartRow}`);
     tableTitle.value = 'Datos Detallados:';
@@ -179,7 +184,12 @@ export async function exportAsExcel(elementId: string, aiText: string, title: st
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF322011' } };
       cell.alignment = { horizontal: 'center' };
-      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
     });
 
     rawData.forEach((row, rowIndex) => {
@@ -187,8 +197,10 @@ export async function exportAsExcel(elementId: string, aiText: string, title: st
         const cell = sheet.getCell(headerRowIndex + 1 + rowIndex, colIndex + 2);
         cell.value = String(row[header]);
         cell.border = {
-            top: {style:'thin', color: {argb:'FFD2C4BB'}}, left: {style:'thin', color: {argb:'FFD2C4BB'}}, 
-            bottom: {style:'thin', color: {argb:'FFD2C4BB'}}, right: {style:'thin', color: {argb:'FFD2C4BB'}}
+          top: { style: 'thin', color: { argb: 'FFD2C4BB' } },
+          left: { style: 'thin', color: { argb: 'FFD2C4BB' } },
+          bottom: { style: 'thin', color: { argb: 'FFD2C4BB' } },
+          right: { style: 'thin', color: { argb: 'FFD2C4BB' } },
         };
       });
     });
@@ -199,6 +211,8 @@ export async function exportAsExcel(elementId: string, aiText: string, title: st
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const blob = new Blob([buffer as BlobPart], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
   saveAs(blob, `Reporte_${title.replace(/\s+/g, '_')}.xlsx`);
 }

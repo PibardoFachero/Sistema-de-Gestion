@@ -31,7 +31,6 @@ import {
 import { ChangePasswordModal } from '@/components/profile/ChangePasswordModal';
 import { AddPasswordModal } from '@/components/profile/AddPasswordModal';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { onboardingQuestions } from '@/features/onboarding/data/questions';
 import type { OnboardingAnswersInput } from '@/features/onboarding/actions/saveOnboardingAction';
 import {
@@ -162,7 +161,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
     setTelegramMessage(
       'Abre el bot, presiona Iniciar y copia el código de seis dígitos que recibas.',
     );
-    window.open('https://t.me/aulaverify_bot?start=verify', '_blank', 'noopener,noreferrer');
+    window.open('https://t.me/aulaverify_bot?start=verificacion', '_blank', 'noopener,noreferrer');
   }
 
   function handleVerifyTelegram() {
@@ -361,615 +360,617 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                 onSubmit={handleSaveIdentity}
                 className="space-y-6"
               >
-              {/* Bloque Avatar y subida */}
-              <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
-                <p className="text-sm font-semibold text-on-surface">Foto de perfil y avatar</p>
-                <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-2 border-primary/30 bg-surface-container-lowest text-2xl font-bold text-primary shadow-[0_10px_24px_-12px_rgba(74,53,37,0.35)]">
-                    {avatarPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatarPreview}
-                        alt="Vista previa de perfil"
-                        className="size-full object-cover"
+                {/* Bloque Avatar y subida */}
+                <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
+                  <p className="text-sm font-semibold text-on-surface">Foto de perfil y avatar</p>
+                  <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-2 border-primary/30 bg-surface-container-lowest text-2xl font-bold text-primary shadow-[0_10px_24px_-12px_rgba(74,53,37,0.35)]">
+                      {avatarPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarPreview}
+                          alt="Vista previa de perfil"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        profile.initials
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={handleAvatarFile}
+                        className="sr-only"
                       />
-                    ) : (
-                      profile.initials
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="min-h-10 gap-2 cursor-pointer"
+                          onClick={() => avatarInputRef.current?.click()}
+                        >
+                          <ImagePlus className="size-4" />
+                          Subir nueva imagen
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="min-h-10 gap-2 cursor-pointer"
+                          onClick={() => setIsLibraryOpen((prev) => !prev)}
+                        >
+                          <Images className="size-4" />
+                          {isLibraryOpen ? 'Ocultar biblioteca' : 'Biblioteca de avatares'}
+                        </Button>
+                      </div>
+                      <p className="mt-2 text-xs text-on-surface-variant">
+                        Formatos aceptados: PNG, JPG o WebP (máx. 5 MB). La imagen se optimiza
+                        automáticamente.
+                      </p>
+                      {avatarError && (
+                        <p role="alert" className="mt-2 text-xs font-medium text-status-error">
+                          {avatarError}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Panel Biblioteca de Avatares (Sólo fotos subidas por el usuario) */}
+                  {isLibraryOpen && (
+                    <div className="mt-5 rounded-2xl border border-primary/20 bg-surface-container-lowest p-4 sm:p-5 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Images className="size-4 text-primary" />
+                        <h4 className="text-sm font-bold text-on-surface">
+                          Biblioteca de avatares
+                        </h4>
+                      </div>
+
+                      {uploadedAvatars.length > 0 ? (
+                        <div>
+                          <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2.5">
+                            Tus fotos subidas
+                          </p>
+                          <div className="flex flex-wrap gap-3">
+                            {uploadedAvatars.map((url, idx) => {
+                              const isSelected = avatarPreview === url;
+                              return (
+                                <button
+                                  key={`uploaded-${idx}`}
+                                  type="button"
+                                  onClick={() => setAvatarPreview(url)}
+                                  className={`group relative size-16 overflow-hidden rounded-2xl border-2 transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'border-primary shadow-md ring-2 ring-primary/30'
+                                      : 'border-outline-variant hover:border-primary/50'
+                                  }`}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={url}
+                                    alt={`Avatar subido ${idx + 1}`}
+                                    className="size-full object-cover"
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                      <div className="rounded-full bg-primary p-0.5 text-surface">
+                                        <Check className="size-3.5 stroke-[3]" />
+                                      </div>
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-outline-variant p-4 text-center">
+                          <p className="text-xs text-on-surface-variant">
+                            Aún no has subido fotos de perfil. Puedes subir una usando el botón
+                            «Subir nueva imagen».
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nombre y Apellido divididos en 2 recuadros diferentes */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="nombre_input"
+                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                    >
+                      Nombre
+                    </label>
+                    <input
+                      id="nombre_input"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      maxLength={50}
+                      placeholder="Tu nombre"
+                      className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="apellido_input"
+                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                    >
+                      Apellido
+                    </label>
+                    <input
+                      id="apellido_input"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      maxLength={50}
+                      placeholder="Tu apellido"
+                      className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Nombre de usuario */}
+                <div>
+                  <label
+                    htmlFor="nombre_usuario_input"
+                    className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                  >
+                    Nombre de usuario
+                  </label>
+                  <div className="relative mt-2 flex items-center">
+                    <span className="pointer-events-none absolute left-3 text-sm font-semibold text-outline">
+                      @
+                    </span>
+                    <input
+                      id="nombre_usuario_input"
+                      type="text"
+                      value={username.replace(/^@+/, '')}
+                      onChange={(e) => setUsername(e.target.value.replace(/^@+/, ''))}
+                      required
+                      minLength={3}
+                      maxLength={30}
+                      placeholder="usuario"
+                      className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-8 pr-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <span className="mt-1 block text-xs text-on-surface-variant">
+                    Letras, números, guiones y puntos.
+                  </span>
+                </div>
+
+                {/* Teléfono (opcional) con selector de prefijo internacional */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="telefono_numero_input"
+                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                    >
+                      Número telefónico{' '}
+                      <span className="font-normal normal-case text-on-surface-variant">
+                        (opcional)
+                      </span>
+                    </label>
+                    {phoneInputError && (
+                      <span role="alert" className="text-xs font-medium text-status-error">
+                        {phoneInputError}
+                      </span>
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarFile}
-                      className="sr-only"
-                    />
+                  <div className="mt-2 flex flex-col sm:flex-row gap-2.5">
+                    {/* Selector de prefijo de país */}
+                    <div className="relative sm:w-56 shrink-0">
+                      <label htmlFor="telefono_prefijo_select" className="sr-only">
+                        Prefijo de país
+                      </label>
+                      <select
+                        id="telefono_prefijo_select"
+                        value={phonePrefix}
+                        onChange={(e) => {
+                          setPhonePrefix(e.target.value);
+                          setPhoneInputError(null);
+                        }}
+                        className="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-8 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                      >
+                        {COUNTRY_CODES.map((country) => (
+                          <option
+                            key={`${country.iso}-${country.code}`}
+                            value={country.code}
+                            className="bg-surface-container-lowest text-on-surface py-1"
+                          >
+                            {country.flag} {country.code} ({country.name})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-outline" />
+                    </div>
+
+                    {/* Campo de número telefónico */}
+                    <div className="relative flex-1 min-w-0">
+                      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline">
+                        <Phone className="size-4" />
+                      </div>
+                      <input
+                        id="telefono_numero_input"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => {
+                          setPhoneNumber(e.target.value);
+                          if (phoneInputError) setPhoneInputError(null);
+                        }}
+                        placeholder="Ej. 412 1234567"
+                        maxLength={20}
+                        className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-3 py-2.5 text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                  </div>
+                  <span className="mt-1 block text-xs text-on-surface-variant">
+                    Selecciona el prefijo de tu país e ingresa tu número (entre 6 y 15 dígitos).
+                  </span>
+                </div>
+
+                <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Send className="size-4 text-primary" />
+                        <h3 className="text-sm font-bold text-on-surface">
+                          Verificación con Telegram
+                        </h3>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                        Confirma que controlas tu cuenta de Telegram. Esta verificación no valida tu
+                        número telefónico.
+                      </p>
+                    </div>
+                    <span
+                      className={
+                        telegramVerifiedAt
+                          ? 'inline-flex w-fit items-center gap-1.5 rounded-full bg-status-success-bg px-2.5 py-1 text-xs font-bold text-status-success'
+                          : 'inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-1 text-xs font-bold text-on-surface-variant'
+                      }
+                    >
+                      {telegramVerifiedAt ? (
+                        <ShieldCheck className="size-3.5" />
+                      ) : (
+                        <ShieldAlert className="size-3.5" />
+                      )}
+                      {telegramVerifiedAt ? 'Verificado' : 'Pendiente'}
+                    </span>
+                  </div>
+
+                  <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-on-surface-variant">
+                    <li>1. Abre el bot y presiona Iniciar.</li>
+                    <li>2. Copia el código de seis dígitos que recibirás.</li>
+                    <li>3. Ingresa tu usuario de Telegram y el código para confirmarlo.</li>
+                  </ol>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
+                    <div>
+                      <label
+                        htmlFor="telegram_identifier_input"
+                        className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                      >
+                        Usuario o ID de Telegram
+                      </label>
+                      <input
+                        id="telegram_identifier_input"
+                        type="text"
+                        value={telegramIdentifier}
+                        onChange={(event) => setTelegramIdentifier(event.target.value)}
+                        placeholder="@tu_usuario"
+                        maxLength={64}
+                        className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="telegram_code_input"
+                        className="block text-xs font-semibold uppercase tracking-wide text-outline"
+                      >
+                        Código
+                      </label>
+                      <input
+                        id="telegram_code_input"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        value={telegramCode}
+                        onChange={(event) =>
+                          setTelegramCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                        }
+                        placeholder="000000"
+                        maxLength={6}
+                        className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant="secondary"
-                        size="sm"
-                        className="min-h-10 gap-2 cursor-pointer"
-                        onClick={() => avatarInputRef.current?.click()}
+                        onClick={openTelegramBot}
+                        className="min-h-11"
                       >
-                        <ImagePlus className="size-4" />
-                        Subir nueva imagen
+                        Abrir bot
                       </Button>
                       <Button
                         type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="min-h-10 gap-2 cursor-pointer"
-                        onClick={() => setIsLibraryOpen((prev) => !prev)}
+                        onClick={handleVerifyTelegram}
+                        disabled={isVerifyingTelegram}
+                        className="min-h-11 gap-2"
                       >
-                        <Images className="size-4" />
-                        {isLibraryOpen ? 'Ocultar biblioteca' : 'Biblioteca de avatares'}
+                        {isVerifyingTelegram ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="size-4" />
+                        )}
+                        Verificar
                       </Button>
                     </div>
-                    <p className="mt-2 text-xs text-on-surface-variant">
-                      Formatos aceptados: PNG, JPG o WebP (máx. 5 MB). La imagen se optimiza
-                      automáticamente.
+                  </div>
+
+                  {telegramError && (
+                    <p role="alert" className="mt-3 text-sm font-medium text-status-error">
+                      {telegramError}
                     </p>
-                    {avatarError && (
-                      <p role="alert" className="mt-2 text-xs font-medium text-status-error">
-                        {avatarError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Panel Biblioteca de Avatares (Sólo fotos subidas por el usuario) */}
-                {isLibraryOpen && (
-                  <div className="mt-5 rounded-2xl border border-primary/20 bg-surface-container-lowest p-4 sm:p-5 animate-in fade-in duration-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Images className="size-4 text-primary" />
-                      <h4 className="text-sm font-bold text-on-surface">Biblioteca de avatares</h4>
-                    </div>
-
-                    {uploadedAvatars.length > 0 ? (
-                      <div>
-                        <p className="text-xs font-semibold text-outline uppercase tracking-wider mb-2.5">
-                          Tus fotos subidas
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                          {uploadedAvatars.map((url, idx) => {
-                            const isSelected = avatarPreview === url;
-                            return (
-                              <button
-                                key={`uploaded-${idx}`}
-                                type="button"
-                                onClick={() => setAvatarPreview(url)}
-                                className={`group relative size-16 overflow-hidden rounded-2xl border-2 transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'border-primary shadow-md ring-2 ring-primary/30'
-                                    : 'border-outline-variant hover:border-primary/50'
-                                }`}
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={url}
-                                  alt={`Avatar subido ${idx + 1}`}
-                                  className="size-full object-cover"
-                                />
-                                {isSelected && (
-                                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                    <div className="rounded-full bg-primary p-0.5 text-surface">
-                                      <Check className="size-3.5 stroke-[3]" />
-                                    </div>
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-outline-variant p-4 text-center">
-                        <p className="text-xs text-on-surface-variant">
-                          Aún no has subido fotos de perfil. Puedes subir una usando el botón «Subir
-                          nueva imagen».
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Nombre y Apellido divididos en 2 recuadros diferentes */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="nombre_input"
-                    className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                  >
-                    Nombre
-                  </label>
-                  <input
-                    id="nombre_input"
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                    maxLength={50}
-                    placeholder="Tu nombre"
-                    className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="apellido_input"
-                    className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                  >
-                    Apellido
-                  </label>
-                  <input
-                    id="apellido_input"
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                    maxLength={50}
-                    placeholder="Tu apellido"
-                    className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-              </div>
-
-              {/* Nombre de usuario */}
-              <div>
-                <label
-                  htmlFor="nombre_usuario_input"
-                  className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                >
-                  Nombre de usuario
-                </label>
-                <div className="relative mt-2 flex items-center">
-                  <span className="pointer-events-none absolute left-3 text-sm font-semibold text-outline">
-                    @
-                  </span>
-                  <input
-                    id="nombre_usuario_input"
-                    type="text"
-                    value={username.replace(/^@+/, '')}
-                    onChange={(e) => setUsername(e.target.value.replace(/^@+/, ''))}
-                    required
-                    minLength={3}
-                    maxLength={30}
-                    placeholder="usuario"
-                    className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-8 pr-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <span className="mt-1 block text-xs text-on-surface-variant">
-                  Letras, números, guiones y puntos.
-                </span>
-              </div>
-
-              {/* Teléfono (opcional) con selector de prefijo internacional */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="telefono_numero_input"
-                    className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                  >
-                    Número telefónico{' '}
-                    <span className="font-normal normal-case text-on-surface-variant">
-                      (opcional)
-                    </span>
-                  </label>
-                  {phoneInputError && (
-                    <span role="alert" className="text-xs font-medium text-status-error">
-                      {phoneInputError}
-                    </span>
+                  )}
+                  {telegramMessage && (
+                    <p role="status" className="mt-3 text-sm font-medium text-status-success">
+                      {telegramMessage}
+                    </p>
                   )}
                 </div>
 
-                <div className="mt-2 flex flex-col sm:flex-row gap-2.5">
-                  {/* Selector de prefijo de país */}
-                  <div className="relative sm:w-56 shrink-0">
-                    <label htmlFor="telefono_prefijo_select" className="sr-only">
-                      Prefijo de país
-                    </label>
-                    <select
-                      id="telefono_prefijo_select"
-                      value={phonePrefix}
-                      onChange={(e) => {
-                        setPhonePrefix(e.target.value);
-                        setPhoneInputError(null);
-                      }}
-                      className="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-8 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                    >
-                      {COUNTRY_CODES.map((country) => (
-                        <option
-                          key={`${country.iso}-${country.code}`}
-                          value={country.code}
-                          className="bg-surface-container-lowest text-on-surface py-1"
-                        >
-                          {country.flag} {country.code} ({country.name})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-outline" />
-                  </div>
-
-                  {/* Campo de número telefónico */}
-                  <div className="relative flex-1 min-w-0">
-                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline">
-                      <Phone className="size-4" />
-                    </div>
-                    <input
-                      id="telefono_numero_input"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => {
-                        setPhoneNumber(e.target.value);
-                        if (phoneInputError) setPhoneInputError(null);
-                      }}
-                      placeholder="Ej. 412 1234567"
-                      maxLength={20}
-                      className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-3 py-2.5 text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
-                <span className="mt-1 block text-xs text-on-surface-variant">
-                  Selecciona el prefijo de tu país e ingresa tu número (entre 6 y 15 dígitos).
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Send className="size-4 text-primary" />
-                      <h3 className="text-sm font-bold text-on-surface">
-                        Verificación con Telegram
-                      </h3>
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-                      Confirma que controlas tu cuenta de Telegram. Esta verificación no valida tu
-                      número telefónico.
-                    </p>
-                  </div>
-                  <span
-                    className={
-                      telegramVerifiedAt
-                        ? 'inline-flex w-fit items-center gap-1.5 rounded-full bg-status-success-bg px-2.5 py-1 text-xs font-bold text-status-success'
-                        : 'inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-1 text-xs font-bold text-on-surface-variant'
-                    }
+                {/* Descripción de perfil con límites de resize mínimo y máximo */}
+                <div>
+                  <label
+                    htmlFor="descripcion_input"
+                    className="block text-xs font-semibold uppercase tracking-wide text-outline"
                   >
-                    {telegramVerifiedAt ? (
-                      <ShieldCheck className="size-3.5" />
-                    ) : (
-                      <ShieldAlert className="size-3.5" />
-                    )}
-                    {telegramVerifiedAt ? 'Verificado' : 'Pendiente'}
-                  </span>
+                    Descripción de perfil
+                  </label>
+                  <textarea
+                    id="descripcion_input"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={200}
+                    rows={4}
+                    placeholder="Escribe una breve descripción sobre ti, tus intereses o tu enfoque de estudio."
+                    className="mt-2 block w-full resize-y min-h-[88px] max-h-[220px] rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-3 text-sm leading-relaxed text-on-surface outline-none transition-colors placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                  <div className="mt-1 flex items-center justify-between text-xs text-outline">
+                    <span>Información guardada en tu perfil para orientar tu experiencia.</span>
+                    <span>{description.length}/200</span>
+                  </div>
                 </div>
 
-                <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-on-surface-variant">
-                  <li>1. Abre el bot y presiona Iniciar.</li>
-                  <li>2. Copia el código de seis dígitos que recibirás.</li>
-                  <li>3. Ingresa tu usuario de Telegram y el código para confirmarlo.</li>
-                </ol>
+                {/* Preguntas de identidad (Rol, Edad, Situación laboral) */}
+                <div className="border-t border-outline-variant/40 pt-5">
+                  <h3 className="text-sm font-bold text-on-surface">Datos de partida</h3>
+                  <p className="mt-0.5 text-xs text-on-surface-variant">
+                    Condición académica y ocupacional inicial.
+                  </p>
+                  <div className="mt-3 grid gap-3">
+                    {onboardingFields.slice(0, 3).map(({ field, questionId }) => {
+                      const item = onboardingQuestions.find((q) => q.id === questionId);
+                      if (!item) return null;
+                      return (
+                        <div
+                          key={field}
+                          className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-3.5"
+                        >
+                          <p className="text-xs font-semibold">{item.question}</p>
+                          <AnswerPicker
+                            value={answers[field]}
+                            options={item.options}
+                            onChange={(value) => updateAnswer(field, value)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
-                  <div>
-                    <label
-                      htmlFor="telegram_identifier_input"
-                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                    >
-                      Usuario o ID de Telegram
-                    </label>
-                    <input
-                      id="telegram_identifier_input"
-                      type="text"
-                      value={telegramIdentifier}
-                      onChange={(event) => setTelegramIdentifier(event.target.value)}
-                      placeholder="@tu_usuario"
-                      maxLength={64}
-                      className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
+                {/* Seguridad y acceso de la cuenta en edición */}
+                <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <KeyRound className="size-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-on-surface">
+                            {hasPassword ? 'Contraseña y seguridad' : 'Contraseña no configurada'}
+                          </h4>
+                          {hasPassword ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2.5 py-0.5 text-[11px] font-semibold text-status-success">
+                              <CheckCircle2 className="size-3" />
+                              Configurada
+                            </span>
+                          ) : profile.isGoogleUser ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent-amber/15 px-2.5 py-0.5 text-[11px] font-semibold text-accent-amber">
+                              Acceso con Google
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-xs text-on-surface-variant max-w-md">
+                          {hasPassword
+                            ? 'Tu cuenta tiene una contraseña activa. Puedes solicitar un enlace a tu correo para cambiarla cuando lo necesites.'
+                            : 'Iniciaste sesión con Google y aún no tienes una contraseña asignada. Puedes agregar una para acceder también con tu correo y contraseña.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 self-end sm:self-center">
+                      {hasPassword ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setIsChangePasswordModalOpen(true)}
+                          className="min-h-10 gap-2 cursor-pointer font-medium"
+                        >
+                          <KeyRound className="size-4" />
+                          Cambiar contraseña
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setIsAddPasswordModalOpen(true)}
+                          className="min-h-10 gap-2 cursor-pointer font-semibold shadow-sm"
+                        >
+                          <PlusCircle className="size-4" />
+                          Agregar contraseña
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      htmlFor="telegram_code_input"
-                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                    >
-                      Código
-                    </label>
-                    <input
-                      id="telegram_code_input"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      value={telegramCode}
-                      onChange={(event) =>
-                        setTelegramCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-                      }
-                      placeholder="000000"
-                      maxLength={6}
-                      className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                </div>
+
+                {identityError && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-status-error/30 bg-status-error-bg px-4 py-3 text-sm text-status-error"
+                  >
+                    {identityError}
+                  </p>
+                )}
+
+                {identityMessage && (
+                  <p
+                    role="status"
+                    className="flex items-center gap-2 rounded-xl border border-status-success/30 bg-status-success-bg px-4 py-3 text-sm text-status-success"
+                  >
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    {identityMessage}
+                  </p>
+                )}
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-outline-variant/40 pt-4">
+                  <p className="text-xs text-on-surface-variant">
+                    Los cambios se aplicarán inmediatamente a tu cuenta.
+                  </p>
+                  <div className="flex gap-2">
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={openTelegramBot}
-                      className="min-h-11"
+                      onClick={() => setEditingSection(null)}
+                      disabled={isSavingIdentity}
                     >
-                      Abrir bot
+                      Cancelar
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={handleVerifyTelegram}
-                      disabled={isVerifyingTelegram}
-                      className="min-h-11 gap-2"
-                    >
-                      {isVerifyingTelegram ? (
+                    <Button type="submit" disabled={isSavingIdentity} className="min-h-11 gap-2">
+                      {isSavingIdentity ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        <ShieldCheck className="size-4" />
+                        <CheckCircle2 className="size-4" />
                       )}
-                      Verificar
+                      {isSavingIdentity ? 'Guardando...' : 'Guardar identidad'}
                     </Button>
                   </div>
                 </div>
-
-                {telegramError && (
-                  <p role="alert" className="mt-3 text-sm font-medium text-status-error">
-                    {telegramError}
-                  </p>
-                )}
-                {telegramMessage && (
-                  <p role="status" className="mt-3 text-sm font-medium text-status-success">
-                    {telegramMessage}
-                  </p>
-                )}
-              </div>
-
-              {/* Descripción de perfil con límites de resize mínimo y máximo */}
-              <div>
-                <label
-                  htmlFor="descripcion_input"
-                  className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                >
-                  Descripción de perfil
-                </label>
-                <textarea
-                  id="descripcion_input"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={200}
-                  rows={4}
-                  placeholder="Escribe una breve descripción sobre ti, tus intereses o tu enfoque de estudio."
-                  className="mt-2 block w-full resize-y min-h-[88px] max-h-[220px] rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-3 text-sm leading-relaxed text-on-surface outline-none transition-colors placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                <div className="mt-1 flex items-center justify-between text-xs text-outline">
-                  <span>Información guardada en tu perfil para orientar tu experiencia.</span>
-                  <span>{description.length}/200</span>
-                </div>
-              </div>
-
-              {/* Preguntas de identidad (Rol, Edad, Situación laboral) */}
-              <div className="border-t border-outline-variant/40 pt-5">
-                <h3 className="text-sm font-bold text-on-surface">Datos de partida</h3>
-                <p className="mt-0.5 text-xs text-on-surface-variant">
-                  Condición académica y ocupacional inicial.
-                </p>
-                <div className="mt-3 grid gap-3">
-                  {onboardingFields.slice(0, 3).map(({ field, questionId }) => {
-                    const item = onboardingQuestions.find((q) => q.id === questionId);
-                    if (!item) return null;
-                    return (
-                      <div
-                        key={field}
-                        className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-3.5"
-                      >
-                        <p className="text-xs font-semibold">{item.question}</p>
-                        <AnswerPicker
-                          value={answers[field]}
-                          options={item.options}
-                          onChange={(value) => updateAnswer(field, value)}
+              </motion.form>
+            ) : (
+              /* Vista de lectura de Identidad y Presencia */
+              <motion.div
+                key="view-identity"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                className="space-y-6"
+              >
+                <div className="grid min-w-0 gap-6 lg:grid-cols-[auto_minmax(0,1fr)_15rem] lg:items-center">
+                  <div className="min-w-0">
+                    <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-outline-variant/60 bg-surface-container-lowest text-2xl font-bold text-primary shadow-[0_10px_24px_-12px_rgba(74,53,37,0.35)]">
+                      {avatarPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarPreview}
+                          alt={`Foto de perfil de ${currentDisplayName}`}
+                          className="size-full object-cover"
                         />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Seguridad y acceso de la cuenta en edición */}
-              <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <KeyRound className="size-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-on-surface">
-                          {hasPassword ? 'Contraseña y seguridad' : 'Contraseña no configurada'}
-                        </h4>
-                        {hasPassword ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2.5 py-0.5 text-[11px] font-semibold text-status-success">
-                            <CheckCircle2 className="size-3" />
-                            Configurada
-                          </span>
-                        ) : profile.isGoogleUser ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent-amber/15 px-2.5 py-0.5 text-[11px] font-semibold text-accent-amber">
-                            Acceso con Google
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-xs text-on-surface-variant max-w-md">
-                        {hasPassword
-                          ? 'Tu cuenta tiene una contraseña activa. Puedes solicitar un enlace a tu correo para cambiarla cuando lo necesites.'
-                          : 'Iniciaste sesión con Google y aún no tienes una contraseña asignada. Puedes agregar una para acceder también con tu correo y contraseña.'}
-                      </p>
+                      ) : (
+                        profile.initials
+                      )}
                     </div>
                   </div>
-
-                  <div className="shrink-0 self-end sm:self-center">
-                    {hasPassword ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setIsChangePasswordModalOpen(true)}
-                        className="min-h-10 gap-2 cursor-pointer font-medium"
-                      >
-                        <KeyRound className="size-4" />
-                        Cambiar contraseña
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="primary"
-                        size="sm"
-                        onClick={() => setIsAddPasswordModalOpen(true)}
-                        className="min-h-10 gap-2 cursor-pointer font-semibold shadow-sm"
-                      >
-                        <PlusCircle className="size-4" />
-                        Agregar contraseña
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {identityError && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-status-error/30 bg-status-error-bg px-4 py-3 text-sm text-status-error"
-                >
-                  {identityError}
-                </p>
-              )}
-
-              {identityMessage && (
-                <p
-                  role="status"
-                  className="flex items-center gap-2 rounded-xl border border-status-success/30 bg-status-success-bg px-4 py-3 text-sm text-status-success"
-                >
-                  <CheckCircle2 className="size-4 shrink-0" />
-                  {identityMessage}
-                </p>
-              )}
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-outline-variant/40 pt-4">
-                <p className="text-xs text-on-surface-variant">
-                  Los cambios se aplicarán inmediatamente a tu cuenta.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setEditingSection(null)}
-                    disabled={isSavingIdentity}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={isSavingIdentity} className="min-h-11 gap-2">
-                    {isSavingIdentity ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="size-4" />
-                    )}
-                    {isSavingIdentity ? 'Guardando...' : 'Guardar identidad'}
-                  </Button>
-                </div>
-              </div>
-            </motion.form>
-          ) : (
-            /* Vista de lectura de Identidad y Presencia */
-            <motion.div
-              key="view-identity"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-              className="space-y-6"
-            >
-              <div className="grid min-w-0 gap-6 lg:grid-cols-[auto_minmax(0,1fr)_15rem] lg:items-center">
-                <div className="min-w-0">
-                  <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-outline-variant/60 bg-surface-container-lowest text-2xl font-bold text-primary shadow-[0_10px_24px_-12px_rgba(74,53,37,0.35)]">
-                    {avatarPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatarPreview}
-                        alt={`Foto de perfil de ${currentDisplayName}`}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      profile.initials
-                    )}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <h2 className="truncate text-2xl font-bold tracking-tight">
-                    {currentDisplayName}
-                  </h2>
-                  <p className="mt-1 truncate text-sm text-on-surface-variant">@{username}</p>
-                  {description ? (
-                    <div className="mt-4 rounded-xl border border-primary/15 bg-surface-container-low px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                        Descripción de perfil
-                      </p>
-                      <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-on-surface-variant">
-                        {description}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="grid grid-cols-1 gap-2 border-t border-outline-variant/40 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                  <CompactDetail label="Usuario" value={`@${username}`} />
-                  <CompactDetail label="Rol actual" value={answers.rol_condicion || unknown} />
-                  <CompactDetail
-                    label="Teléfono"
-                    value={
-                      phoneNumber.trim()
-                        ? formatPhoneNumber(phonePrefix, phoneNumber)
-                        : profile.phone || 'No especificado'
-                    }
-                  />
-                  <CompactDetail
-                    label="Telegram"
-                    value={
-                      telegramVerifiedAt
-                        ? `Verificado${telegramIdentifier ? ` · @${telegramIdentifier}` : ''}`
-                        : 'Sin verificar'
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Respuestas de partida */}
-              <div className="border-t border-outline-variant/40 pt-5">
-                <h3 className="text-sm font-bold text-on-surface">Información de partida</h3>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  {onboardingFields.slice(0, 3).map(({ field, questionId }) => {
-                    const item = onboardingQuestions.find((q) => q.id === questionId);
-                    if (!item) return null;
-                    return (
-                      <div
-                        key={field}
-                        className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5"
-                      >
-                        <p className="text-[11px] font-semibold uppercase text-on-surface-variant">
-                          {item.question}
+                  <div className="min-w-0">
+                    <h2 className="truncate text-2xl font-bold tracking-tight">
+                      {currentDisplayName}
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-on-surface-variant">@{username}</p>
+                    {description ? (
+                      <div className="mt-4 rounded-xl border border-primary/15 bg-surface-container-low px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                          Descripción de perfil
                         </p>
-                        <p className="mt-1 text-sm font-bold text-on-surface">
-                          {answers[field] || unknown}
+                        <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-on-surface-variant">
+                          {description}
                         </p>
                       </div>
-                    );
-                  })}
+                    ) : null}
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 border-t border-outline-variant/40 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                    <CompactDetail label="Usuario" value={`@${username}`} />
+                    <CompactDetail label="Rol actual" value={answers.rol_condicion || unknown} />
+                    <CompactDetail
+                      label="Teléfono"
+                      value={
+                        phoneNumber.trim()
+                          ? formatPhoneNumber(phonePrefix, phoneNumber)
+                          : profile.phone || 'No especificado'
+                      }
+                    />
+                    <CompactDetail
+                      label="Telegram"
+                      value={
+                        telegramVerifiedAt
+                          ? `Verificado${telegramIdentifier ? ` · @${telegramIdentifier}` : ''}`
+                          : 'Sin verificar'
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
+
+                {/* Respuestas de partida */}
+                <div className="border-t border-outline-variant/40 pt-5">
+                  <h3 className="text-sm font-bold text-on-surface">Información de partida</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    {onboardingFields.slice(0, 3).map(({ field, questionId }) => {
+                      const item = onboardingQuestions.find((q) => q.id === questionId);
+                      if (!item) return null;
+                      return (
+                        <div
+                          key={field}
+                          className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5"
+                        >
+                          <p className="text-[11px] font-semibold uppercase text-on-surface-variant">
+                            {item.question}
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-on-surface">
+                            {answers[field] || unknown}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </WideSection>
 
@@ -992,296 +993,306 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                 onSubmit={handleSaveLearning}
                 className="space-y-6"
               >
-              {/* Bloque: Preferencias de disponibilidad y metodología */}
-              <div>
-                <h3 className="text-base font-bold text-on-surface">Preferencias de aprendizaje</h3>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Estas respuestas adaptan la estructuración de tus proyectos a tu disponibilidad y
-                  experiencia previa.
-                </p>
-                <div className="mt-4 grid min-w-0 gap-3">
-                  {onboardingFields.slice(3).map(({ field, questionId }) => {
-                    const item = onboardingQuestions.find((q) => q.id === questionId);
-                    if (!item) return null;
-                    return (
-                      <div
-                        key={field}
-                        className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4"
-                      >
-                        <p className="text-sm font-semibold leading-snug">{item.question}</p>
-                        <AnswerPicker
-                          value={answers[field]}
-                          options={item.options}
-                          onChange={(value) => updateAnswer(field, value)}
-                        />
+                {/* Bloque: Preferencias de disponibilidad y metodología */}
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    Preferencias de aprendizaje
+                  </h3>
+                  <p className="mt-1 text-sm text-on-surface-variant">
+                    Estas respuestas adaptan la estructuración de tus proyectos a tu disponibilidad
+                    y experiencia previa.
+                  </p>
+                  <div className="mt-4 grid min-w-0 gap-3">
+                    {onboardingFields.slice(3).map(({ field, questionId }) => {
+                      const item = onboardingQuestions.find((q) => q.id === questionId);
+                      if (!item) return null;
+                      return (
+                        <div
+                          key={field}
+                          className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4"
+                        >
+                          <p className="text-sm font-semibold leading-snug">{item.question}</p>
+                          <AnswerPicker
+                            value={answers[field]}
+                            options={item.options}
+                            onChange={(value) => updateAnswer(field, value)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bloque: Información complementaria */}
+                <div className="border-t border-outline-variant/40 pt-5">
+                  <h3 className="text-base font-bold text-on-surface">
+                    Información complementaria
+                  </h3>
+                  <p className="mt-1 text-sm text-on-surface-variant">
+                    Ajustes adicionales sobre tus objetivos, ritmo, dificultades y áreas
+                    prioritarias de estudio.
+                  </p>
+
+                  <div className="mt-4 grid gap-4">
+                    {/* Objetivo principal */}
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
+                      <div className="flex items-center gap-2">
+                        <Target className="size-4 text-primary" />
+                        <p className="text-sm font-semibold">Objetivo principal</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Bloque: Información complementaria */}
-              <div className="border-t border-outline-variant/40 pt-5">
-                <h3 className="text-base font-bold text-on-surface">Información complementaria</h3>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Ajustes adicionales sobre tus objetivos, ritmo, dificultades y áreas prioritarias
-                  de estudio.
-                </p>
-
-                <div className="mt-4 grid gap-4">
-                  {/* Objetivo principal */}
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
-                    <div className="flex items-center gap-2">
-                      <Target className="size-4 text-primary" />
-                      <p className="text-sm font-semibold">Objetivo principal</p>
+                      <AnswerPicker
+                        value={objective}
+                        options={[...OBJETIVOS_OPTIONS]}
+                        onChange={(val) => setObjective(val)}
+                      />
                     </div>
-                    <AnswerPicker
-                      value={objective}
-                      options={[...OBJETIVOS_OPTIONS]}
-                      onChange={(val) => setObjective(val)}
-                    />
-                  </div>
 
-                  {/* Ritmo preferido */}
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
-                    <div className="flex items-center gap-2">
-                      <CalendarClock className="size-4 text-primary" />
-                      <p className="text-sm font-semibold">Ritmo preferido</p>
+                    {/* Ritmo preferido */}
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
+                      <div className="flex items-center gap-2">
+                        <CalendarClock className="size-4 text-primary" />
+                        <p className="text-sm font-semibold">Ritmo preferido</p>
+                      </div>
+                      <AnswerPicker
+                        value={pace}
+                        options={[...RITMOS_OPTIONS]}
+                        onChange={(val) => setPace(val)}
+                      />
                     </div>
-                    <AnswerPicker
-                      value={pace}
-                      options={[...RITMOS_OPTIONS]}
-                      onChange={(val) => setPace(val)}
-                    />
-                  </div>
 
-                  {/* Dificultades habituales (Opción múltiple) */}
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ShieldAlert className="size-4 text-primary" />
-                      <p className="text-sm font-semibold">Dificultades habituales</p>
-                    </div>
-                    <p className="text-xs text-on-surface-variant mb-3">
-                      Puedes elegir una o varias opciones que identifiquen tus retos.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {DIFICULTADES_OPTIONS.map((diff) => {
-                        const isSelected = difficulties.includes(diff);
-                        return (
-                          <button
-                            key={diff}
-                            type="button"
-                            onClick={() => toggleDifficulty(diff)}
-                            className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
-                                : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
-                            }`}
-                          >
-                            <span className="leading-snug">{diff}</span>
-                            <div
-                              className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                    {/* Dificultades habituales (Opción múltiple) */}
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ShieldAlert className="size-4 text-primary" />
+                        <p className="text-sm font-semibold">Dificultades habituales</p>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mb-3">
+                        Puedes elegir una o varias opciones que identifiquen tus retos.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {DIFICULTADES_OPTIONS.map((diff) => {
+                          const isSelected = difficulties.includes(diff);
+                          return (
+                            <button
+                              key={diff}
+                              type="button"
+                              onClick={() => toggleDifficulty(diff)}
+                              className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'border-primary bg-primary text-surface'
-                                  : 'border-outline-variant'
+                                  ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
+                                  : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
                               }`}
                             >
-                              {isSelected && <Check className="size-3.5 stroke-[3]" />}
-                            </div>
-                          </button>
-                        );
-                      })}
+                              <span className="leading-snug">{diff}</span>
+                              <div
+                                className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                                  isSelected
+                                    ? 'border-primary bg-primary text-surface'
+                                    : 'border-outline-variant'
+                                }`}
+                              >
+                                {isSelected && <Check className="size-3.5 stroke-[3]" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Áreas prioritarias (Opción múltiple) */}
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Layers className="size-4 text-primary" />
-                      <p className="text-sm font-semibold">Áreas prioritarias</p>
-                    </div>
-                    <p className="text-xs text-on-surface-variant mb-3">
-                      Puedes seleccionar una o más áreas en las que centras tu aprendizaje.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {AREAS_PRIORITARIAS_OPTIONS.map((area) => {
-                        const isSelected = priorityAreas.includes(area);
-                        return (
-                          <button
-                            key={area}
-                            type="button"
-                            onClick={() => togglePriorityArea(area)}
-                            className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
-                                : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
-                            }`}
-                          >
-                            <span className="leading-snug">{area}</span>
-                            <div
-                              className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                    {/* Áreas prioritarias (Opción múltiple) */}
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Layers className="size-4 text-primary" />
+                        <p className="text-sm font-semibold">Áreas prioritarias</p>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mb-3">
+                        Puedes seleccionar una o más áreas en las que centras tu aprendizaje.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {AREAS_PRIORITARIAS_OPTIONS.map((area) => {
+                          const isSelected = priorityAreas.includes(area);
+                          return (
+                            <button
+                              key={area}
+                              type="button"
+                              onClick={() => togglePriorityArea(area)}
+                              className={`flex min-h-12 items-center justify-between gap-2.5 rounded-xl border p-3 text-left text-sm transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'border-primary bg-primary text-surface'
-                                  : 'border-outline-variant'
+                                  ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
+                                  : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary/40'
                               }`}
                             >
-                              {isSelected && <Check className="size-3.5 stroke-[3]" />}
-                            </div>
-                          </button>
-                        );
-                      })}
+                              <span className="leading-snug">{area}</span>
+                              <div
+                                className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                                  isSelected
+                                    ? 'border-primary bg-primary text-surface'
+                                    : 'border-outline-variant'
+                                }`}
+                              >
+                                {isSelected && <Check className="size-3.5 stroke-[3]" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {learningError && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-status-error/30 bg-status-error-bg px-4 py-3 text-sm text-status-error"
-                >
-                  {learningError}
-                </p>
-              )}
-
-              {learningMessage && (
-                <p
-                  role="status"
-                  className="flex items-center gap-2 rounded-xl border border-status-success/30 bg-status-success-bg px-4 py-3 text-sm text-status-success"
-                >
-                  <CheckCircle2 className="size-4 shrink-0" />
-                  {learningMessage}
-                </p>
-              )}
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-outline-variant/40 pt-4">
-                <p className="text-xs text-on-surface-variant">
-                  Guarda las preferencias para adaptar tus recomendaciones.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setEditingSection(null)}
-                    disabled={isSavingLearning}
+                {learningError && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-status-error/30 bg-status-error-bg px-4 py-3 text-sm text-status-error"
                   >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={isSavingLearning} className="min-h-11 gap-2">
-                    {isSavingLearning ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="size-4" />
-                    )}
-                    {isSavingLearning ? 'Guardando...' : 'Guardar preferencias'}
-                  </Button>
+                    {learningError}
+                  </p>
+                )}
+
+                {learningMessage && (
+                  <p
+                    role="status"
+                    className="flex items-center gap-2 rounded-xl border border-status-success/30 bg-status-success-bg px-4 py-3 text-sm text-status-success"
+                  >
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    {learningMessage}
+                  </p>
+                )}
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-outline-variant/40 pt-4">
+                  <p className="text-xs text-on-surface-variant">
+                    Guarda las preferencias para adaptar tus recomendaciones.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setEditingSection(null)}
+                      disabled={isSavingLearning}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={isSavingLearning} className="min-h-11 gap-2">
+                      {isSavingLearning ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="size-4" />
+                      )}
+                      {isSavingLearning ? 'Guardando...' : 'Guardar preferencias'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </motion.form>
-          ) : (
-            /* Vista de lectura de Perfil de Aprendizaje */
-            <motion.div
-              key="view-learning"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-              className="space-y-6"
-            >
-              <div>
-                <h3 className="text-sm font-bold text-on-surface">Preferencias de aprendizaje</h3>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {onboardingFields.slice(3).map(({ field, questionId }) => {
-                    const item = onboardingQuestions.find((q) => q.id === questionId);
-                    if (!item) return null;
-                    return (
-                      <div
-                        key={field}
-                        className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5"
-                      >
-                        <p className="text-[11px] font-semibold uppercase text-on-surface-variant">
-                          {item.question}
+              </motion.form>
+            ) : (
+              /* Vista de lectura de Perfil de Aprendizaje */
+              <motion.div
+                key="view-learning"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                className="space-y-6"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-on-surface">Preferencias de aprendizaje</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {onboardingFields.slice(3).map(({ field, questionId }) => {
+                      const item = onboardingQuestions.find((q) => q.id === questionId);
+                      if (!item) return null;
+                      return (
+                        <div
+                          key={field}
+                          className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5"
+                        >
+                          <p className="text-[11px] font-semibold uppercase text-on-surface-variant">
+                            {item.question}
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-on-surface">
+                            {answers[field] || unknown}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Información complementaria en modo lectura */}
+                <div className="border-t border-outline-variant/40 pt-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="size-4 text-primary" />
+                    <h3 className="text-sm font-bold text-on-surface">
+                      Información complementaria
+                    </h3>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5">
+                      <div className="flex items-center gap-1.5 text-outline">
+                        <Target className="size-3.5" />
+                        <p className="text-[11px] font-semibold uppercase">Objetivo principal</p>
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-on-surface">
+                        {objective || unknown}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5">
+                      <div className="flex items-center gap-1.5 text-outline">
+                        <CalendarClock className="size-3.5" />
+                        <p className="text-[11px] font-semibold uppercase">Ritmo preferido</p>
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-on-surface">{pace || unknown}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5 sm:col-span-2">
+                      <div className="flex items-center gap-1.5 text-outline">
+                        <ShieldAlert className="size-3.5" />
+                        <p className="text-[11px] font-semibold uppercase">
+                          Dificultades habituales
                         </p>
-                        <p className="mt-1 text-sm font-bold text-on-surface">
-                          {answers[field] || unknown}
-                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Información complementaria en modo lectura */}
-              <div className="border-t border-outline-variant/40 pt-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="size-4 text-primary" />
-                  <h3 className="text-sm font-bold text-on-surface">Información complementaria</h3>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5">
-                    <div className="flex items-center gap-1.5 text-outline">
-                      <Target className="size-3.5" />
-                      <p className="text-[11px] font-semibold uppercase">Objetivo principal</p>
+                      {difficulties.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {difficulties.map((diff) => (
+                            <span
+                              key={diff}
+                              className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                            >
+                              <Check className="size-3" />
+                              {diff}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm font-bold text-on-surface">{unknown}</p>
+                      )}
                     </div>
-                    <p className="mt-1 text-sm font-bold text-on-surface">{objective || unknown}</p>
-                  </div>
 
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5">
-                    <div className="flex items-center gap-1.5 text-outline">
-                      <CalendarClock className="size-3.5" />
-                      <p className="text-[11px] font-semibold uppercase">Ritmo preferido</p>
-                    </div>
-                    <p className="mt-1 text-sm font-bold text-on-surface">{pace || unknown}</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5 sm:col-span-2">
-                    <div className="flex items-center gap-1.5 text-outline">
-                      <ShieldAlert className="size-3.5" />
-                      <p className="text-[11px] font-semibold uppercase">Dificultades habituales</p>
-                    </div>
-                    {difficulties.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {difficulties.map((diff) => (
-                          <span
-                            key={diff}
-                            className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
-                          >
-                            <Check className="size-3" />
-                            {diff}
-                          </span>
-                        ))}
+                    <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5 sm:col-span-2">
+                      <div className="flex items-center gap-1.5 text-outline">
+                        <Layers className="size-3.5" />
+                        <p className="text-[11px] font-semibold uppercase">Áreas prioritarias</p>
                       </div>
-                    ) : (
-                      <p className="mt-1 text-sm font-bold text-on-surface">{unknown}</p>
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-3.5 sm:col-span-2">
-                    <div className="flex items-center gap-1.5 text-outline">
-                      <Layers className="size-3.5" />
-                      <p className="text-[11px] font-semibold uppercase">Áreas prioritarias</p>
+                      {priorityAreas.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {priorityAreas.map((area) => (
+                            <span
+                              key={area}
+                              className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                            >
+                              <Check className="size-3" />
+                              {area}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm font-bold text-on-surface">{unknown}</p>
+                      )}
                     </div>
-                    {priorityAreas.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {priorityAreas.map((area) => (
-                          <span
-                            key={area}
-                            className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
-                          >
-                            <Check className="size-3" />
-                            {area}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-sm font-bold text-on-surface">{unknown}</p>
-                    )}
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
           </AnimatePresence>
         </WideSection>
 
@@ -1469,12 +1480,15 @@ function WideSection({
   children: React.ReactNode;
 }) {
   return (
-    <motion.div 
+    <motion.div
       layout
       transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
       className="max-w-full rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-5 shadow-[0_10px_30px_-18px_rgba(74,53,37,0.3)] backdrop-blur-sm sm:p-6"
     >
-      <motion.div layout="position" className="mb-6 flex flex-col gap-3 border-b border-outline-variant/40 pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <motion.div
+        layout="position"
+        className="mb-6 flex flex-col gap-3 border-b border-outline-variant/40 pb-5 sm:flex-row sm:items-start sm:justify-between"
+      >
         <div className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             {icon}
@@ -1499,9 +1513,7 @@ function WideSection({
           </Button>
         )}
       </motion.div>
-      <motion.div layout="position">
-        {children}
-      </motion.div>
+      <motion.div layout="position">{children}</motion.div>
     </motion.div>
   );
 }

@@ -75,7 +75,8 @@ export async function getUserProjectsAction(
 
     const result: ProjectOption[] = projects.map((p) => {
       const stats = statsMap[p.id] || { total: 0, completed: 0 };
-      const progress = p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
+      const progress =
+        p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
       return {
         id: p.id,
         name: p.titulo,
@@ -141,7 +142,9 @@ export async function linkProjectAction(
 
     const totalMilestones = tareasData?.length || 0;
     const completedMilestones = tareasData?.filter((t) => t.completado).length || 0;
-    const progress = project.progreso || (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0);
+    const progress =
+      project.progreso ||
+      (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0);
 
     const linkedProject: LinkedProject = {
       id: project.id,
@@ -165,8 +168,9 @@ export async function linkProjectAction(
 
 export async function unlinkProjectAction(
   topicId: string,
-  projectId: string, // No longer strictly necessary but kept for signature compatibility
+  _projectId?: string, // No longer strictly necessary but kept for signature compatibility
 ): Promise<ActionResponse<boolean>> {
+  void _projectId;
   try {
     const supabase = await createClient();
     const {
@@ -231,7 +235,7 @@ export async function createProjectWithMilestonesAction(
         nivel_conocimiento: 'Intermedio',
         minutos_diarios: 30,
         progreso: 0,
-        completado: false
+        completado: false,
       })
       .select('id, titulo, objetivo, progreso, completado')
       .single();
@@ -253,7 +257,7 @@ export async function createProjectWithMilestonesAction(
         user_id: user.id,
         titulo: title,
         completado: false,
-        duracion: 30
+        duracion: 30,
       }));
 
       await supabase.from('tareas').insert(milestoneRows);
