@@ -1,8 +1,10 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
+  ArrowRight,
   ArrowUp,
   Bot,
   Check,
@@ -162,6 +164,9 @@ export function AssistantChat({
       setFileExtractionStatus(null);
     }
 
+    const lastAssistantMsg =
+      [...conversation].reverse().find((m) => m.role === 'assistant') || null;
+
     try {
       const response = await onSend({
         content:
@@ -169,6 +174,8 @@ export function AssistantChat({
         context,
         fileAttachment: fileToSend || undefined,
         conversationId: currentConvId,
+        history: conversation,
+        lastAssistantMessage: lastAssistantMsg,
       });
 
       setConversation((current) => [...current, response.message]);
@@ -620,6 +627,122 @@ function EmptyConversation({
   );
 }
 
+function extractProjectLinkFromContent(content: string): string | null {
+  if (!content) return null;
+  const match = content.match(/\(((\/proyectos\/nuevo[^\)]*))\)/);
+  if (match && match[1]) return match[1];
+  if (content.includes('/proyectos/nuevo')) {
+    const rawMatch = content.match(/(\/proyectos\/nuevo[^\s\)]*)/);
+    if (rawMatch && rawMatch[1]) return rawMatch[1];
+    return '/proyectos/nuevo';
+  }
+  return null;
+}
+
+function RenderMessageContent({
+  content,
+  isAssistant,
+  hasButton,
+}: {
+  content: string;
+  isAssistant: boolean;
+  hasButton?: boolean;
+}) {
+  if (!content) return null;
+
+  // Si ya tiene botón interactivo dedicado abajo, eliminar cualquier enlace redundante a /proyectos/nuevo del texto
+  let textToRender = content;
+  if (isAssistant && hasButton) {
+    textToRender = textToRender
+      .replace(/(?:👉\s*)?\[[^\]]+\]\(\/proyectos\/nuevo[^\)]*\)/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  const lines = textToRender.split('\n');
+
+  return (
+    <div className="space-y-1.5 [overflow-wrap:anywhere] break-words">
+      {lines.map((line, lineIdx) => {
+        if (!line.trim()) {
+          return <div key={lineIdx} className="h-2" />;
+        }
+
+        return (
+          <div key={lineIdx} className="leading-relaxed">
+            {renderFormattedLine(line, isAssistant)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function renderFormattedLine(line: string, isAssistant: boolean): React.ReactNode[] {
+  // Separa tokens [Texto](url) y **texto**
+  const tokenRegex = /(\[[^\]]+\]\([^\)]+\)|\*\*[^*]+\*\*)/g;
+  const parts = line.split(tokenRegex);
+
+  return parts.map((part, idx) => {
+    // 1. Enlace Markdown [Texto](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^\)]+)\)$/);
+    if (linkMatch) {
+      const linkText = linkMatch[1];
+      const linkUrl = linkMatch[2];
+      const isInternal = linkUrl.startsWith('/');
+
+      if (isInternal) {
+        return (
+          <Link
+            key={idx}
+            href={linkUrl}
+            className={cn(
+              'inline-flex items-center gap-1 font-semibold underline underline-offset-2 transition-colors cursor-pointer',
+              isAssistant
+                ? 'text-primary hover:text-primary/80'
+                : 'text-on-primary hover:text-on-primary/90',
+            )}
+          >
+            <span>{linkText}</span>
+            <ArrowRight className="size-3 shrink-0 inline" />
+          </Link>
+        );
+      }
+
+      return (
+        <a
+          key={idx}
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            'inline-flex items-center gap-1 font-semibold underline underline-offset-2 transition-colors',
+            isAssistant
+              ? 'text-primary hover:text-primary/80'
+              : 'text-on-primary hover:text-on-primary/90',
+          )}
+        >
+          <span>{linkText}</span>
+          <ExternalLink className="size-3 shrink-0 inline" />
+        </a>
+      );
+    }
+
+    // 2. Negrita **texto**
+    const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+    if (boldMatch) {
+      return (
+        <strong key={idx} className="font-bold text-inherit">
+          {boldMatch[1]}
+        </strong>
+      );
+    }
+
+    // 3. Texto plano
+    return <React.Fragment key={idx}>{part}</React.Fragment>;
+  });
+}
+
 function ChatMessage({
   message,
   userProjects = [],
@@ -644,6 +767,35 @@ function ChatMessage({
   const resolvedIntent = message.intent || (message.contextData?.intent as string | undefined);
   const isInformational = resolvedIntent === 'informational' || (!resolvedIntent && !tasks);
 
+  // Enlace y lógica de salto de preguntas para creación de proyectos
+  let effectiveProjectLink =
+    message.projectLink ||
+    (message.contextData?.projectLink as string | undefined) ||
+    extractProjectLinkFromContent(message.content);
+
+  const isConfirmedRecommendation =
+    resolvedIntent === 'confirm_recommendation' ||
+    Boolean(effectiveProjectLink && effectiveProjectLink.includes('step=2'));
+
+  if (!effectiveProjectLink && isConfirmedRecommendation) {
+    const topicTitle =
+      message.suggestedTopicTitle ||
+      (message.contextData?.suggestedTopicTitle as string | undefined) ||
+      'Proyecto Recomendado';
+    const topicObj =
+      message.suggestedTopicObjective ||
+      (message.contextData?.suggestedTopicObjective as string | undefined) ||
+      'Plan de estudio propuesto por Komo IA';
+    effectiveProjectLink = `/proyectos/nuevo?step=2&titulo=${encodeURIComponent(topicTitle)}&objetivo=${encodeURIComponent(topicObj)}`;
+  } else if (!effectiveProjectLink && resolvedIntent === 'create_project') {
+    effectiveProjectLink = '/proyectos/nuevo';
+  }
+
+  const isSkipQuestions =
+    message.skipQuestions === 2 ||
+    message.contextData?.skipQuestions === 2 ||
+    Boolean(effectiveProjectLink && effectiveProjectLink.includes('step=2'));
+
   const [selectedProjectId, setSelectedProjectId] = useState<string>(() => {
     if (message.targetProjectId) return message.targetProjectId;
     if (userProjects && userProjects.length > 0) return userProjects[0].id;
@@ -656,10 +808,10 @@ function ChatMessage({
   const [updatedProjectName, setUpdatedProjectName] = useState<string | null>(null);
 
   const handleCreateProject = async () => {
-    if (!tasks || tasks.length === 0 || !onCreateProject || isCreatingProject) return;
+    if (!onCreateProject || isCreatingProject) return;
     setIsCreatingProject(true);
     try {
-      await onCreateProject(tasks, planTitle);
+      await onCreateProject(tasks || [], planTitle);
       setProjectCreated(true);
     } finally {
       setIsCreatingProject(false);
@@ -700,7 +852,7 @@ function ChatMessage({
 
         <div
           className={cn(
-            'overflow-hidden rounded-2xl px-4 py-3 text-sm leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap shadow-sm',
+            'overflow-hidden rounded-2xl px-4 py-3 text-sm leading-relaxed [overflow-wrap:anywhere] break-words shadow-sm',
             isAssistant
               ? 'rounded-tl-md bg-surface-container-lowest text-on-surface'
               : 'rounded-tr-md bg-primary text-on-primary',
@@ -723,7 +875,41 @@ function ChatMessage({
             </div>
           )}
 
-          <div>{message.content}</div>
+          {/* Contenido con soporte para enlaces markdown e interactividad */}
+          <RenderMessageContent
+            content={message.content}
+            isAssistant={isAssistant}
+            hasButton={Boolean(effectiveProjectLink)}
+          />
+
+          {/* Tarjeta de acción interactiva destacada si hay enlace hacia el formulario de creación */}
+          {isAssistant && effectiveProjectLink && (
+            <div className="mt-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3 sm:p-3.5 text-left transition-all">
+              <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-primary">
+                <Sparkles className="size-3.5 shrink-0 text-[#845326]" />
+                <span>
+                  {isSkipQuestions ? 'Configuración de Proyecto Lista' : 'Formulario de Proyectos'}
+                </span>
+              </div>
+              <p className="text-[11px] text-on-surface-variant mb-2.5 leading-relaxed">
+                {isSkipQuestions
+                  ? 'Hemos omitido y prellenado las 2 primeras preguntas (Nombre y Objetivo). Ahora define tu fecha límite, prioridad y horario en el formulario.'
+                  : 'Define tu fecha límite, prioridad, dedicación diaria y materiales en el formulario interactivo para organizar tus metas.'}
+              </p>
+              <Link
+                href={effectiveProjectLink}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-xs hover:brightness-105 active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <FolderPlus className="size-3.5" />
+                <span>
+                  {isSkipQuestions
+                    ? 'Continuar en el formulario (Paso 3 de 7)'
+                    : 'Ir al formulario de proyectos'}
+                </span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          )}
 
           {/* Bloque de plan de tareas: SOLO cuando la consulta NO es meramente informativa */}
           {tasks && tasks.length > 0 && isAssistant && !isInformational && (
@@ -783,7 +969,7 @@ function ChatMessage({
                 })}
               </div>
 
-              {/* Acciones de proyecto: Actualizar proyecto existente vs Crear nuevo */}
+              {/* Acciones de proyecto: Actualizar proyecto existente vs Ir al formulario */}
               <div className="pt-2">
                 {updatedProjectName ? (
                   <div className="flex items-center gap-2 rounded-xl bg-status-success-bg p-2.5 text-xs font-semibold text-status-success">
@@ -796,12 +982,12 @@ function ChatMessage({
                 ) : projectCreated ? (
                   <div className="flex items-center gap-2 rounded-xl bg-status-success-bg p-2.5 text-xs font-semibold text-status-success">
                     <Check className="size-4" />
-                    <span>¡Proyecto creado exitosamente en tu sección de Proyectos!</span>
+                    <span>¡Redirigiendo al formulario de proyectos!</span>
                   </div>
                 ) : userProjects.length > 0 && onUpdateProject ? (
                   <div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/[0.03] p-3">
                     <div className="text-xs font-semibold text-on-surface">
-                      ¿Deseas agregar estas tareas a uno de tus proyectos?
+                      ¿Deseas agregar estas tareas a uno de tus proyectos existentes?
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -823,7 +1009,7 @@ function ChatMessage({
                         variant="primary"
                         onClick={handleUpdateExisting}
                         disabled={isUpdatingProject || isCreatingProject || !selectedProjectId}
-                        className="gap-1.5 text-xs whitespace-nowrap shrink-0"
+                        className="gap-1.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
                       >
                         <FolderPlus className="size-3.5" />
                         <span>{isUpdatingProject ? 'Actualizando...' : 'Actualizar proyecto'}</span>
@@ -835,9 +1021,9 @@ function ChatMessage({
                         type="button"
                         onClick={handleCreateProject}
                         disabled={isCreatingProject || isUpdatingProject}
-                        className="text-[11px] font-semibold text-primary hover:underline transition-colors block text-left pt-1"
+                        className="text-[11px] font-semibold text-primary hover:underline transition-colors block text-left pt-1 cursor-pointer"
                       >
-                        O crear como nuevo proyecto separado
+                        O configurar como nuevo proyecto en el formulario
                       </button>
                     )}
                   </div>
@@ -848,14 +1034,10 @@ function ChatMessage({
                     variant="secondary"
                     onClick={handleCreateProject}
                     disabled={isCreatingProject}
-                    className="w-full gap-2 text-xs"
+                    className="w-full gap-2 text-xs cursor-pointer"
                   >
                     <FolderPlus className="size-3.5 text-primary" />
-                    <span>
-                      {isCreatingProject
-                        ? 'Creando proyecto...'
-                        : 'Crear como proyecto en Komorebi'}
-                    </span>
+                    <span>Configurar proyecto en el formulario</span>
                   </Button>
                 ) : null}
               </div>

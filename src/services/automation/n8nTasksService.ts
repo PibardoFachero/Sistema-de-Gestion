@@ -424,9 +424,40 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
     const filePart = project.file_content
       ? ` Documento de referencia adjunto ("${project.file_name || 'archivo'}"):\n--- INICIO DEL DOCUMENTO ---\n${project.file_content}\n--- FIN DEL DOCUMENTO ---\nPor favor toma en cuenta este documento para extraer o estructurar las tareas del proyecto.`
       : '';
+
+    // Cálculo previo de días restantes y carga total de estudio
+    let diasRestantes: number | null = null;
+    let semanasRestantes: number | null = null;
+    let horasTotalesEstimadas: number | null = null;
+    let tiempoInfo = '';
+
+    const minutosDiarios = project.minutos_diarios || 30;
+
+    if (project.fecha_limite) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const deadline = new Date(project.fecha_limite);
+      deadline.setHours(0, 0, 0, 0);
+      const diffMs = deadline.getTime() - now.getTime();
+      const diffDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+      diasRestantes = diffDays;
+      semanasRestantes = Math.max(1, Math.round((diffDays / 7) * 10) / 10);
+      horasTotalesEstimadas = Math.round((diffDays * minutosDiarios) / 60);
+
+      const fechaStr = project.fecha_limite.includes('T')
+        ? project.fecha_limite.split('T')[0]
+        : project.fecha_limite;
+
+      tiempoInfo =
+        `\n\nCÁLCULO PREVIO DE TIEMPO, PLAZO Y CARGA:\n` +
+        `- Plazo disponible hasta la fecha límite (${fechaStr}): ${diasRestantes} días (~${semanasRestantes} semanas).\n` +
+        `- Dedicación configurada por el usuario: ${minutosDiarios} minutos diarios (~${horasTotalesEstimadas} horas de trabajo en total durante todo el proyecto).\n` +
+        `- DIRECTRIZ OBLIGATORIA DE TAREAS: Debes generar una cantidad suficiente, proporcional y realista de tareas para abarcar todo este periodo de ${diasRestantes} días sin quedarte corto (no te limites a solo 3 o 4 tareas si el plazo es amplio). Cada tarea debe poder realizarse en aproximadamente ${minutosDiarios} minutos diarios. Distribuye el temario de manera progresiva hacia la meta.`;
+    }
+
     const promptMessage = hasExisting
-      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${project.minutos_diarios || 30}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
-      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${project.minutos_diarios || 30}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${materialPart}${filePart} Por favor genera el listado de tareas estructurado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
+      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${tiempoInfo}${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
+      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${tiempoInfo}${materialPart}${filePart} Por favor genera el listado de tareas estructurado acorde al plazo calculado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
 
     // 2. Preparar payload completo con compatibilidad para nodos de Supabase (userId, user_id) y agentes de chat (chatInput, message)
     const payload = {
@@ -449,7 +480,12 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       material_url: project.material_url || null,
       archivo_nombre: project.file_name || null,
       archivo_contenido: project.file_content || null,
-      minutos_diarios: project.minutos_diarios || 30,
+      minutos_diarios: minutosDiarios,
+
+      // Datos calculados de plazo y carga
+      dias_restantes: diasRestantes,
+      semanas_restantes: semanasRestantes,
+      horas_totales_estimadas: horasTotalesEstimadas,
 
       // Tareas ya existentes para prevenir duplicación
       tareas_existentes: existingTasks.map((t) => ({

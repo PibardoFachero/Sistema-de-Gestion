@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,8 +39,22 @@ type WizardAnswers = {
 
 export function CreateProjectWizard() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<number>(0);
-  const [answers, setAnswers] = useState<WizardAnswers>({});
+  const searchParams = useSearchParams();
+
+  // Prellenar respuestas si vienen desde recomendación o enlace de Komo IA
+  const initialTitle = searchParams.get('titulo') || searchParams.get('nombre') || '';
+  const initialObjective = searchParams.get('objetivo') || '';
+  const stepParam = searchParams.get('step');
+  const parsedStep = stepParam ? parseInt(stepParam, 10) : 0;
+  const initialStep = !isNaN(parsedStep) && parsedStep >= 0 && parsedStep < 7 ? parsedStep : 0;
+
+  const [currentStep, setCurrentStep] = useState<number>(() => initialStep);
+  const [answers, setAnswers] = useState<WizardAnswers>(() => {
+    const init: WizardAnswers = {};
+    if (initialTitle) init[0] = initialTitle.slice(0, 50);
+    if (initialObjective) init[1] = initialObjective.slice(0, 250);
+    return init;
+  });
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -621,6 +635,20 @@ export function CreateProjectWizard() {
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0" />
                 <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Notificación si las dos primeras preguntas fueron prellenadas por Komo IA */}
+            {initialStep === 2 && currentStep === 2 && (
+              <div className="mb-4 p-3.5 bg-[#F5EFE9] border border-[#E2D9D0] rounded-2xl text-xs text-[#2C1F14] flex items-start gap-2.5 animate-in fade-in duration-300">
+                <Sparkles className="size-4 text-[#845326] shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold text-[#845326]">
+                    Preguntas 1 y 2 prellenadas por Komo IA:{' '}
+                  </span>
+                  Se han omitido el nombre y objetivo acordados ({answers[0]}). Puedes continuar con
+                  la fecha límite o pulsar <em>Anterior</em> si deseas editarlos.
+                </div>
               </div>
             )}
 
