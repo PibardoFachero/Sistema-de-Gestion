@@ -502,9 +502,9 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       input: promptMessage,
     };
 
-    // 2. Llamada HTTP al Webhook de n8n con timeout de 25 segundos
+    // 2. Llamada HTTP al Webhook de n8n con timeout de 60 segundos (permite procesar videos y temarios extensos)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     let response: Response;
     try {

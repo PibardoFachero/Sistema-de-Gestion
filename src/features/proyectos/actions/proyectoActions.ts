@@ -120,7 +120,7 @@ export async function createProjectAction(input: CreateProjectInput) {
     // =========================================================================
     if (process.env.N8N_WEBHOOK_URL) {
       try {
-        await generateProjectTasksFromN8n({
+        const n8nResult = await generateProjectTasksFromN8n({
           id: project.id,
           user_id: user.id,
           titulo: project.titulo,
@@ -131,9 +131,16 @@ export async function createProjectAction(input: CreateProjectInput) {
           material_url: project.material_url,
           minutos_diarios: project.minutos_diarios,
         });
+
+        if (!n8nResult.success) {
+          console.warn(
+            'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
+            n8nResult.error,
+          );
+        }
       } catch (n8nErr) {
         console.warn(
-          'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
+          'Advertencia: Excepción al generar tareas con n8n al crear el proyecto:',
           n8nErr,
         );
       }
