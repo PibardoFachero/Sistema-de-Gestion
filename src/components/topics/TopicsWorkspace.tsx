@@ -330,11 +330,11 @@ export function TopicsWorkspace() {
       prev.map((t) =>
         t.id === selectedTopic.id
           ? {
-            ...t,
-            sources: t.sources.map((s) =>
-              s.id === sourceId ? { ...s, enabledForAi: targetStatus } : s,
-            ),
-          }
+              ...t,
+              sources: t.sources.map((s) =>
+                s.id === sourceId ? { ...s, enabledForAi: targetStatus } : s,
+              ),
+            }
           : t,
       ),
     );
@@ -352,11 +352,11 @@ export function TopicsWorkspace() {
         prev.map((t) =>
           t.id === selectedTopic.id
             ? {
-              ...t,
-              sources: t.sources.map((s) =>
-                s.id === sourceId ? { ...s, enabledForAi: source.enabledForAi } : s,
-              ),
-            }
+                ...t,
+                sources: t.sources.map((s) =>
+                  s.id === sourceId ? { ...s, enabledForAi: source.enabledForAi } : s,
+                ),
+              }
             : t,
         ),
       );
