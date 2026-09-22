@@ -51,7 +51,7 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
       } else if (format === 'pdf') {
         await exportAsPDF('exportable-chart-area', aiText, metricTitle);
       } else if (format === 'excel') {
-        await exportAsExcel('exportable-chart-area', aiText, metricTitle, seriesData as any[]);
+        await exportAsExcel('exportable-chart-area', aiText, metricTitle, seriesData as unknown as Record<string, unknown>[]);
       }
     } catch (error) {
       console.error('Error durante la exportación:', error);

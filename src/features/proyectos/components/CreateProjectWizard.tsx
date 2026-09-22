@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,8 +39,22 @@ type WizardAnswers = {
 
 export function CreateProjectWizard() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<number>(0);
-  const [answers, setAnswers] = useState<WizardAnswers>({});
+  const searchParams = useSearchParams();
+
+  // Prellenar respuestas si vienen desde recomendación o enlace de Komo IA
+  const initialTitle = searchParams.get('titulo') || searchParams.get('nombre') || '';
+  const initialObjective = searchParams.get('objetivo') || '';
+  const stepParam = searchParams.get('step');
+  const parsedStep = stepParam ? parseInt(stepParam, 10) : 0;
+  const initialStep = !isNaN(parsedStep) && parsedStep >= 0 && parsedStep < 7 ? parsedStep : 0;
+
+  const [currentStep, setCurrentStep] = useState<number>(() => initialStep);
+  const [answers, setAnswers] = useState<WizardAnswers>(() => {
+    const init: WizardAnswers = {};
+    if (initialTitle) init[0] = initialTitle.slice(0, 50);
+    if (initialObjective) init[1] = initialObjective.slice(0, 250);
+    return init;
+  });
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -98,29 +112,25 @@ export function CreateProjectWizard() {
     setErrorMessage(null);
 
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const configuredTimeStr = answers[6]
-        ? `${answers[6].mainOption} ${answers[6].subOption ? `(${answers[6].subOption})` : ''}`.trim()
-        : '30';
-
       // 1. Preparar material_url con URLs y nombres de hasta 3 archivos
       const filesNames = (answers[5]?.files || []).filter(Boolean);
       const validUrls = (answers[5]?.urls || []).filter(
         (u: string) => typeof u === 'string' && u.trim().length > 0,
       );
-      const materialParts: string[] = [];
-      if (validUrls.length > 0) {
-        materialParts.push(`URLs: ${validUrls.join(', ')}`);
+
+      let materialUrl: string | undefined = undefined;
+      if (validUrls.length === 1 && filesNames.length === 0) {
+        materialUrl = validUrls[0].trim();
+      } else {
+        const materialParts: string[] = [];
+        if (validUrls.length > 0) {
+          materialParts.push(`URLs: ${validUrls.join(', ')}`);
+        }
+        if (filesNames.length > 0) {
+          materialParts.push(`Archivos: ${filesNames.join(', ')}`);
+        }
+        materialUrl = materialParts.join(' | ') || (validUrls[0] ?? undefined);
       }
-      if (filesNames.length > 0) {
-        materialParts.push(`Archivos: ${filesNames.join(', ')}`);
-      }
-      const materialUrl = materialParts.join(' | ') || (validUrls[0] ?? '');
 
       const dailyMinutes = calculateDailyMinutes(answers[6]);
 
@@ -129,21 +139,7 @@ export function CreateProjectWizard() {
       const deadline = answers[2] || '';
       const priority = answers[3] || 'Prioritario';
 
-      // Llamada webhook n8n usando la Ruta API local (no bloqueante, evita CORS)
-      fetch('/api/webhooks/n8n', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id || 'usuario_no_autenticado',
-          nombre_proyecto: projectName,
-          meta: objective,
-          fecha_limite: deadline,
-          prioridad: priority,
-          horario_configurado: configuredTimeStr,
-        }),
-      }).catch((err) => console.error('Error enviando webhook n8n:', err));
-
-      // 2. Guardar en Supabase usando la Server Action
+      // 2. Guardar en Supabase y generar tareas con n8n usando la Server Action
       const result = await createProjectAction({
         titulo: projectName,
         objetivo: objective,
@@ -251,11 +247,10 @@ export function CreateProjectWizard() {
             <input
               type="date"
               min={todayStr}
-              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${
-                isPastDate
+              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${isPastDate
                   ? 'border-red-400 focus:border-red-500'
                   : 'border-[#E2D9D0] focus:border-[#2C1F14]'
-              }`}
+                }`}
               value={answers[2] || ''}
               onChange={(e) => updateAnswer(2, e.target.value)}
             />
@@ -285,19 +280,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(3, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -326,19 +319,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(4, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -515,19 +506,17 @@ export function CreateProjectWizard() {
                         subOption: opt !== 'Menos de 1 hora diaria' ? '' : currentData.subOption,
                       });
                     }}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -546,11 +535,10 @@ export function CreateProjectWizard() {
                       <button
                         key={sub}
                         onClick={() => updateAnswer(6, { ...currentData, subOption: sub })}
-                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                          isSubSelected
+                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${isSubSelected
                             ? 'bg-white border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold'
                             : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14]'
-                        }`}
+                          }`}
                       >
                         <span>{sub}</span>
                         {isSubSelected && <Check className="size-3" />}
@@ -625,6 +613,35 @@ export function CreateProjectWizard() {
               </div>
             )}
 
+            {/* Notificación si las dos primeras preguntas fueron prellenadas por Komo IA */}
+            {initialStep === 2 && currentStep === 2 && (
+              <div className="mb-4 p-3.5 bg-[#F5EFE9] border border-[#E2D9D0] rounded-2xl text-xs text-[#2C1F14] flex items-start gap-2.5 animate-in fade-in duration-300">
+                <Sparkles className="size-4 text-[#845326] shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold text-[#845326]">
+                    Preguntas 1 y 2 prellenadas por Komo IA:{' '}
+                  </span>
+                  Se han omitido el nombre y objetivo acordados ({answers[0]}). Puedes continuar con
+                  la fecha límite o pulsar <em>Anterior</em> si deseas editarlos.
+                </div>
+              </div>
+            )}
+
+            {/* Mensaje de espera si Komo IA está generando el plan de tareas */}
+            {isFinishing && (
+              <div className="mb-4 p-4 bg-[#F5EFE9] border border-[#E2D9D0] rounded-2xl text-xs text-[#2C1F14] flex items-start gap-3 animate-in fade-in duration-300">
+                <Loader2 className="size-5 text-[#845326] animate-spin shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-[#845326] text-sm">
+                    Komo está diseñando tu plan de estudio personalizado...
+                  </p>
+                  <p className="text-[#2C1F14]/80 leading-relaxed">
+                    Estamos estructurando tu cronograma de tareas diarias. Si adjuntaste enlaces o videos largos, la IA puede tardar hasta un minuto en analizar todo el temario. ¡Gracias por tu paciencia!
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Contenido Dinámico de la Pregunta */}
             <div className="min-h-[280px]">{renderStepContent()}</div>
 
@@ -633,7 +650,7 @@ export function CreateProjectWizard() {
               <button
                 type="button"
                 onClick={handlePrev}
-                disabled={currentStep === 0}
+                disabled={currentStep === 0 || isFinishing}
                 className="rounded-[25px] bg-[#E8DCD1] hover:bg-[#dfd1c4] text-[#2C1F14] px-5 py-2.5 font-semibold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 active:scale-[0.99] cursor-pointer"
               >
                 <ArrowLeft className="size-3.5" />
@@ -649,7 +666,7 @@ export function CreateProjectWizard() {
                 {isFinishing ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" />
-                    <span>Creando tareas...</span>
+                    <span>Diseñando plan...</span>
                   </>
                 ) : currentStep === totalSteps - 1 ? (
                   <>

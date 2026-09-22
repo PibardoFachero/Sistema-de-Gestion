@@ -20,12 +20,14 @@ import {
   saveMessageAction,
   updateConversationTitleAction,
   deleteConversationAction,
-  createProjectFromAITasksAction,
   addTasksToExistingProjectAction,
   getUserProjectsForChatAction,
 } from '@/features/ai-assistant/actions/chatActions';
 import { extractAssistantResponseAndTitle } from '@/features/ai-assistant/utils/responseParser';
-import { detectMessageIntent } from '@/features/ai-assistant/utils/intentDetector';
+import {
+  detectMessageIntent,
+  extractTopicFromText,
+} from '@/features/ai-assistant/utils/intentDetector';
 
 export default function IAPage() {
   const router = useRouter();
@@ -100,26 +102,11 @@ export default function IAPage() {
   };
 
   // Crear proyecto real en Supabase a partir de tareas sugeridas por la IA
-  const handleCreateProject = async (tasks: GeneratedTaskItem[], title?: string) => {
-    const res = await createProjectFromAITasksAction({
-      title: title || 'Plan de estudio sugerido',
-      tasks: tasks.map((t) => ({
-        title: t.title || t.titulo,
-        description: t.description || t.descripcion,
-        duration: t.duration || t.duracion,
-        resourceUrl: t.resourceUrl || t.resource_url,
-      })),
-    });
-
-    if (!res.success) {
-      throw new Error(res.error || 'No se pudo crear el proyecto');
-    }
-
-    // Actualizar lista de proyectos
-    const projRes = await getUserProjectsForChatAction();
-    if (projRes.success && projRes.data) {
-      setUserProjects(projRes.data);
-    }
+  // Redirigir al formulario de proyectos en lugar de crear directamente sin preguntas
+  const handleCreateProject = async (_tasks?: GeneratedTaskItem[], title?: string) => {
+    const params = new URLSearchParams();
+    if (title) params.set('titulo', title);
+    router.push(`/proyectos/nuevo${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
   // Agregar tareas generadas a un proyecto existente del usuario
@@ -153,6 +140,8 @@ export default function IAPage() {
     context: AssistantContext;
     fileAttachment?: FileAttachment;
     conversationId?: string | null;
+    history?: AssistantMessage[];
+    lastAssistantMessage?: AssistantMessage | null;
   }): Promise<{
     message: AssistantMessage;
     conversationId: string;
@@ -160,8 +149,35 @@ export default function IAPage() {
   }> => {
     let convId = params.conversationId;
 
-    // Detectar intención del usuario (informativa, actualización o creación)
-    const intentResult = detectMessageIntent(params.content, userProjects);
+    // Obtener historial completo y mensajes del asistente para contexto multi-turno
+    const conversationHistory =
+      params.history && params.history.length > 0 ? params.history : messages;
+    const lastAssistantMsg =
+      params.lastAssistantMessage ||
+      [...conversationHistory].reverse().find((m) => m.role === 'assistant') ||
+      null;
+
+    const lastRecommendationMsg =
+      [...conversationHistory]
+        .reverse()
+        .find(
+          (m) =>
+            m.role === 'assistant' &&
+            (m.intent === 'recommend_topics' ||
+              m.contextData?.isTopicRecommendation ||
+              m.suggestedTopicTitle ||
+              m.contextData?.suggestedTopicTitle ||
+              (m.content &&
+                (m.content.toLowerCase().includes('recomiend') ||
+                  m.content.toLowerCase().includes('propuesta')))),
+        ) || null;
+
+    // Detectar intención del usuario (informativa, actualización, recomendación de temas, confirmación o creación)
+    const intentResult = detectMessageIntent(
+      params.content,
+      userProjects,
+      lastAssistantMsg || lastRecommendationMsg,
+    );
 
     // 1. Si no hay conversación activa, crear una nueva en Supabase
     if (!convId) {
@@ -224,19 +240,84 @@ export default function IAPage() {
     const responseData = json.data;
 
     // 5. Parsear y limpiar respuesta
-    // No anexar tareas en markdown si la consulta es de carácter informativo
+    // Solo anexar tareas estructuradas en markdown si es actualización de proyecto existente
+    const shouldIncludeTasksInMarkdown = intentResult.intent === 'update_project';
     const parsed = extractAssistantResponseAndTitle(responseData, {
-      includeTasksInMarkdown: intentResult.intent !== 'informational',
+      includeTasksInMarkdown: shouldIncludeTasksInMarkdown,
     });
 
-    const cleanReply = parsed.reply;
+    let cleanReply = parsed.reply;
     const aiTitle = parsed.title;
 
-    // Solo preservar tareas si la intención no era puramente informativa
+    // Solo preservar tareas si la intención era expresamente actualizar un proyecto existente
     const aiTasks =
-      intentResult.intent !== 'informational'
+      intentResult.intent === 'update_project'
         ? (parsed.tasks as GeneratedTaskItem[] | undefined)
         : undefined;
+
+    let projectLink: string | undefined = undefined;
+    let skipQuestions: number | undefined = undefined;
+    let suggestedTopicTitle: string | undefined = undefined;
+    let suggestedTopicObjective: string | undefined = undefined;
+
+    // 5a. Si el usuario pide crear proyecto: proporcionar enlace al formulario y NO crear sin preguntas
+    if (intentResult.intent === 'create_project') {
+      projectLink = '/proyectos/nuevo';
+      // Limpiar posibles enlaces en texto para que SOLO quede el botón interactivo abajo
+      cleanReply = cleanReply
+        .replace(/(?:👉\s*)?\[[^\]]+\]\(\/proyectos\/nuevo[^\)]*\)/gi, '')
+        .replace(/https?:\/\/[^\s]+\/proyectos\/nuevo[^\s]*/gi, '')
+        .trim();
+      cleanReply +=
+        '\n\nPara personalizar la fecha límite, tu tiempo de estudio diario y tus materiales, configura tu proyecto en el formulario interactivo pulsando el botón a continuación:';
+    }
+
+    // 5b. Si el usuario pide recomendaciones de temas: dar recomendación y preguntar si está de acuerdo
+    if (intentResult.intent === 'recommend_topics') {
+      const extracted = extractTopicFromText(cleanReply);
+      suggestedTopicTitle = extracted.titulo;
+      suggestedTopicObjective = extracted.objetivo;
+
+      const mentionsAgreement =
+        cleanReply.toLowerCase().includes('acuerdo') ||
+        cleanReply.toLowerCase().includes('te parece') ||
+        cleanReply.toLowerCase().includes('te gusta') ||
+        cleanReply.toLowerCase().includes('opción') ||
+        cleanReply.toLowerCase().includes('opcion');
+
+      if (!mentionsAgreement) {
+        cleanReply +=
+          '\n\n¿Estás de acuerdo con este tema para tu proyecto o prefieres explorar otra opción?';
+      }
+    }
+
+    // 5c. Si el usuario confirma/acepta una recomendación: enviar al formulario obviando las 2 primeras preguntas
+    if (intentResult.intent === 'confirm_recommendation') {
+      const topicTitle =
+        intentResult.suggestedTopic?.titulo ||
+        lastAssistantMsg?.suggestedTopicTitle ||
+        (lastAssistantMsg?.contextData?.suggestedTopicTitle as string | undefined) ||
+        lastRecommendationMsg?.suggestedTopicTitle ||
+        (lastRecommendationMsg?.contextData?.suggestedTopicTitle as string | undefined) ||
+        'Proyecto de Estudio';
+      const topicObjective =
+        intentResult.suggestedTopic?.objetivo ||
+        lastAssistantMsg?.suggestedTopicObjective ||
+        (lastAssistantMsg?.contextData?.suggestedTopicObjective as string | undefined) ||
+        lastRecommendationMsg?.suggestedTopicObjective ||
+        (lastRecommendationMsg?.contextData?.suggestedTopicObjective as string | undefined) ||
+        'Plan de estudio propuesto por Komo IA';
+
+      suggestedTopicTitle = topicTitle;
+      suggestedTopicObjective = topicObjective;
+      skipQuestions = 2;
+      projectLink = `/proyectos/nuevo?step=2&titulo=${encodeURIComponent(topicTitle)}&objetivo=${encodeURIComponent(topicObjective)}`;
+
+      cleanReply =
+        `¡Excelente elección! Vamos a configurar tu proyecto **"${topicTitle}"**.\n\n` +
+        `Para que ahorres tiempo, **hemos omitido las 2 primeras preguntas** del formulario (el nombre y el objetivo ya quedaron prellenados).\n\n` +
+        `Pasa directamente a definir tu fecha límite, prioridad, materiales y horario en el formulario interactivo pulsando el botón a continuación:`;
+    }
 
     // 6. Si la IA proporcionó un título para la conversación, actualizar la tabla conversations
     if (aiTitle && convId) {
@@ -244,7 +325,7 @@ export default function IAPage() {
       setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, title: aiTitle } : c)));
     }
 
-    // 7. Guardar mensaje del asistente en la tabla messages con metadatos de intención
+    // 7. Guardar mensaje del asistente en la tabla messages con metadatos de intención y enlaces
     const assistantMsgRes = await saveMessageAction({
       conversationId: convId,
       sender: 'assistant',
@@ -255,6 +336,11 @@ export default function IAPage() {
         intent: intentResult.intent,
         targetProjectId: intentResult.targetProject?.id,
         targetProjectTitle: intentResult.targetProject?.titulo,
+        projectLink,
+        skipQuestions,
+        suggestedTopicTitle,
+        suggestedTopicObjective,
+        isTopicRecommendation: intentResult.intent === 'recommend_topics',
       },
     });
 
@@ -269,17 +355,32 @@ export default function IAPage() {
       intent: intentResult.intent,
       targetProjectId: intentResult.targetProject?.id,
       targetProjectTitle: intentResult.targetProject?.titulo,
+      projectLink,
+      skipQuestions,
+      suggestedTopicTitle,
+      suggestedTopicObjective,
     };
 
+    const finalMsg: AssistantMessage = {
+      ...assistantMsg,
+      tasks: aiTasks,
+      planTitle: aiTitle,
+      intent: intentResult.intent,
+      targetProjectId: intentResult.targetProject?.id,
+      targetProjectTitle: intentResult.targetProject?.titulo,
+      projectLink,
+      skipQuestions,
+      suggestedTopicTitle,
+      suggestedTopicObjective,
+    };
+
+    setMessages((prev) => {
+      const base = params.history && params.history.length > 0 ? params.history : prev;
+      return [...base, finalMsg];
+    });
+
     return {
-      message: {
-        ...assistantMsg,
-        tasks: aiTasks,
-        planTitle: aiTitle,
-        intent: intentResult.intent,
-        targetProjectId: intentResult.targetProject?.id,
-        targetProjectTitle: intentResult.targetProject?.titulo,
-      },
+      message: finalMsg,
       conversationId: convId,
       conversationTitle: aiTitle,
     };

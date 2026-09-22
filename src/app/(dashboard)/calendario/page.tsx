@@ -163,22 +163,27 @@ export default function CalendarioPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
 
-  const [isGoogleConnected, setIsGoogleConnected] = useState(() => {
+  const [isMounted, setIsMounted] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('komorebi_availabilities');
         if (saved) {
           const parsed = JSON.parse(saved);
-          return parsed.some((a: Availability) => a.source === 'google');
+          if (parsed.some((a: Availability) => a.source === 'google')) {
+            setIsGoogleConnected(true);
+          }
         }
-      } catch (e) {}
-    }
-    return false;
-  });
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+      } catch (e) {
+        console.error(e);
+      }
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const success = urlParams.get('gcal_success');
       const error = urlParams.get('gcal_error');
@@ -187,24 +192,27 @@ export default function CalendarioPage() {
         setIsGoogleConnected(true);
         setToastMessage({ type: 'success', text: 'Google Calendar sincronizado correctamente' });
         window.history.replaceState({}, document.title, window.location.pathname);
-        
+
         // Mock de evento de Google Calendar para previsualizar el estilo
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
         const tomorrowDay = format(tomorrow, 'EEEE', { locale: es });
-        
-        setAvailabilities(prev => {
-          if (prev.some(a => a.source === 'google')) return prev;
+
+        setAvailabilities((prev) => {
+          if (prev.some((a) => a.source === 'google')) return prev;
           const mockEvents: Availability[] = [];
-          for(let m=0; m<60; m+=5) {
+          for (let m = 0; m < 60; m += 5) {
             const mStr = m.toString().padStart(2, '0');
-            const nmStr = (m+5 === 60 ? '00' : (m+5).toString().padStart(2, '0'));
-            const h = 10 + (m+5 === 60 ? 1 : 0);
+            const nmStr = m + 5 === 60 ? '00' : (m + 5).toString().padStart(2, '0');
+            const h = 10 + (m + 5 === 60 ? 1 : 0);
             mockEvents.push({
-              date: tomorrowStr, dayOfWeek: tomorrowDay,
-              startTime: `10:${mStr}`, endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
-              label: 'Reunión Sync', source: 'google'
+              date: tomorrowStr,
+              dayOfWeek: tomorrowDay,
+              startTime: `10:${mStr}`,
+              endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
+              label: 'Reunión Sync',
+              source: 'google',
             });
           }
           return [...prev, ...mockEvents];
@@ -224,6 +232,7 @@ export default function CalendarioPage() {
   }, [toastMessage]);
 
   const handleConnectGoogle = () => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = '/api/auth/google';
   };
 
@@ -278,8 +287,8 @@ export default function CalendarioPage() {
             </p>
           </div>
           
-          <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto">
-            {!isGoogleConnected ? (
+          <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto min-h-[42px] flex items-center justify-end">
+            {!isMounted ? null : !isGoogleConnected ? (
               <button
                 onClick={handleConnectGoogle}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-[#5F6368] hover:bg-gray-50 border border-gray-200 rounded-xl font-semibold shadow-sm transition-all w-full sm:w-auto"

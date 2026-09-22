@@ -161,7 +161,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
     setTelegramMessage(
       'Abre el bot, presiona Iniciar y copia el código de seis dígitos que recibas.',
     );
-    window.open('https://t.me/aulaverify_bot?start=verify', '_blank', 'noopener,noreferrer');
+    window.open('https://t.me/aulaverify_bot?start=verificacion', '_blank', 'noopener,noreferrer');
   }
 
   function handleVerifyTelegram() {
