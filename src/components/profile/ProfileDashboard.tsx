@@ -31,7 +31,6 @@ import {
 import { ChangePasswordModal } from '@/components/profile/ChangePasswordModal';
 import { AddPasswordModal } from '@/components/profile/AddPasswordModal';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { onboardingQuestions } from '@/features/onboarding/data/questions';
 import type { OnboardingAnswersInput } from '@/features/onboarding/actions/saveOnboardingAction';
 import {

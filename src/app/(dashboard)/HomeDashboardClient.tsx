@@ -5,7 +5,6 @@ import { motion, Variants } from 'framer-motion';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Coffee, Play, Calendar, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
@@ -57,15 +56,18 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
   const [currentDate, setCurrentDate] = useState('');
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     const hour = new Date().getHours();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (hour >= 12 && hour < 19) setGreeting('¡Buenas tardes');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    else if (hour >= 19) setGreeting('¡Buenas noches');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    else setGreeting('¡Buenos días');
+    if (hour >= 12 && hour < 19) {
+      setGreeting('¡Buenas tardes');
+    } else if (hour >= 19) {
+      setGreeting('¡Buenas noches');
+    } else {
+      setGreeting('¡Buenos días');
+    }
 
     setCurrentDate(format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es }));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const containerVariants: Variants = {
@@ -252,7 +254,7 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
             if (task.fecha_inicio) {
               try {
                 formattedTime = format(new Date(task.fecha_inicio), 'HH:mm a');
-              } catch (e) {
+              } catch {
                 // Ignore parsing errors
               }
             }
