@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { ProfileDashboard, type ProfileDashboardData } from '@/components/profile/ProfileDashboard';
 import { createClient } from '@/lib/supabase/server';
+import { evaluateAndSyncUserStreak } from '@/features/gamification/services/streakService';
 
 type ProfileRecord = {
   nombre_usuario?: string | null;
@@ -33,6 +34,9 @@ export default async function PerfilPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // Evaluar y sincronizar racha del usuario de forma consistente
+  const streakResult = await evaluateAndSyncUserStreak(supabase, user.id);
 
   // Lectura completa de public.profiles
   const { data: profile } = await supabase
@@ -126,8 +130,8 @@ export default async function PerfilPage() {
     pace: profile?.ritmo || '',
     difficulties,
     priorityAreas,
-    currentStreak: typeof profile?.racha_activa === 'number' ? profile.racha_activa : 0,
-    bestStreak: typeof profile?.racha_maxima === 'number' ? profile.racha_maxima : 0,
+    currentStreak: streakResult.racha_activa,
+    bestStreak: streakResult.racha_maxima,
     lastSignInAt: user.last_sign_in_at,
     hasPassword,
     isGoogleUser,

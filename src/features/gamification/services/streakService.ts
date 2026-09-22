@@ -149,9 +149,26 @@ export async function evaluateAndSyncUserStreak(
       .eq('user_id', userId);
 
     if (projectsError || !projects || projects.length === 0) {
+      // Si el usuario no tiene proyectos, no puede tener racha activa
+      if (currentStreak > 0) {
+        const newMax = maxStreak <= 1 ? 0 : maxStreak;
+        await supabase
+          .from('profiles')
+          .update({ racha_activa: 0, racha_maxima: newMax })
+          .eq('id', userId);
+
+        return {
+          racha_activa: 0,
+          racha_maxima: newMax,
+          hasOverdueTasks: false,
+          overdueCount: 0,
+          wasReset: true,
+        };
+      }
+
       return {
-        racha_activa: currentStreak,
-        racha_maxima: maxStreak,
+        racha_activa: 0,
+        racha_maxima: maxStreak <= 1 && currentStreak === 0 ? 0 : maxStreak,
         hasOverdueTasks: false,
         overdueCount: 0,
         wasReset: false,
@@ -160,15 +177,14 @@ export async function evaluateAndSyncUserStreak(
 
     const projectIds = projects.map((p) => p.id);
 
-    // 3. Buscar tareas no completadas que tengan fecha_inicio
-    const { data: tasks, error: tasksError } = await supabase
+    // 3. Obtener todas las tareas de los proyectos del usuario
+    const { data: allTasks, error: tasksError } = await supabase
       .from('tareas')
       .select('id, id_proyecto, titulo, fecha_inicio, duracion, completado')
-      .in('id_proyecto', projectIds)
-      .eq('completado', false)
-      .not('fecha_inicio', 'is', null);
+      .in('id_proyecto', projectIds);
 
-    if (tasksError || !tasks || tasks.length === 0) {
+    if (tasksError) {
+      console.error('Error al obtener tareas para evaluar racha:', tasksError);
       return {
         racha_activa: currentStreak,
         racha_maxima: maxStreak,
@@ -178,12 +194,53 @@ export async function evaluateAndSyncUserStreak(
       };
     }
 
+    const taskList = allTasks ?? [];
+    const completedCount = taskList.filter((t) => Boolean(t.completado)).length;
+
+    // Regla de consistencia: si no hay tareas completadas en ningún proyecto, la racha activa DEBE ser 0
+    if (completedCount === 0) {
+      if (currentStreak > 0) {
+        const newMax = maxStreak <= 1 ? 0 : maxStreak;
+        await supabase
+          .from('profiles')
+          .update({ racha_activa: 0, racha_maxima: newMax })
+          .eq('id', userId);
+
+        return {
+          racha_activa: 0,
+          racha_maxima: newMax,
+          hasOverdueTasks: false,
+          overdueCount: 0,
+          wasReset: true,
+        };
+      }
+
+      return {
+        racha_activa: 0,
+        racha_maxima: maxStreak <= 1 ? 0 : maxStreak,
+        hasOverdueTasks: false,
+        overdueCount: 0,
+        wasReset: false,
+      };
+    }
+
+    // Si la racha activa supera el número de tareas completadas disponibles (por ejemplo tras borrar tareas),
+    // ajustamos la racha al límite real de tareas completadas
+    let effectiveStreak = currentStreak;
+    if (currentStreak > completedCount) {
+      effectiveStreak = completedCount;
+      await supabase
+        .from('profiles')
+        .update({ racha_activa: effectiveStreak })
+        .eq('id', userId);
+    }
+
     const now = Date.now();
     const todayKey = getCaracasDateKey(new Date(now));
 
     // Considerar tareas de hoy que ya vencieron en el horario establecido sin completarse
-    const overdueTasks = tasks.filter((task) => {
-      if (!task.fecha_inicio) return false;
+    const overdueTasks = taskList.filter((task) => {
+      if (task.completado || !task.fecha_inicio) return false;
       const isToday = isTaskForDate(task.fecha_inicio, todayKey);
       if (!isToday) return false;
       return isTaskOverdue(task, now);
@@ -193,7 +250,7 @@ export async function evaluateAndSyncUserStreak(
 
     // 4. Si hay una tarea no completada en el plazo establecido, reiniciar la racha a 0
     if (hasOverdue) {
-      if (currentStreak > 0) {
+      if (effectiveStreak > 0) {
         await supabase
           .from('profiles')
           .update({ racha_activa: 0 })
@@ -205,12 +262,12 @@ export async function evaluateAndSyncUserStreak(
         racha_maxima: maxStreak,
         hasOverdueTasks: true,
         overdueCount: overdueTasks.length,
-        wasReset: currentStreak > 0,
+        wasReset: effectiveStreak > 0,
       };
     }
 
     return {
-      racha_activa: currentStreak,
+      racha_activa: effectiveStreak,
       racha_maxima: maxStreak,
       hasOverdueTasks: false,
       overdueCount: 0,

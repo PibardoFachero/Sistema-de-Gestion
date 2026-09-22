@@ -663,8 +663,54 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
         .eq('user_id', user.id);
     }
 
+    // Sincronizar racha de forma consistente: si el usuario ya no tiene tareas completadas, resetear racha a 0
+    try {
+      const { data: userProjects } = await db
+        .from('projects')
+        .select('id')
+        .eq('user_id', user.id);
+
+      const uProjIds = (userProjects ?? []).map((p) => p.id);
+      if (uProjIds.length > 0) {
+        const { data: remainingCompleted } = await db
+          .from('tareas')
+          .select('id')
+          .in('id_proyecto', uProjIds)
+          .eq('completado', true);
+
+        const totalCompleted = remainingCompleted?.length ?? 0;
+        if (totalCompleted === 0) {
+          await db
+            .from('profiles')
+            .update({ racha_activa: 0 })
+            .eq('id', user.id);
+        } else {
+          const { data: prof } = await db
+            .from('profiles')
+            .select('racha_activa')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
+            await db
+              .from('profiles')
+              .update({ racha_activa: totalCompleted })
+              .eq('id', user.id);
+          }
+        }
+      } else {
+        await db
+          .from('profiles')
+          .update({ racha_activa: 0 })
+          .eq('id', user.id);
+      }
+    } catch (streakSyncErr) {
+      console.error('Error sincronizando racha al eliminar tarea:', streakSyncErr);
+    }
+
     revalidatePath(`/proyectos/${projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/perfil');
     revalidatePath('/');
 
     return { success: true, progreso: newProgreso, completado: isProjectCompleted };
@@ -711,7 +757,53 @@ export async function deleteProjectAction(projectId: string) {
       return { success: false, error: projectDeleteError.message };
     }
 
+    // Sincronizar racha de forma consistente: si tras eliminar el proyecto no quedan tareas completadas, resetear racha a 0
+    try {
+      const { data: userProjects } = await db
+        .from('projects')
+        .select('id')
+        .eq('user_id', user.id);
+
+      const remainingProjIds = (userProjects ?? []).map((p) => p.id);
+      if (remainingProjIds.length > 0) {
+        const { data: remainingCompleted } = await db
+          .from('tareas')
+          .select('id')
+          .in('id_proyecto', remainingProjIds)
+          .eq('completado', true);
+
+        const totalCompleted = remainingCompleted?.length ?? 0;
+        if (totalCompleted === 0) {
+          await db
+            .from('profiles')
+            .update({ racha_activa: 0 })
+            .eq('id', user.id);
+        } else {
+          const { data: prof } = await db
+            .from('profiles')
+            .select('racha_activa')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
+            await db
+              .from('profiles')
+              .update({ racha_activa: totalCompleted })
+              .eq('id', user.id);
+          }
+        }
+      } else {
+        await db
+          .from('profiles')
+          .update({ racha_activa: 0 })
+          .eq('id', user.id);
+      }
+    } catch (streakSyncErr) {
+      console.error('Error sincronizando racha al eliminar proyecto:', streakSyncErr);
+    }
+
     revalidatePath('/proyectos');
+    revalidatePath('/perfil');
     revalidatePath('/');
     return { success: true };
   } catch (error: unknown) {
@@ -987,6 +1079,7 @@ export async function resetStreakOnOverdueAction() {
       .update({ racha_activa: 0 })
       .eq('id', user.id);
 
+    revalidatePath('/perfil');
     revalidatePath('/');
     return { success: true, racha_activa: 0 };
   } catch (error: unknown) {
