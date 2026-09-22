@@ -6,19 +6,14 @@ const TELEGRAM_TOKEN =
   Deno.env.get('TELEGRAM_BOT_TOKEN') ||
   '8562880898:AAEwa1ETfKPDutz8AJCRRelt_-u35gGAaA4';
 
-const TELEGRAM_WEBHOOK_SECRET =
-  Deno.env.get('TELEGRAM_WEBHOOK_SECRET') || 'My_Secret_Token_12345';
+const TELEGRAM_WEBHOOK_SECRET = Deno.env.get('TELEGRAM_WEBHOOK_SECRET') || 'My_Secret_Token_12345';
 
-const SUPABASE_URL =
-  Deno.env.get('SUPABASE_URL') || 'https://nxjqilasqjrjpvmmjxve.supabase.co';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://nxjqilasqjrjpvmmjxve.supabase.co';
 
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 serve(async (req: Request) => {
@@ -77,13 +72,10 @@ serve(async (req: Request) => {
 
         if (dbError) {
           console.error('❌ Error guardando en base de datos:', dbError);
-          return new Response(
-            JSON.stringify({ error: 'db_error', details: dbError.message }),
-            {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          );
+          return new Response(JSON.stringify({ error: 'db_error', details: dbError.message }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
         }
 
         // 5. Construir mensaje personalizado según el flujo

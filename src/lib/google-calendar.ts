@@ -36,7 +36,11 @@ export function getAppBaseUrl(requestOrigin?: string): string {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
   }
-  if (requestOrigin && !requestOrigin.includes('localhost') && !requestOrigin.includes('127.0.0.1')) {
+  if (
+    requestOrigin &&
+    !requestOrigin.includes('localhost') &&
+    !requestOrigin.includes('127.0.0.1')
+  ) {
     return requestOrigin.replace(/\/$/, '');
   }
   return requestOrigin ? requestOrigin.replace(/\/$/, '') : 'http://localhost:3000';
