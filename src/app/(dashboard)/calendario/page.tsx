@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ChevronDown,
   Edit2,
+  Trash2,
   ArrowLeft,
   Copy,
   X,
@@ -36,6 +37,10 @@ import {
   AlertCircle,
   FileText,
 } from 'lucide-react';
+import {
+  getCalendarDataAction,
+  deleteCalendarEventAction,
+} from '@/features/schedule/actions/calendarActions';
 
 interface Availability {
   date: string;
@@ -44,7 +49,8 @@ interface Availability {
   endTime: string;
   label: string;
   type?: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' | 'estudio' | 'ocupado';
-  source?: 'google' | 'local';
+  source?: 'google' | 'local' | 'supabase';
+  eventId?: string;
 }
 
 const COLOR_MAP: Record<string, { bg: string; hover: string; text: string; border: string; bgPale: string }> = {
@@ -160,6 +166,7 @@ export default function CalendarioPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadStatusText, setUploadStatusText] = useState<string>('Analizando con Gemini...');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
 
@@ -221,6 +228,61 @@ export default function CalendarioPage() {
         setToastMessage({ type: 'error', text: 'Error al conectar con Google Calendar' });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+
+      // Cargar eventos del calendario y tareas programadas desde Supabase
+      getCalendarDataAction()
+        .then((res) => {
+          if (res.success && res.events && res.events.length > 0) {
+            const dbEvents: Availability[] = [];
+            res.events.forEach((ev) => {
+              const startD = new Date(ev.inicio);
+              const endD = new Date(ev.fin);
+              if (isNaN(startD.getTime()) || isNaN(endD.getTime())) return;
+
+              const dateStr = format(startD, 'yyyy-MM-dd');
+              const dayOfWeekName = format(startD, 'EEEE', { locale: es });
+              const startSlot = format(startD, 'HH:mm');
+              const endSlot = format(endD, 'HH:mm');
+
+              const startIdx = TIME_SLOTS.indexOf(startSlot);
+              const endIdx = TIME_SLOTS.indexOf(endSlot);
+              const fromIdx = startIdx !== -1 ? startIdx : 0;
+              const toIdx =
+                endIdx !== -1 && endIdx > fromIdx
+                  ? endIdx
+                  : fromIdx +
+                    Math.max(
+                      1,
+                      Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)),
+                    );
+
+              for (let i = fromIdx; i < toIdx; i++) {
+                const slot = TIME_SLOTS[i];
+                if (slot && slot !== '24:00') {
+                  dbEvents.push({
+                    date: dateStr,
+                    dayOfWeek: dayOfWeekName,
+                    startTime: slot,
+                    endTime: TIME_SLOTS[i + 1] || '24:00',
+                    label: `📌 ${ev.titulo}`,
+                    type: 'estudiando',
+                    source: 'supabase',
+                    eventId: ev.id,
+                  });
+                }
+              }
+            });
+
+            if (dbEvents.length > 0) {
+              setAvailabilities((prev) => {
+                const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
+                const filtered = prev.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
+                return [...filtered, ...dbEvents];
+              });
+            }
+          }
+        })
+        .catch((err) => console.warn('Aviso cargando eventos de calendario:', err));
     }
   }, []);
 
@@ -376,18 +438,10 @@ export default function CalendarioPage() {
     );
   };
 
-  const handleProcessScheduleFile = async () => {
-    if (!uploadFile) {
-      setUploadError('Por favor selecciona una imagen o documento PDF con tu horario.');
-      return;
-    }
-
-    setUploadLoading(true);
-    setUploadError(null);
-    setUploadSuccessMsg(null);
-
-    try {
-      // Convertir archivo a base64
+  const compressImageForUpload = async (
+    file: File,
+  ): Promise<{ base64Data: string; mimeType: string }> => {
+    if (file.type === 'application/pdf') {
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -395,16 +449,91 @@ export default function CalendarioPage() {
           const commaIdx = result.indexOf(',');
           resolve(commaIdx !== -1 ? result.substring(commaIdx + 1) : result);
         };
-        reader.onerror = () => reject(new Error('Error al leer el archivo'));
-        reader.readAsDataURL(uploadFile);
+        reader.onerror = () => reject(new Error('Error al leer el archivo PDF'));
+        reader.readAsDataURL(file);
       });
+      return { base64Data, mimeType: 'application/pdf' };
+    }
+
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const maxDim = 1600;
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const res = reader.result as string;
+            const idx = res.indexOf(',');
+            resolve({
+              base64Data: idx !== -1 ? res.substring(idx + 1) : res,
+              mimeType: file.type || 'image/jpeg',
+            });
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const commaIdx = jpegDataUrl.indexOf(',');
+        const base64Data = commaIdx !== -1 ? jpegDataUrl.substring(commaIdx + 1) : jpegDataUrl;
+
+        resolve({ base64Data, mimeType: 'image/jpeg' });
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('No se pudo abrir la imagen para optimizarla'));
+      };
+
+      img.src = objectUrl;
+    });
+  };
+
+  const handleProcessScheduleFile = async () => {
+    if (!uploadFile) {
+      setUploadError('Por favor selecciona una imagen o documento PDF con tu horario.');
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadStatusText('Optimizando documento/imagen...');
+    setUploadError(null);
+    setUploadSuccessMsg(null);
+
+    try {
+      const { base64Data, mimeType } = await compressImageForUpload(uploadFile);
+      setUploadStatusText('Analizando horario con IA Gemini...');
 
       const res = await fetch('/api/calendar/extract-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           base64Data,
-          mimeType: uploadFile.type || 'image/png',
+          mimeType,
           guardarEnDisponibilidad: true,
         }),
       });
@@ -574,16 +703,22 @@ export default function CalendarioPage() {
     if (hasGoogle) return; // Deshabilitar edición y selección para bloques de Google Calendar
 
     if (!selectionStart) {
+      // Al hacer clic, simplemente seleccionar el bloque sin borrar su contenido ni categoría
       setSelectionStart({
         date: dateStr,
         time: timeStr,
-        action: exists ? 'remove' : 'add',
+        action: 'add',
         isMacro: isCollapsedHour,
       });
       setEditingCell(null);
     } else {
       if (selectionStart.date === dateStr && selectionStart.time === timeStr) {
-        applyRange(dateStr, dayOfWeek, clickStartIdx, clickEndIdx, selectionStart.action);
+        // Clic en el mismo bloque seleccionado: si existe, deseleccionar sin borrar nada
+        if (exists) {
+          setSelectionStart(null);
+          return;
+        }
+        applyRange(dateStr, dayOfWeek, clickStartIdx, clickEndIdx, 'add');
         setSelectionStart(null);
         return;
       }
@@ -592,7 +727,18 @@ export default function CalendarioPage() {
         setSelectionStart({
           date: dateStr,
           time: timeStr,
-          action: exists ? 'remove' : 'add',
+          action: 'add',
+          isMacro: isCollapsedHour,
+        });
+        return;
+      }
+
+      if (exists) {
+        // Al hacer clic en otro bloque ya ocupado, mover la selección sin borrar nada
+        setSelectionStart({
+          date: dateStr,
+          time: timeStr,
+          action: 'add',
           isMacro: isCollapsedHour,
         });
         return;
@@ -607,9 +753,46 @@ export default function CalendarioPage() {
       if (maxIdx === clickStartIdx && isCollapsedHour) maxIdx = clickEndIdx;
       if (maxIdx === startIdxObj && startObjIsMacro) maxIdx = startIdxObj + 11;
 
-      applyRange(dateStr, dayOfWeek, minIdx, maxIdx, selectionStart.action);
+      applyRange(dateStr, dayOfWeek, minIdx, maxIdx, 'add');
       setSelectionStart(null);
     }
+  };
+
+  const handleDeleteBlock = (dateStr: string, timeStr: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const [hStr, mStr] = timeStr.split(':');
+    const h = parseInt(hStr, 10);
+    const isCollapsedHour = mStr === '00' && !expandedHours.includes(h);
+
+    const startIdx = TIME_SLOTS.indexOf(timeStr);
+    const endIdx = isCollapsedHour ? startIdx + 11 : startIdx;
+
+    const timesToRemove = new Set<string>();
+    for (let i = startIdx; i <= endIdx; i++) {
+      if (TIME_SLOTS[i] !== '24:00') {
+        timesToRemove.add(TIME_SLOTS[i]);
+      }
+    }
+
+    const removedEvents = availabilities.filter(
+      (a) => a.date === dateStr && timesToRemove.has(a.startTime) && a.eventId,
+    );
+
+    setAvailabilities((prev) =>
+      prev.filter((a) => !(a.date === dateStr && timesToRemove.has(a.startTime))),
+    );
+
+    if (removedEvents.length > 0) {
+      for (const ev of removedEvents) {
+        if (ev.eventId) {
+          deleteCalendarEventAction(ev.eventId).catch((err) =>
+            console.warn('Error eliminando evento en Supabase:', err),
+          );
+        }
+      }
+    }
+
+    setToastMessage({ type: 'success', text: 'Bloque y categoría eliminados del calendario' });
   };
 
   const handleEditLabel = (
@@ -1098,7 +1281,7 @@ export default function CalendarioPage() {
                     {uploadLoading ? (
                       <>
                         <Loader2 className="size-4 animate-spin text-white" />
-                        <span>Analizando con Gemini...</span>
+                        <span>{uploadStatusText}</span>
                       </>
                     ) : (
                       <>
@@ -1266,15 +1449,24 @@ export default function CalendarioPage() {
                               </div>
                               
                               {!isGoogleEvent && (
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
                                   {!isPast && (
-                                    <button 
-                                      onClick={(e) => handleEditLabel(dateStr, timeStr, effectiveAvail!.label, currentType, e)}
-                                      className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
-                                      title="Editar"
-                                    >
-                                      <Edit2 className="size-3" />
-                                    </button>
+                                    <>
+                                      <button 
+                                        onClick={(e) => handleDeleteBlock(dateStr, timeStr, e)}
+                                        className={`p-0.5 bg-white/80 rounded hover:bg-red-50 hover:text-red-600 ${colorTheme.text} transition-colors`}
+                                        title="Borrar contenido y categoría del bloque"
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </button>
+                                      <button 
+                                        onClick={(e) => handleEditLabel(dateStr, timeStr, effectiveAvail!.label, currentType, e)}
+                                        className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
+                                        title="Editar"
+                                      >
+                                        <Edit2 className="size-3" />
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               )}

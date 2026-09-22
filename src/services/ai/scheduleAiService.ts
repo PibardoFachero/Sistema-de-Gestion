@@ -1,5 +1,8 @@
 import { Type } from '@google/genai';
 import { getGeminiClient, GEMINI_DEFAULT_MODEL } from '@/lib/gemini/geminiClient';
+import { callGeminiWithRetry } from '@/lib/gemini/geminiRetry';
+import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import {
   GeneratedSchedule,
   generatedScheduleSchema,
@@ -110,15 +113,19 @@ REGLAS:
 7. Genera bloques concretos con fechas (YYYY-MM-DD) y horas (HH:MM).`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseJsonSchema: scheduleJsonSchema,
-        temperature: 0.3,
-      },
-    });
+    const response = await callGeminiWithRetry(
+      (ai, model) =>
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: scheduleJsonSchema,
+            temperature: 0.3,
+          },
+        }),
+      { maxRetries: 3, initialDelayMs: 2000 },
+    );
 
     const rawText = response.text || '{}';
     const parsedJson = JSON.parse(rawText);
@@ -187,15 +194,19 @@ REGLAS:
 5. El campo "proyecto_id" de cada bloque debe ser exactamente: "${params.proyectoId}".`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseJsonSchema: scheduleJsonSchema,
-        temperature: 0.3,
-      },
-    });
+    const response = await callGeminiWithRetry(
+      (ai, model) =>
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: scheduleJsonSchema,
+            temperature: 0.3,
+          },
+        }),
+      { maxRetries: 3, initialDelayMs: 2000 },
+    );
 
     const rawText = response.text || '{}';
     const parsedJson = JSON.parse(rawText);
@@ -235,13 +246,13 @@ REGLAS:
 
 /**
  * Usa Gemini con visión para extraer bloques de disponibilidad desde imágenes de horarios.
+ * Implementa reintentos automáticos ante saturación (429/503) y compresión semántica.
  */
 export async function extractScheduleFromImageWithGemini(params: {
   base64Data: string;
   mimeType: string;
   usuarioId?: string;
 }): Promise<ExtractedScheduleResponse> {
-  const ai = getGeminiClient();
   const startTime = Date.now();
 
   const prompt = `Analiza la imagen o documento adjunto correspondiente a un horario laboral, académico, universitario o escolar.
@@ -280,27 +291,32 @@ Devuelve la lista de bloques en formato JSON.`;
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_DEFAULT_MODEL,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
+    const response = await callGeminiWithRetry(
+      (ai, model) =>
+        ai.models.generateContent({
+          model,
+          contents: [
             {
-              inlineData: {
-                data: params.base64Data,
-                mimeType: params.mimeType,
-              },
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    data: params.base64Data,
+                    mimeType: params.mimeType,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseJsonSchema: extractionSchema,
-      },
-    });
+          config: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: extractionSchema,
+            temperature: 0.1,
+          },
+        }),
+      { maxRetries: 3, initialDelayMs: 2000 },
+    );
 
     const rawText = response.text || '{}';
     const parsed = JSON.parse(rawText);
@@ -328,5 +344,303 @@ Devuelve la lista de bloques en formato JSON.`;
       error: errMessage,
     });
     throw new Error(`Error extrayendo horario con visión de Gemini: ${errMessage}`);
+  }
+}
+
+export interface ProjectForGeminiTaskGeneration {
+  id: string;
+  user_id: string;
+  titulo: string;
+  objetivo?: string | null;
+  fecha_limite?: string | null;
+  prioridad?: string | null;
+  nivel_conocimiento?: string | null;
+  minutos_diarios?: number | null;
+  material_url?: string | null;
+}
+
+/**
+ * Genera tareas inteligentes con Gemini para un proyecto y las organiza en el calendario
+ * respetando la disponibilidad del usuario (sin colisiones con clases, trabajo u ocupado).
+ */
+export async function generateProjectTasksAndScheduleWithGemini(
+  project: ProjectForGeminiTaskGeneration,
+) {
+  const startTime = Date.now();
+  const supabase = await createClient();
+  const adminDb = getAdminClient();
+  const db = adminDb || supabase;
+
+  try {
+    // 1. Obtener disponibilidad del usuario (bloques ocupados de trabajo, estudio o clases)
+    const { data: bloquesDisp } = await db
+      .from('bloques_disponibilidad')
+      .select('*')
+      .eq('usuario_id', project.user_id);
+
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    let disponibilidadDesc = 'Sin bloques ocupados específicos registrados en el perfil.';
+    const busyBlocks = (bloquesDisp || []).filter(
+      (b) => b.tipo === 'ocupado' || b.tipo === 'trabajo' || b.tipo === 'estudio',
+    );
+
+    if (busyBlocks.length > 0) {
+      disponibilidadDesc = busyBlocks
+        .map((b) => {
+          const dName =
+            b.fecha_especifica ||
+            (b.dia_semana !== null && b.dia_semana !== undefined ? dayNames[b.dia_semana] : 'Día');
+          return `- ${dName}: ${b.hora_inicio} a ${b.hora_fin} (Ocupado por ${b.tipo})`;
+        })
+        .join('\n');
+    }
+
+    // 2. Obtener eventos de calendario existentes para evitar colisiones
+    const nowIso = new Date().toISOString();
+    const { data: eventosExistentes } = await db
+      .from('eventos_calendario')
+      .select('inicio, fin, titulo')
+      .eq('usuario_id', project.user_id)
+      .gte('fin', nowIso)
+      .neq('estado', 'cancelado')
+      .limit(50);
+
+    let eventosDesc = 'Sin otros eventos agendados próximos.';
+    if (eventosExistentes && eventosExistentes.length > 0) {
+      eventosDesc = eventosExistentes
+        .map((e) => {
+          const d = new Date(e.inicio);
+          const fechaStr = d.toISOString().split('T')[0];
+          const horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          return `- ${fechaStr} a las ${horaStr}: "${e.titulo}"`;
+        })
+        .join('\n');
+    }
+
+    // 3. Calcular marco temporal (desde mañana hasta fecha_limite)
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    let deadlineStr = project.fecha_limite ? project.fecha_limite.split('T')[0] : '';
+    let totalDays = 30;
+
+    if (deadlineStr) {
+      const dDate = new Date(deadlineStr);
+      if (!isNaN(dDate.getTime())) {
+        const diffMs = dDate.getTime() - today.getTime();
+        totalDays = Math.max(2, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      }
+    } else {
+      const defaultDead = new Date(today);
+      defaultDead.setDate(defaultDead.getDate() + 30);
+      deadlineStr = defaultDead.toISOString().split('T')[0];
+    }
+
+    const minutosDiarios = Math.max(15, Number(project.minutos_diarios) || 30);
+    const nivel = project.nivel_conocimiento || 'Principiante';
+    const prioridad = project.prioridad || 'Prioritario';
+
+    // 4. Prompt pedagógico para Gemini
+    const prompt = `Eres un mentor y planificador académico/profesional de alto nivel.
+Genera un plan de tareas detallado y progresivo para el siguiente proyecto estudiantil/laboral, y organízalas en un cronograma diario sin colisiones.
+
+DATOS DEL PROYECTO:
+- Título: ${project.titulo}
+- Objetivo: ${project.objetivo || 'Dominar los conceptos y completar el proyecto satisfactoriamente'}
+- Nivel de conocimiento inicial del usuario: ${nivel}
+- Prioridad: ${prioridad}
+- Fecha actual de inicio: ${todayStr}
+- Fecha límite final: ${deadlineStr} (Plazo disponible: ${totalDays} días)
+- Tiempo disponible diario del usuario: ${minutosDiarios} minutos por día.
+${project.material_url ? `- Material o recurso suministrado: ${project.material_url}` : ''}
+
+HORARIOS OCUPADOS DEL USUARIO (¡PROHIBIDO ASIGNAR TAREAS EN ESTAS FRANJAS!):
+${disponibilidadDesc}
+
+EVENTOS PUNTUALES YA AGENDADOS:
+${eventosDesc}
+
+DIRECTRICES OBLIGATORIAS:
+1. DISTRIBUCIÓN TEMPORAL: Genera tareas secuenciales distribuidas coherentemente a lo largo de los días disponibles (desde mañana hasta la fecha límite).
+2. DURACIÓN DIARIA: Cada tarea debe tener una duración estimada en minutos que coincida con la disponibilidad diaria del usuario (${minutosDiarios} minutos).
+3. DIFICULTAD Y COMPLEJIDAD:
+   - Si el nivel es "Principiante" o "ninguno", inicia con tareas de conceptos fundamentales, entorno y pasos introductorios antes de avanzar.
+   - Si una tarea o concepto es complejo, divídelo en sesiones consecutivas (ej. "Módulo X - Parte 1: Teoría", "Módulo X - Parte 2: Práctica") de ${minutosDiarios} minutos cada una.
+4. ASIGNACIÓN AL CALENDARIO COHERENTE Y SIN COLISIONES:
+   - Para cada tarea debes proponer una fecha ("fecha": YYYY-MM-DD), una hora de inicio ("hora_inicio": HH:MM militar) y hora de fin ("hora_fin": HH:MM militar).
+   - Las horas deben ser diurnas y lógicas (entre las 08:00 y las 21:00).
+   - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario esté libre.
+5. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).`;
+
+    const projectTasksSchema = {
+      type: Type.OBJECT,
+      properties: {
+        resumen: {
+          type: Type.STRING,
+          description: 'Resumen conciso del plan de aprendizaje y cronograma.',
+        },
+        tareas: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              titulo: { type: Type.STRING, description: 'Título de la tarea' },
+              descripcion: { type: Type.STRING, description: 'Breve explicación u objetivo' },
+              duracion_minutos: { type: Type.INTEGER, description: 'Minutos estimados' },
+              fecha: { type: Type.STRING, description: 'Fecha YYYY-MM-DD' },
+              hora_inicio: { type: Type.STRING, description: 'HH:MM militar' },
+              hora_fin: { type: Type.STRING, description: 'HH:MM militar' },
+              prioridad: { type: Type.STRING, description: 'Prioritario, Normal, etc.' },
+              url_recomendada: { type: Type.STRING, description: 'Enlace web recomendado o documentación' },
+            },
+            required: ['titulo', 'duracion_minutos', 'fecha', 'hora_inicio', 'hora_fin'],
+          },
+        },
+      },
+      required: ['resumen', 'tareas'],
+    };
+
+    // 5. Llamada con retry y fallback a Gemini
+    const response = await callGeminiWithRetry(
+      (ai, model) =>
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: projectTasksSchema,
+            temperature: 0.2,
+          },
+        }),
+      { maxRetries: 3, initialDelayMs: 2000 },
+    );
+
+    const rawText = response.text || '{}';
+    const parsed = JSON.parse(rawText) as {
+      resumen?: string;
+      tareas?: Array<{
+        titulo: string;
+        descripcion?: string;
+        duracion_minutos?: number;
+        fecha: string;
+        hora_inicio: string;
+        hora_fin: string;
+        prioridad?: string;
+        url_recomendada?: string;
+      }>;
+    };
+
+    const tasksList = parsed.tareas || [];
+    if (tasksList.length === 0) {
+      return {
+        success: false,
+        error: 'La IA no devolvió tareas estructuradas.',
+      };
+    }
+
+    // 6. Preparar inserción de tareas en la tabla 'tareas' de Supabase
+    const tasksToInsert = tasksList.map((t) => {
+      const taskId = crypto.randomUUID();
+      const duracion = Math.max(15, Number(t.duracion_minutos) || minutosDiarios);
+      const fechaInicioIso = new Date(`${t.fecha}T${t.hora_inicio}:00`).toISOString();
+
+      return {
+        id: taskId,
+        id_proyecto: project.id,
+        titulo: t.titulo.trim(),
+        descripcion: t.descripcion?.trim() || null,
+        duracion,
+        completado: false,
+        fecha_inicio: fechaInicioIso,
+        prioridad: t.prioridad || prioridad,
+        resources: t.url_recomendada || project.material_url || null,
+        fecha: t.fecha,
+        hora_inicio: t.hora_inicio,
+        hora_fin: t.hora_fin,
+      };
+    });
+
+    const { data: insertedTasks, error: insertTasksErr } = await db
+      .from('tareas')
+      .insert(
+        tasksToInsert.map(({ fecha, hora_inicio, hora_fin, ...taskFields }) => taskFields),
+      )
+      .select();
+
+    if (insertTasksErr) {
+      console.error('Error al insertar tareas generadas por Gemini:', insertTasksErr);
+      return {
+        success: false,
+        error: `Error al persistir tareas en Supabase: ${insertTasksErr.message}`,
+      };
+    }
+
+    // 7. Insertar eventos correspondientes en 'eventos_calendario'
+    const eventsToInsert = tasksToInsert.map((t) => {
+      const startIso = new Date(`${t.fecha}T${t.hora_inicio}:00`).toISOString();
+      const endIso = new Date(`${t.fecha}T${t.hora_fin}:00`).toISOString();
+
+      return {
+        id: crypto.randomUUID(),
+        usuario_id: project.user_id,
+        proyecto_id: project.id,
+        tarea_id: t.id,
+        titulo: t.titulo,
+        descripcion: t.descripcion || '',
+        inicio: startIso,
+        fin: endIso,
+        estado: 'pendiente' as const,
+        generado_por_ia: true,
+      };
+    });
+
+    const { error: insertEventsErr } = await db
+      .from('eventos_calendario')
+      .insert(eventsToInsert);
+
+    if (insertEventsErr) {
+      console.warn('Advertencia insertando eventos de calendario:', insertEventsErr);
+    }
+
+    // 8. Actualizar progreso del proyecto a 0%
+    await db
+      .from('projects')
+      .update({ progreso: 0, completado: false })
+      .eq('id', project.id);
+
+    // 9. Registrar log de interacción IA
+    await logAiInteraction({
+      usuarioId: project.user_id,
+      proyectoId: project.id,
+      tipoOperacion: 'generacion_cronograma',
+      modelo: GEMINI_DEFAULT_MODEL,
+      promptEnviado: prompt,
+      respuestaCruda: rawText,
+      duracionMs: Date.now() - startTime,
+    });
+
+    return {
+      success: true,
+      count: tasksToInsert.length,
+      tasks: insertedTasks || tasksToInsert,
+      events: eventsToInsert,
+      resumen: parsed.resumen || '',
+    };
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    await logAiInteraction({
+      usuarioId: project.user_id,
+      proyectoId: project.id,
+      tipoOperacion: 'generacion_cronograma',
+      modelo: GEMINI_DEFAULT_MODEL,
+      promptEnviado: `Proyecto: ${project.titulo}`,
+      respuestaCruda: '',
+      duracionMs: Date.now() - startTime,
+      error: errMessage,
+    });
+    console.error('Error en generateProjectTasksAndScheduleWithGemini:', error);
+    return {
+      success: false,
+      error: `Error al generar tareas con Gemini: ${errMessage}`,
+    };
   }
 }

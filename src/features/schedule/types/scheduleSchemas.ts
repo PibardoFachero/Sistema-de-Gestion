@@ -13,6 +13,7 @@ export const scheduleBlockSchema = z.object({
   hora_fin: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de hora debe ser HH:MM'),
   tarea: z.string().min(1),
   descripcion: z.string().default(''),
+  duracion_minutos: z.number().optional(),
   proyecto_id: z.string().optional(),
 });
 
