@@ -108,7 +108,7 @@ function LinkProjectModalContent({
         const res = await linkProjectAction(topicId, project.id);
         if (res.success && res.data) {
           setProjects((prev) =>
-            prev.map((p) => (p.id === project.id ? { ...p, isLinked: true } : p)),
+            prev.map((p) => (p.id === project.id ? { ...p, isLinked: true } : { ...p, isLinked: false })),
           );
           onProjectLinked(res.data);
         } else {

@@ -50,18 +50,8 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
       return { success: false, error: sourcesError.message };
     }
 
-    // 3. Obtener topic_projects vinculados
-    const { data: topicProjectsData, error: tpError } = await supabase
-      .from('topic_projects')
-      .select('topic_id, project_id')
-      .in('topic_id', topicIds);
-
-    if (tpError) {
-      return { success: false, error: tpError.message };
-    }
-
-    // 4. Obtener proyectos y sus hitos para calcular el progreso dinámico
-    const projectIds = Array.from(new Set((topicProjectsData || []).map((tp) => tp.project_id)));
+    // 3. Obtener proyectos (usando topicsData.project_id)
+    const projectIds = Array.from(new Set(topicsData.map((t) => t.project_id).filter(Boolean)));
 
     const projectsMap: Record<
       string,
@@ -78,32 +68,32 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
     if (projectIds.length > 0) {
       const { data: projectsData } = await supabase
         .from('projects')
-        .select('*')
+        .select('id, titulo, objetivo, progreso, completado')
         .in('id', projectIds);
 
-      const { data: milestonesData } = await supabase
-        .from('project_milestones')
+      const { data: tareasData } = await supabase
+        .from('tareas')
         .select('*')
-        .in('project_id', projectIds);
+        .in('id_proyecto', projectIds);
 
       const milestonesByProject: Record<string, { total: number; completed: number }> = {};
-      (milestonesData || []).forEach((m) => {
-        if (!milestonesByProject[m.project_id]) {
-          milestonesByProject[m.project_id] = { total: 0, completed: 0 };
+      (tareasData || []).forEach((t) => {
+        if (!milestonesByProject[t.id_proyecto]) {
+          milestonesByProject[t.id_proyecto] = { total: 0, completed: 0 };
         }
-        milestonesByProject[m.project_id].total += 1;
-        if (m.is_completed) {
-          milestonesByProject[m.project_id].completed += 1;
+        milestonesByProject[t.id_proyecto].total += 1;
+        if (t.completado) {
+          milestonesByProject[t.id_proyecto].completed += 1;
         }
       });
 
       (projectsData || []).forEach((p) => {
         const stats = milestonesByProject[p.id] || { total: 0, completed: 0 };
-        const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+        const progress = p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
         projectsMap[p.id] = {
-          name: p.name,
-          description: p.description || '',
-          status: p.status || 'active',
+          name: p.titulo,
+          description: p.objetivo || '',
+          status: p.completado ? 'completed' : 'active',
           progress,
           totalMilestones: stats.total,
           completedMilestones: stats.completed,
@@ -143,25 +133,20 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
           };
         });
 
-      const linkedProjectIds = (topicProjectsData || [])
-        .filter((tp) => tp.topic_id === t.id)
-        .map((tp) => tp.project_id);
-
-      const topicProjects: LinkedProject[] = linkedProjectIds
-        .filter((pid) => !!projectsMap[pid])
-        .map((pid) => {
-          const p = projectsMap[pid];
-          return {
-            id: pid,
-            name: p.name,
-            description: p.description,
-            detail: p.status === 'active' ? 'Proyecto activo' : 'Proyecto en planificación',
-            status: p.status,
-            progress: p.progress,
-            totalMilestones: p.totalMilestones,
-            completedMilestones: p.completedMilestones,
-          };
-        });
+      let linkedProject: LinkedProject | undefined;
+      if (t.project_id && projectsMap[t.project_id]) {
+        const p = projectsMap[t.project_id];
+        linkedProject = {
+          id: t.project_id,
+          name: p.name,
+          description: p.description,
+          detail: p.status === 'active' ? 'Proyecto activo' : 'Proyecto completado',
+          status: p.status,
+          progress: p.progress,
+          totalMilestones: p.totalMilestones,
+          completedMilestones: p.completedMilestones,
+        };
+      }
 
       return {
         id: t.id,
@@ -172,8 +157,9 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
         lastEdited: formatRelativeDate(t.updated_at),
         createdAt: t.created_at,
         updatedAt: t.updated_at,
+        projectId: t.project_id,
         sources: topicSources,
-        projects: topicProjects,
+        project: linkedProject,
       };
     });
 

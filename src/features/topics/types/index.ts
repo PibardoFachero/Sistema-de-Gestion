@@ -38,8 +38,9 @@ export interface Topic {
   lastEdited: string;
   createdAt: string;
   updatedAt: string;
+  projectId?: string;
   sources: TopicSource[];
-  projects: LinkedProject[];
+  project?: LinkedProject;
 }
 
 export interface ProjectOption {
