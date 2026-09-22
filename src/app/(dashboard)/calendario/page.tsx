@@ -182,7 +182,12 @@ export default function CalendarioPage() {
           return [...prev, ...mockEvents];
         });
       } else if (error === 'true') {
-        setToastMessage({ type: 'error', text: 'Error al conectar con Google Calendar' });
+        const errorDetail = urlParams.get('calendar_error');
+        const decodedDetail = errorDetail ? decodeURIComponent(errorDetail) : null;
+        setToastMessage({
+          type: 'error',
+          text: decodedDetail || 'Error al conectar con Google Calendar',
+        });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
