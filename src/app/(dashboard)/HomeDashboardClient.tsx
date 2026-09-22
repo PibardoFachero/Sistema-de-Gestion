@@ -260,7 +260,7 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
             }
 
             return (
-              <motion.div key={task.id} variants={itemVariants} whileHover={{ scale: 1.005, x: 5 }}>
+              <motion.div key={`${task.id || 'task'}-${index}`} variants={itemVariants} whileHover={{ scale: 1.005, x: 5 }}>
                 <Card className={`p-0 overflow-hidden relative border-l-4 ${isPriority ? 'border-l-primary' : 'border-l-outline'} group shadow-sm hover:shadow-md transition-all`}>
                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
                   <div className="p-5 relative z-10">
