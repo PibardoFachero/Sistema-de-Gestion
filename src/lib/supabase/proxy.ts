@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/recuperar-contrasena') ||
     pathname.startsWith('/verificar-correo');
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
-  const isCalendarApi = pathname.startsWith('/api/calendar');
+  const isApiRoute = pathname.startsWith('/api/');
   const isPasswordResetRoute = pathname.startsWith('/restablecer-contrasena');
 
   const isRegisteredRecently = Boolean(request.cookies.get('just_registered_email')?.value);
@@ -69,7 +69,7 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !isAuthRoute &&
     !isAuthCallback &&
-    !isCalendarApi &&
+    !isApiRoute &&
     !isPasswordResetRoute &&
     !isServerAction
   ) {
@@ -89,6 +89,7 @@ export async function updateSession(request: NextRequest) {
     !user.email_confirmed_at &&
     !pathname.startsWith('/verificar-correo') &&
     !isAuthCallback &&
+    !isApiRoute &&
     !isServerAction
   ) {
     const url = request.nextUrl.clone();

@@ -4,8 +4,8 @@
   "private": true,
   "description": "Base del proyecto universitario de aprendizaje y productividad academica",
   "engines": {
-    "node": ">=22.18.0 <23",
-    "npm": ">=10 <11"
+    "node": ">=22.18.0",
+    "npm": ">=10"
   },
   "packageManager": "npm@10.9.3",
   "scripts": {
@@ -49,5 +49,11 @@
     "prettier": "3.9.7",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true,
+    "@google/genai@2.23.0": true,
+    "protobufjs@7.6.6": true,
+    "core-js@3.50.0": true
   }
 }

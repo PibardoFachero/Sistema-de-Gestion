@@ -700,6 +700,36 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       };
     }
 
+    // Sincronizar en eventos_calendario para que aparezcan en el calendario del usuario
+    const tasksForCalendar = insertedTasks || tasksToInsert;
+    const eventsToInsert = tasksForCalendar
+      .filter((t) => t.fecha_inicio)
+      .map((t) => {
+        const startIso = new Date(t.fecha_inicio!).toISOString();
+        const durMin = Math.max(15, Number(t.duracion) || defaultDuration);
+        const endIso = new Date(new Date(t.fecha_inicio!).getTime() + durMin * 60 * 1000).toISOString();
+        return {
+          id: crypto.randomUUID(),
+          usuario_id: project.user_id,
+          proyecto_id: project.id,
+          tarea_id: t.id,
+          titulo: t.titulo,
+          descripcion: t.descripcion || '',
+          inicio: startIso,
+          fin: endIso,
+          estado: 'pendiente' as const,
+          generado_por_ia: true,
+        };
+      });
+
+    if (eventsToInsert.length > 0) {
+      try {
+        await db.from('eventos_calendario').insert(eventsToInsert);
+      } catch (calErr) {
+        console.warn('Aviso: no se pudieron registrar eventos en calendario desde n8n:', calErr);
+      }
+    }
+
     // 7. Recalcular el progreso del proyecto
     const { data: allTasks } = await db
       .from('tareas')

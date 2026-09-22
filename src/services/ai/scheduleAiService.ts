@@ -121,9 +121,12 @@ REGLAS:
             responseMimeType: 'application/json',
             responseJsonSchema: scheduleJsonSchema,
             temperature: 0.3,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
-      { maxRetries: 3, initialDelayMs: 2000 },
+      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
     );
 
     const rawText = response.text || '{}';
@@ -201,9 +204,12 @@ REGLAS:
             responseMimeType: 'application/json',
             responseJsonSchema: scheduleJsonSchema,
             temperature: 0.3,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
-      { maxRetries: 3, initialDelayMs: 2000 },
+      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
     );
 
     const rawText = response.text || '{}';
@@ -311,9 +317,12 @@ Devuelve la lista de bloques en formato JSON.`;
             responseMimeType: 'application/json',
             responseJsonSchema: extractionSchema,
             temperature: 0.1,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
-      { maxRetries: 3, initialDelayMs: 2000 },
+      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
     );
 
     const rawText = response.text || '{}';
@@ -507,9 +516,12 @@ DIRECTRICES OBLIGATORIAS:
             responseMimeType: 'application/json',
             responseJsonSchema: projectTasksSchema,
             temperature: 0.2,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
-      { maxRetries: 3, initialDelayMs: 2000 },
+      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
     );
 
     const rawText = response.text || '{}';
