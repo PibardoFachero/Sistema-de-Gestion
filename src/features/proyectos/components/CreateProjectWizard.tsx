@@ -14,8 +14,10 @@ import {
   Plus,
   Trash2,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { createProjectAction } from '@/features/proyectos/actions/proyectoActions';
+import { ImpossibleDateModal } from './ImpossibleDateModal';
 
 interface StepMaterials {
   files: string[];
@@ -57,6 +59,12 @@ export function CreateProjectWizard() {
   });
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isImpossibleModalOpen, setIsImpossibleModalOpen] = useState<boolean>(false);
+  const [feasibilityError, setFeasibilityError] = useState<{
+    message: string;
+    motivo?: string;
+    tiempoMinimo?: string;
+  } | null>(null);
 
   // Inicializar tiempo de onboarding desde localStorage sin llamar setState en useEffect
   const [onboardingTime] = useState<string>(() => {
@@ -79,6 +87,9 @@ export function CreateProjectWizard() {
   const totalSteps = 7;
   const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
   const todayStr = new Date().toISOString().split('T')[0];
+  const currentYear = new Date().getFullYear();
+  const maxYear = currentYear + 10;
+  const maxDateStr = `${maxYear}-12-31`;
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -150,8 +161,32 @@ export function CreateProjectWizard() {
         minutos_diarios: dailyMinutes,
       });
 
-      if (!result.success || !result.project) {
-        throw new Error(result.error || 'Error al guardar el proyecto en Supabase');
+      if (!result.success) {
+        // Si la IA reconoce que es imposible realizar el proyecto en ese tiempo límite:
+        if (result.es_imposible) {
+          setFeasibilityError({
+            message:
+              result.error ||
+              'Es imposible realizar el proyecto en el tiempo límite indicado. Se necesita más tiempo para alcanzar este objetivo.',
+            motivo: result.motivo,
+            tiempoMinimo: result.tiempo_minimo_recomendado,
+          });
+          setIsImpossibleModalOpen(true);
+          // Devolver al usuario a la selección de fecha límite (Paso 2)
+          setCurrentStep(2);
+          setIsFinishing(false);
+          return;
+        }
+
+        setErrorMessage(result.error || 'Error al guardar el proyecto en el servidor.');
+        setIsFinishing(false);
+        return;
+      }
+
+      if (!result.project) {
+        setErrorMessage('Error al guardar el proyecto en el servidor.');
+        setIsFinishing(false);
+        return;
       }
 
       const createdProject = result.project;
@@ -159,7 +194,12 @@ export function CreateProjectWizard() {
       // Actualizar los componentes que muestran el listado desde Supabase.
       window.dispatchEvent(new Event('projects_updated'));
 
-      router.push(`/proyectos/${createdProject.id}`);
+      // Si la IA estuvo fuera de servicio, redirigir con parámetro informativo
+      if (result.aiAvailable === false) {
+        router.push(`/proyectos/${createdProject.id}?aiOffline=true`);
+      } else {
+        router.push(`/proyectos/${createdProject.id}`);
+      }
     } catch (error: unknown) {
       console.error('Error creating project:', error);
       const msg = error instanceof Error ? error.message : 'No fue posible crear el proyecto.';
@@ -172,15 +212,15 @@ export function CreateProjectWizard() {
     setAnswers((prev) => ({ ...prev, [step]: value }));
   };
 
-  // Validadores para habilitar "Siguiente"
+  // Habilitar avance de pasos delegando las validaciones al backend
   const canGoNext = () => {
     switch (currentStep) {
       case 0:
-        return !!answers[0] && answers[0].trim().length > 0 && answers[0].length <= 50;
+        return !!answers[0] && answers[0].trim().length > 0;
       case 1:
-        return !!answers[1] && answers[1].trim().length > 0 && answers[1].length <= 250;
+        return true;
       case 2:
-        return !!answers[2] && answers[2] >= todayStr;
+        return !!answers[2];
       case 3:
         return !!answers[3];
       case 4:
@@ -239,6 +279,7 @@ export function CreateProjectWizard() {
         );
       case 2:
         const isPastDate = answers[2] && answers[2] < todayStr;
+        const isTooFarDate = answers[2] && answers[2] > maxDateStr;
         return (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
@@ -247,20 +288,27 @@ export function CreateProjectWizard() {
             <input
               type="date"
               min={todayStr}
-              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${
-                isPastDate
+              max={maxDateStr}
+              className={`w-full p-4 rounded-2xl border-[1.5px] bg-white text-[#2C1F14] focus:ring-0 outline-none transition-all ${isPastDate || isTooFarDate
                   ? 'border-red-400 focus:border-red-500'
                   : 'border-[#E2D9D0] focus:border-[#2C1F14]'
-              }`}
+                }`}
               value={answers[2] || ''}
               onChange={(e) => updateAnswer(2, e.target.value)}
             />
-            {isPastDate ? (
+            {isPastDate && (
               <p className="mt-2.5 text-xs text-red-600 font-semibold flex items-center gap-1.5">
                 <AlertCircle className="size-3.5" />
                 La fecha límite no puede ser anterior al día de creación.
               </p>
-            ) : (
+            )}
+            {isTooFarDate && (
+              <p className="mt-2.5 text-xs text-red-600 font-semibold flex items-center gap-1.5">
+                <AlertCircle className="size-3.5" />
+                La fecha límite no puede superar los 10 años desde el año actual ({maxYear}).
+              </p>
+            )}
+            {!isPastDate && !isTooFarDate && (
               <p className="mt-3 text-sm text-[#845326]">
                 * Esta fecha nos ayudará a evaluar la viabilidad de tus metas.
               </p>
@@ -281,19 +329,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(3, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -322,19 +368,17 @@ export function CreateProjectWizard() {
                   <button
                     key={opt}
                     onClick={() => updateAnswer(4, opt)}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -510,19 +554,17 @@ export function CreateProjectWizard() {
                         subOption: opt !== 'Menos de 1 hora diaria' ? '' : currentData.subOption,
                       });
                     }}
-                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                      isSelected
+                    className={`w-full rounded-[16px] py-4 px-[18px] text-left text-sm sm:text-base flex items-center justify-between transition-all duration-200 cursor-pointer ${isSelected
                         ? 'bg-[#F5EFE9] border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold shadow-xs'
                         : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14] hover:bg-[#F5EFE9] hover:border-[#2C1F14]'
-                    }`}
+                      }`}
                   >
                     <span>{opt}</span>
                     <span
-                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected
+                      className={`size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${isSelected
                           ? 'border-[#2C1F14] bg-[#2C1F14] text-white'
                           : 'border-[#E2D9D0] bg-transparent'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="size-3 stroke-[3]" />}
                     </span>
@@ -541,11 +583,10 @@ export function CreateProjectWizard() {
                       <button
                         key={sub}
                         onClick={() => updateAnswer(6, { ...currentData, subOption: sub })}
-                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                          isSubSelected
+                        className={`w-full rounded-[12px] py-2 px-4 text-left text-sm flex items-center justify-between transition-all duration-200 cursor-pointer ${isSubSelected
                             ? 'bg-white border-[1.5px] border-[#2C1F14] text-[#2C1F14] font-semibold'
                             : 'bg-white border-[1.5px] border-[#E2D9D0] text-[#2C1F14]'
-                        }`}
+                          }`}
                       >
                         <span>{sub}</span>
                         {isSubSelected && <Check className="size-3" />}
@@ -612,11 +653,21 @@ export function CreateProjectWizard() {
               </div>
             </div>
 
-            {/* Mensaje de error si falla la creación */}
+            {/* Mensaje de error si falla la creación (con cierre manual) */}
             {errorMessage && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="size-4 shrink-0" />
-                <span>{errorMessage}</span>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="size-4 shrink-0 text-red-600" />
+                  <span>{errorMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="p-1 text-red-400 hover:text-red-700 hover:bg-red-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                  aria-label="Cerrar mensaje de error"
+                >
+                  <X className="size-3.5" />
+                </button>
               </div>
             )}
 
@@ -706,6 +757,15 @@ export function CreateProjectWizard() {
           <span>Volver a Proyectos</span>
         </button>
       </div>
+
+      {/* Recuadro emergente cuando la IA detecta que la fecha límite es inviable */}
+      <ImpossibleDateModal
+        isOpen={isImpossibleModalOpen}
+        onClose={() => setIsImpossibleModalOpen(false)}
+        message={feasibilityError?.message}
+        motivo={feasibilityError?.motivo}
+        tiempoMinimo={feasibilityError?.tiempoMinimo}
+      />
     </div>
   );
 }

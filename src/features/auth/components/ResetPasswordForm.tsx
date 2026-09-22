@@ -18,7 +18,6 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
 import { updatePassword } from '@/features/auth/actions/updatePasswordAction';
-import { resetPasswordSchema } from '@/features/auth/schemas/resetPasswordSchema';
 import { createClient } from '@/lib/supabase/client';
 
 export function ResetPasswordForm() {
@@ -110,16 +109,6 @@ export function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setGeneralError(null);
-
-    const validation = resetPasswordSchema.safeParse({ password, confirmPassword });
-    if (!validation.success) {
-      const errorMsg =
-        validation.error.flatten().fieldErrors.confirmPassword?.[0] ||
-        'Por favor cumple con todos los requisitos de la contraseña';
-      setGeneralError(errorMsg);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
