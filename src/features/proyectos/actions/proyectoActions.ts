@@ -672,10 +672,7 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
 
     // Sincronizar racha de forma consistente: si el usuario ya no tiene tareas completadas, resetear racha a 0
     try {
-      const { data: userProjects } = await db
-        .from('projects')
-        .select('id')
-        .eq('user_id', user.id);
+      const { data: userProjects } = await db.from('projects').select('id').eq('user_id', user.id);
 
       const uProjIds = (userProjects ?? []).map((p) => p.id);
       if (uProjIds.length > 0) {
@@ -687,10 +684,7 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
 
         const totalCompleted = remainingCompleted?.length ?? 0;
         if (totalCompleted === 0) {
-          await db
-            .from('profiles')
-            .update({ racha_activa: 0 })
-            .eq('id', user.id);
+          await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
         } else {
           const { data: prof } = await db
             .from('profiles')
@@ -699,17 +693,11 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
             .maybeSingle();
 
           if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
-            await db
-              .from('profiles')
-              .update({ racha_activa: totalCompleted })
-              .eq('id', user.id);
+            await db.from('profiles').update({ racha_activa: totalCompleted }).eq('id', user.id);
           }
         }
       } else {
-        await db
-          .from('profiles')
-          .update({ racha_activa: 0 })
-          .eq('id', user.id);
+        await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
       }
     } catch (streakSyncErr) {
       console.error('Error sincronizando racha al eliminar tarea:', streakSyncErr);
@@ -766,10 +754,7 @@ export async function deleteProjectAction(projectId: string) {
 
     // Sincronizar racha de forma consistente: si tras eliminar el proyecto no quedan tareas completadas, resetear racha a 0
     try {
-      const { data: userProjects } = await db
-        .from('projects')
-        .select('id')
-        .eq('user_id', user.id);
+      const { data: userProjects } = await db.from('projects').select('id').eq('user_id', user.id);
 
       const remainingProjIds = (userProjects ?? []).map((p) => p.id);
       if (remainingProjIds.length > 0) {
@@ -781,10 +766,7 @@ export async function deleteProjectAction(projectId: string) {
 
         const totalCompleted = remainingCompleted?.length ?? 0;
         if (totalCompleted === 0) {
-          await db
-            .from('profiles')
-            .update({ racha_activa: 0 })
-            .eq('id', user.id);
+          await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
         } else {
           const { data: prof } = await db
             .from('profiles')
@@ -793,17 +775,11 @@ export async function deleteProjectAction(projectId: string) {
             .maybeSingle();
 
           if (prof && typeof prof.racha_activa === 'number' && prof.racha_activa > totalCompleted) {
-            await db
-              .from('profiles')
-              .update({ racha_activa: totalCompleted })
-              .eq('id', user.id);
+            await db.from('profiles').update({ racha_activa: totalCompleted }).eq('id', user.id);
           }
         }
       } else {
-        await db
-          .from('profiles')
-          .update({ racha_activa: 0 })
-          .eq('id', user.id);
+        await db.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
       }
     } catch (streakSyncErr) {
       console.error('Error sincronizando racha al eliminar proyecto:', streakSyncErr);
@@ -1081,10 +1057,7 @@ export async function resetStreakOnOverdueAction() {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    await supabase
-      .from('profiles')
-      .update({ racha_activa: 0 })
-      .eq('id', user.id);
+    await supabase.from('profiles').update({ racha_activa: 0 }).eq('id', user.id);
 
     revalidatePath('/perfil');
     revalidatePath('/');
@@ -1094,4 +1067,3 @@ export async function resetStreakOnOverdueAction() {
     return { success: false, error: 'Error al reiniciar racha.' };
   }
 }
-

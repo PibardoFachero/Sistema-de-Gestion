@@ -51,7 +51,13 @@ function MetricTooltip({ children, text }: { children: React.ReactNode; text: st
   );
 }
 
-export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, totalPendingTasks, metrics }: HomeDashboardClientProps) {
+export function HomeDashboardClient({
+  displayName,
+  rachaActiva,
+  upcomingTasks,
+  totalPendingTasks,
+  metrics,
+}: HomeDashboardClientProps) {
   const [greeting, setGreeting] = useState('¡Buenos días');
   const [currentDate, setCurrentDate] = useState('');
 
@@ -148,7 +154,10 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
             </p>
           </div>
           <Link href="/calendario">
-            <Button variant="primary" className="shrink-0 gap-2 shadow-md hover:shadow-lg transition-shadow">
+            <Button
+              variant="primary"
+              className="shrink-0 gap-2 shadow-md hover:shadow-lg transition-shadow"
+            >
               <Calendar className="size-4 text-accent-amber" />
               <span>Ver Calendario</span>
             </Button>
@@ -157,7 +166,10 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
       </motion.section>
 
       {/* Stats Grid */}
-      <motion.section variants={containerVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <motion.section
+        variants={containerVariants}
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
           <MetricTooltip text="Días consecutivos marcando tareas como completadas">
             <Card className="p-4 flex flex-col gap-2 h-full shadow-sm hover:shadow-md transition-shadow">
@@ -185,7 +197,13 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={metrics.chartData}>
                     <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
-                    <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="var(--color-primary)"
+                      strokeWidth={3}
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -203,10 +221,14 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
                 Progreso hoy
               </Badge>
               <div className="mt-2">
-                <span className="text-3xl font-bold">{metrics.todayCompleted} / {metrics.todayTotal}</span>
+                <span className="text-3xl font-bold">
+                  {metrics.todayCompleted} / {metrics.todayTotal}
+                </span>
               </div>
               <p className="text-xs text-on-surface-variant mt-auto">
-                {metrics.todayTotal > 0 ? `${Math.round((metrics.todayCompleted / metrics.todayTotal) * 100)}% completado` : 'Sin tareas asignadas'}
+                {metrics.todayTotal > 0
+                  ? `${Math.round((metrics.todayCompleted / metrics.todayTotal) * 100)}% completado`
+                  : 'Sin tareas asignadas'}
               </p>
             </Card>
           </MetricTooltip>
@@ -247,8 +269,10 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
 
         <motion.div variants={containerVariants} className="space-y-4">
           {upcomingTasks.map((task, index) => {
-            const isPriority = task.prioridad?.toLowerCase() === 'prioritario' || task.prioridad?.toLowerCase() === 'alta';
-            
+            const isPriority =
+              task.prioridad?.toLowerCase() === 'prioritario' ||
+              task.prioridad?.toLowerCase() === 'alta';
+
             // Format time safely
             let formattedTime = 'Sin hora';
             if (task.fecha_inicio) {
@@ -260,16 +284,28 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
             }
 
             return (
-              <motion.div key={`${task.id || 'task'}-${index}`} variants={itemVariants} whileHover={{ scale: 1.005, x: 5 }}>
-                <Card className={`p-0 overflow-hidden relative border-l-4 ${isPriority ? 'border-l-primary' : 'border-l-outline'} group shadow-sm hover:shadow-md transition-all`}>
+              <motion.div
+                key={`${task.id || 'task'}-${index}`}
+                variants={itemVariants}
+                whileHover={{ scale: 1.005, x: 5 }}
+              >
+                <Card
+                  className={`p-0 overflow-hidden relative border-l-4 ${isPriority ? 'border-l-primary' : 'border-l-outline'} group shadow-sm hover:shadow-md transition-all`}
+                >
                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
                   <div className="p-5 relative z-10">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant={isPriority ? 'default' : undefined}>{task.project_titulo || 'Sin proyecto'}</Badge>
+                        <Badge variant={isPriority ? 'default' : undefined}>
+                          {task.project_titulo || 'Sin proyecto'}
+                        </Badge>
                         {isPriority && <Badge variant="priority">Prioritario</Badge>}
                       </div>
-                      {index === 0 && <span className="text-xs font-semibold text-accent-amber">Siguiente turno</span>}
+                      {index === 0 && (
+                        <span className="text-xs font-semibold text-accent-amber">
+                          Siguiente turno
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
@@ -280,13 +316,21 @@ export function HomeDashboardClient({ displayName, rachaActiva, upcomingTasks, t
                       <span className="flex items-center gap-1.5">
                         <span className="font-semibold text-on-surface">{formattedTime}</span>
                       </span>
-                      <span className="flex items-center gap-1.5">{task.duracion ? `${task.duracion} min` : '--'}</span>
+                      <span className="flex items-center gap-1.5">
+                        {task.duracion ? `${task.duracion} min` : '--'}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-3 mt-6">
                       <Link href={`/proyectos/${task.id_proyecto}`} className="ml-auto block">
-                        <Button variant={isPriority ? 'primary' : 'secondary'} className={`gap-2 w-full ${isPriority ? 'group-hover:scale-105 transition-transform' : 'group-hover:bg-primary group-hover:text-on-primary transition-colors'}`}>
-                          Iniciar tarea <Play className={`size-4 fill-current ${!isPriority && 'group-hover:text-on-primary'}`} />
+                        <Button
+                          variant={isPriority ? 'primary' : 'secondary'}
+                          className={`gap-2 w-full ${isPriority ? 'group-hover:scale-105 transition-transform' : 'group-hover:bg-primary group-hover:text-on-primary transition-colors'}`}
+                        >
+                          Iniciar tarea{' '}
+                          <Play
+                            className={`size-4 fill-current ${!isPriority && 'group-hover:text-on-primary'}`}
+                          />
                         </Button>
                       </Link>
                     </div>

@@ -229,10 +229,7 @@ export async function evaluateAndSyncUserStreak(
     let effectiveStreak = currentStreak;
     if (currentStreak > completedCount) {
       effectiveStreak = completedCount;
-      await supabase
-        .from('profiles')
-        .update({ racha_activa: effectiveStreak })
-        .eq('id', userId);
+      await supabase.from('profiles').update({ racha_activa: effectiveStreak }).eq('id', userId);
     }
 
     const now = Date.now();
@@ -251,10 +248,7 @@ export async function evaluateAndSyncUserStreak(
     // 4. Si hay una tarea no completada en el plazo establecido, reiniciar la racha a 0
     if (hasOverdue) {
       if (effectiveStreak > 0) {
-        await supabase
-          .from('profiles')
-          .update({ racha_activa: 0 })
-          .eq('id', userId);
+        await supabase.from('profiles').update({ racha_activa: 0 }).eq('id', userId);
       }
 
       return {

@@ -1,6 +1,15 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  CartesianGrid,
+} from 'recharts';
 
 interface ProgressChartProps {
   data: Array<{
@@ -14,31 +23,39 @@ interface ProgressChartProps {
 
 export function ProgressChart({ data }: ProgressChartProps) {
   return (
-    <div className="h-[400px] w-full pt-4 min-w-[34rem] sm:min-w-0" aria-label="Progreso por proyecto">
+    <div
+      className="h-[400px] w-full pt-4 min-w-[34rem] sm:min-w-0"
+      aria-label="Progreso por proyecto"
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart 
-          data={data} 
+        <BarChart
+          data={data}
           layout="vertical"
           margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-outline-variant)" opacity={0.3} />
-          <XAxis 
-            type="number" 
-            domain={[0, 100]} 
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={false}
+            stroke="var(--color-outline-variant)"
+            opacity={0.3}
+          />
+          <XAxis
+            type="number"
+            domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
             axisLine={{ stroke: 'var(--color-outline-variant)', strokeWidth: 1, opacity: 0.5 }}
             tickLine={false}
             tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 11 }}
           />
-          <YAxis 
-            dataKey="name" 
-            type="category" 
+          <YAxis
+            dataKey="name"
+            type="category"
             width={150}
             axisLine={false}
             tickLine={false}
             tick={{ fill: 'var(--color-on-surface)', fontSize: 12, fontWeight: 600 }}
           />
-          <Tooltip 
+          <Tooltip
             cursor={{ fill: 'var(--color-surface-container-high)', opacity: 0.3 }}
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
@@ -62,9 +79,9 @@ export function ProgressChart({ data }: ProgressChartProps) {
           />
           <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24} animationDuration={1000}>
             {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill="var(--color-secondary)" 
+              <Cell
+                key={`cell-${index}`}
+                fill="var(--color-secondary)"
                 className="transition-all duration-300 hover:opacity-80"
               />
             ))}

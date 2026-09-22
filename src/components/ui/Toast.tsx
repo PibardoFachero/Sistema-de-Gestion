@@ -21,11 +21,7 @@ const defaultToast = {
 const ToastContext = createContext<ToastContextType>({ toast: defaultToast });
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <ToastContext.Provider value={{ toast: defaultToast }}>
-      {children}
-    </ToastContext.Provider>
-  );
+  return <ToastContext.Provider value={{ toast: defaultToast }}>{children}</ToastContext.Provider>;
 }
 
 export function useToast() {

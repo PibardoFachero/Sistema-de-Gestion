@@ -68,7 +68,9 @@ export default async function HomePage() {
     // Obtener TODAS las tareas para calcular métricas
     const { data: allTareas } = await supabase
       .from('tareas')
-      .select('id, titulo, duracion, prioridad, fecha_inicio, id_proyecto, completado, completed_at')
+      .select(
+        'id, titulo, duracion, prioridad, fecha_inicio, id_proyecto, completado, completed_at',
+      )
       .in('id_proyecto', projectIds);
 
     if (allTareas) {
