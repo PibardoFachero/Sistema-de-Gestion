@@ -37,7 +37,10 @@ function intervalsOverlap(startA: number, endA: number, startB: number, endB: nu
  * Comprueba si el usuario tiene una regeneración muy reciente (throttling para evitar spam)
  * Máximo 1 regeneración cada 2 minutos por usuario.
  */
-export async function shouldThrottleRegeneration(usuarioId: string, cooldownMinutes = 2): Promise<boolean> {
+export async function shouldThrottleRegeneration(
+  usuarioId: string,
+  cooldownMinutes = 2,
+): Promise<boolean> {
   const supabase = await createClient();
   const cooldownAgo = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
 

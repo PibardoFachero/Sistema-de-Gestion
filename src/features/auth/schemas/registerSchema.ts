@@ -2,17 +2,35 @@ import { z } from 'zod';
 
 export const registerSchema = z
   .object({
-    firstName: z.string().trim().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }),
-    lastName: z.string().trim().min(2, { message: 'El apellido debe tener al menos 2 caracteres' }),
+    firstName: z
+      .string()
+      .trim()
+      .min(2, { message: 'El nombre debe tener al menos 2 caracteres' })
+      .max(35, { message: 'El nombre no puede tener más de 35 caracteres' })
+      .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/, {
+        message: 'El nombre solo puede contener letras y espacios',
+      }),
+    lastName: z
+      .string()
+      .trim()
+      .min(2, { message: 'El apellido debe tener al menos 2 caracteres' })
+      .max(35, { message: 'El apellido no puede tener más de 35 caracteres' })
+      .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/, {
+        message: 'El apellido solo puede contener letras y espacios',
+      }),
     username: z
       .string()
       .trim()
       .min(3, { message: 'El nombre de usuario debe tener al menos 3 caracteres' })
-      .max(30, { message: 'El nombre de usuario no puede tener más de 30 caracteres' })
+      .max(25, { message: 'El nombre de usuario no puede tener más de 25 caracteres' })
       .regex(/^[a-zA-Z0-9_.]+$/, {
         message: 'Solo se permiten letras, números, puntos y guiones bajos',
       }),
-    email: z.string().trim().email({ message: 'Ingresa un correo electrónico válido' }),
+    email: z
+      .string()
+      .trim()
+      .max(100, { message: 'El correo no puede tener más de 100 caracteres' })
+      .email({ message: 'Ingresa un correo electrónico válido' }),
     password: z
       .string()
       .min(6, { message: 'La contraseña debe tener al menos 6 caracteres' })

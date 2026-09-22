@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
 import { requestPasswordReset } from '@/features/auth/actions/requestPasswordResetAction';
-import { forgotPasswordSchema } from '@/features/auth/schemas/forgotPasswordSchema';
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -29,14 +28,6 @@ export function ForgotPasswordForm() {
     e.preventDefault();
     setFieldError(null);
     setGeneralError(null);
-
-    const validation = forgotPasswordSchema.safeParse({ email });
-    if (!validation.success) {
-      const errors = validation.error.flatten().fieldErrors;
-      setFieldError(errors.email?.[0] || 'Ingresa un correo válido');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -44,6 +35,9 @@ export function ForgotPasswordForm() {
       const response = await requestPasswordReset({ email }, origin);
 
       if (!response.success) {
+        if (response.fieldErrors?.email?.[0]) {
+          setFieldError(response.fieldErrors.email[0]);
+        }
         setGeneralError(response.error || 'No se pudo enviar el correo.');
         setIsLoading(false);
         return;

@@ -30,7 +30,9 @@ export async function POST(request: Request, context: Params) {
     // 1. Verificar existencia del proyecto y permisos
     const { data: project, error: projErr } = await supabase
       .from('projects')
-      .select('id, user_id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, minutos_diarios, material_url')
+      .select(
+        'id, user_id, titulo, objetivo, fecha_limite, prioridad, nivel_conocimiento, minutos_diarios, material_url',
+      )
       .eq('id', projectId)
       .eq('user_id', user.id)
       .single();
@@ -49,7 +51,9 @@ export async function POST(request: Request, context: Params) {
 
     const nombreProyecto = inputData.nombre_proyecto || project.titulo;
     const objetivo = inputData.objetivo_final || project.objetivo;
-    const fechaLimite = inputData.fecha_limite || (project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined);
+    const fechaLimite =
+      inputData.fecha_limite ||
+      (project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined);
     const importancia = inputData.importancia || project.prioridad || 'Prioritario';
     const nivel = inputData.nivel_conocimiento || project.nivel_conocimiento || 'Principiante';
     const tiempoDiario = inputData.tiempo_diario_disponible || project.minutos_diarios || 30;
@@ -103,10 +107,19 @@ export async function POST(request: Request, context: Params) {
 
     let bloquesDisponibilidadTexto = '';
     if (disponibilidadActual && disponibilidadActual.length > 0) {
-      const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const diasNombres = [
+        'Domingo',
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+      ];
       bloquesDisponibilidadTexto = disponibilidadActual
         .map((b) => {
-          const dia = b.fecha_especifica || (b.dia_semana !== null ? diasNombres[b.dia_semana] : 'General');
+          const dia =
+            b.fecha_especifica || (b.dia_semana !== null ? diasNombres[b.dia_semana] : 'General');
           return `- ${dia}: ${b.hora_inicio} a ${b.hora_fin} (${b.tipo})`;
         })
         .join('\n');

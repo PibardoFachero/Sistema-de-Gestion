@@ -4,6 +4,8 @@ import { cookies, headers } from 'next/headers';
 import { registerSchema } from '@/features/auth/schemas/registerSchema';
 import type { RegisterActionResponse, RegisterFormData } from '@/features/auth/types/auth.types';
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
+import { hashPasswordForBackend } from '@/lib/auth/passwordSecurity';
 
 export async function registerUser(formData: RegisterFormData): Promise<RegisterActionResponse> {
   const validationResult = registerSchema.safeParse(formData);
@@ -20,6 +22,52 @@ export async function registerUser(formData: RegisterFormData): Promise<Register
   const { firstName, lastName, username, email, password } = validationResult.data;
 
   try {
+    const supabase = await createClient();
+    const adminDb = getAdminClient();
+    const db = adminDb || supabase;
+
+    // 1. [VALIDACIÓN BACKEND DE UNICIDAD]: Verificar que el nombre de usuario y correo no se repitan
+    try {
+      const { data: availability } = await supabase.rpc('check_user_availability', {
+        p_username: username,
+        p_email: email,
+      });
+
+      if (availability) {
+        if (availability.username_taken) {
+          return {
+            success: false,
+            error: 'El nombre de usuario ya está en uso. Por favor elige otro.',
+            fieldErrors: { username: ['Este nombre de usuario ya está registrado'] },
+          };
+        }
+        if (availability.email_taken) {
+          return {
+            success: false,
+            error: 'Este correo electrónico ya se encuentra registrado. Por favor inicia sesión.',
+            fieldErrors: { email: ['Este correo electrónico ya está registrado'] },
+          };
+        }
+      }
+    } catch {
+      // Si la función RPC aún no está creada en Supabase, realizar verificación directa
+    }
+
+    // Verificación secundaria directa en tabla 'profiles'
+    const { data: existingProfile } = await db
+      .from('profiles')
+      .select('id')
+      .ilike('nombre_usuario', username.trim())
+      .maybeSingle();
+
+    if (existingProfile) {
+      return {
+        success: false,
+        error: 'El nombre de usuario ya está en uso. Por favor elige otro.',
+        fieldErrors: { username: ['Este nombre de usuario ya está registrado'] },
+      };
+    }
+
     let siteUrl = '';
     try {
       const headersList = await headers();
@@ -49,11 +97,13 @@ export async function registerUser(formData: RegisterFormData): Promise<Register
 
     siteUrl = siteUrl.replace(/\/$/, '');
 
-    const supabase = await createClient();
+    // 2. [ENCRIPTACIÓN DE CONTRASEÑA EN EL BACKEND]:
+    // Cifrar la contraseña en nuestro servidor antes de enviarla a Supabase
+    const hashedPassword = hashPasswordForBackend(password);
 
     const { data, error } = await supabase.auth.signUp({
       email,
-      password,
+      password: hashedPassword,
       options: {
         emailRedirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
         data: {

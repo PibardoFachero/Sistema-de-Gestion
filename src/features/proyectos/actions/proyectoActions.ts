@@ -3,7 +3,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateProjectTasksFromN8n } from '@/services/automation/n8nTasksService';
-import { generateProjectTasksAndScheduleWithGemini } from '@/services/ai/scheduleAiService';
+import {
+  generateProjectTasksAndScheduleWithGemini,
+  checkProjectFeasibilityWithGemini,
+} from '@/services/ai/scheduleAiService';
+import { validateContent, validateProjectContent } from '@/lib/moderation/contentFilter';
 
 export interface CreateProjectInput {
   titulo: string;
@@ -44,6 +48,13 @@ export interface ProjectRecord {
   tareas?: TaskRecord[];
 }
 
+export interface UpdateProjectInput {
+  id: string;
+  titulo: string;
+  objetivo?: string;
+  fecha_limite?: string | null;
+}
+
 async function userOwnsProject(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -60,8 +71,152 @@ async function userOwnsProject(
 }
 
 /**
+ * checkProjectFeasibilityAction
+ * Acción de servidor para evaluar en el backend la viabilidad temporal del proyecto con Gemini.
+ */
+export async function checkProjectFeasibilityAction(input: {
+  titulo: string;
+  objetivo?: string;
+  fecha_limite?: string;
+  minutos_diarios?: number;
+  nivel_conocimiento?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return await checkProjectFeasibilityWithGemini({
+      ...input,
+      usuario_id: user?.id,
+    });
+  } catch (err) {
+    console.error('Error en checkProjectFeasibilityAction:', err);
+    return { es_posible: true };
+  }
+}
+
+/**
+ * updateProjectAction
+ * Actualiza los datos de un proyecto (título, descripción/objetivo, fecha límite)
+ * aplicando todas las validaciones estrictamente en el backend.
+ */
+export async function updateProjectAction(input: UpdateProjectInput) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No se encontró una sesión activa.' };
+    }
+
+    if (!input.id) {
+      return { success: false, error: 'ID de proyecto no proporcionado.' };
+    }
+
+    const owns = await userOwnsProject(supabase, user.id, input.id);
+    if (!owns) {
+      return { success: false, error: 'No tienes permisos para editar este proyecto.' };
+    }
+
+    const trimmedTitle = input.titulo ? input.titulo.trim() : '';
+    if (!trimmedTitle) {
+      return { success: false, error: 'El nombre del proyecto es obligatorio.' };
+    }
+    if (trimmedTitle.length > 50) {
+      return {
+        success: false,
+        error: 'El nombre del proyecto no puede superar los 50 caracteres.',
+      };
+    }
+
+    const trimmedObjective = input.objetivo ? input.objetivo.trim() : '';
+    if (trimmedObjective.length > 250) {
+      return { success: false, error: 'La descripción no puede superar los 250 caracteres.' };
+    }
+
+    // [VALIDACIÓN BACKEND DE CONTENIDO]: Palabras obscenas o peligrosas
+    const contentValidation = validateProjectContent(trimmedTitle, trimmedObjective);
+    if (!contentValidation.isValid) {
+      return {
+        success: false,
+        error:
+          contentValidation.error ||
+          'El proyecto contiene términos obscenos o peligrosos no permitidos.',
+      };
+    }
+
+    let parsedFechaLimite: string | null = null;
+    if (input.fecha_limite) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selected = new Date(`${input.fecha_limite}T00:00:00`);
+
+      if (isNaN(selected.getTime())) {
+        return { success: false, error: 'Formato de fecha inválido.' };
+      }
+
+      if (selected < today) {
+        return {
+          success: false,
+          error: 'La fecha límite no puede ser anterior al día de hoy.',
+        };
+      }
+
+      const maxYear = today.getFullYear() + 10;
+      const maxDate = new Date(`${maxYear}-12-31T23:59:59`);
+      if (selected > maxDate) {
+        return {
+          success: false,
+          error: `La fecha límite no puede superar los 10 años desde el año actual (${maxYear}).`,
+        };
+      }
+
+      parsedFechaLimite = new Date(`${input.fecha_limite}T00:00:00Z`).toISOString();
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('projects')
+      .update({
+        titulo: trimmedTitle,
+        objetivo: trimmedObjective,
+        fecha_limite: parsedFechaLimite,
+      })
+      .eq('id', input.id)
+      .eq('user_id', user.id)
+      .select('id, titulo, objetivo, fecha_limite, prioridad, progreso, completado')
+      .single();
+
+    if (updateError) {
+      console.error('Error al actualizar proyecto en Supabase:', updateError);
+      return { success: false, error: `Error al actualizar proyecto: ${updateError.message}` };
+    }
+
+    revalidatePath('/proyectos');
+    revalidatePath(`/proyectos/${input.id}`);
+    revalidatePath('/');
+
+    return {
+      success: true,
+      project: updated,
+    };
+  } catch (error) {
+    console.error('Error en updateProjectAction:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error inesperado al editar el proyecto.',
+    };
+  }
+}
+
+/**
  * createProjectAction
- * Registra un nuevo proyecto en la tabla 'projects' de Supabase.
+ * Registra un nuevo proyecto en la tabla 'projects' de Supabase aplicando
+ * validaciones de fechas y viabilidad con IA en el backend.
  */
 export async function createProjectAction(input: CreateProjectInput) {
   try {
@@ -75,7 +230,36 @@ export async function createProjectAction(input: CreateProjectInput) {
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
-    // Validar que la fecha límite no sea anterior a hoy
+    // Validar nombre en backend
+    const trimmedTitle = input.titulo ? input.titulo.trim() : '';
+    if (!trimmedTitle) {
+      return { success: false, error: 'El nombre del proyecto es obligatorio.' };
+    }
+    if (trimmedTitle.length > 50) {
+      return {
+        success: false,
+        error: 'El nombre del proyecto no puede superar los 50 caracteres.',
+      };
+    }
+
+    // Validar descripción en backend
+    const trimmedObjective = input.objetivo ? input.objetivo.trim() : '';
+    if (trimmedObjective.length > 250) {
+      return { success: false, error: 'El objetivo no puede superar los 250 caracteres.' };
+    }
+
+    // [VALIDACIÓN BACKEND DE CONTENIDO]: Palabras obscenas o peligrosas
+    const contentValidation = validateProjectContent(trimmedTitle, trimmedObjective);
+    if (!contentValidation.isValid) {
+      return {
+        success: false,
+        error:
+          contentValidation.error ||
+          'El proyecto contiene términos obscenos o peligrosos no permitidos.',
+      };
+    }
+
+    // Validar que la fecha límite no sea anterior a hoy ni supere 10 años
     if (input.fecha_limite) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -86,6 +270,38 @@ export async function createProjectAction(input: CreateProjectInput) {
           error: 'La fecha límite no puede ser anterior al día de creación.',
         };
       }
+
+      const maxYear = today.getFullYear() + 10;
+      const maxDate = new Date(`${maxYear}-12-31T23:59:59`);
+      if (selected > maxDate) {
+        return {
+          success: false,
+          error: `La fecha límite no puede superar los 10 años desde el año actual (${maxYear}).`,
+        };
+      }
+    }
+
+    // [VALIDACIÓN BACKEND DE VIABILIDAD IA]:
+    // Evaluar si es pedagógicamente posible realizar el proyecto en el tiempo asignado
+    const feasibility = await checkProjectFeasibilityWithGemini({
+      titulo: trimmedTitle,
+      objetivo: trimmedObjective,
+      fecha_limite: input.fecha_limite,
+      minutos_diarios: input.minutos_diarios,
+      nivel_conocimiento: input.nivel_conocimiento,
+      usuario_id: user.id,
+    });
+
+    if (!feasibility.es_posible) {
+      return {
+        success: false,
+        error:
+          feasibility.error ||
+          'Es imposible realizar el proyecto en el tiempo límite indicado, se necesita más tiempo.',
+        es_imposible: true,
+        motivo: feasibility.motivo,
+        tiempo_minimo_recomendado: feasibility.tiempo_minimo_recomendado,
+      };
     }
 
     const projectId = crypto.randomUUID();
@@ -95,8 +311,8 @@ export async function createProjectAction(input: CreateProjectInput) {
       .insert({
         id: projectId,
         user_id: user.id,
-        titulo: input.titulo.trim(),
-        objetivo: input.objetivo.trim(),
+        titulo: trimmedTitle,
+        objetivo: trimmedObjective,
         fecha_limite: input.fecha_limite
           ? new Date(`${input.fecha_limite}T00:00:00Z`).toISOString()
           : null,
@@ -121,7 +337,6 @@ export async function createProjectAction(input: CreateProjectInput) {
     // con el horario ocupado del usuario en 'eventos_calendario'.
     // =========================================================================
     let tasksGenerated = false;
-
     if (process.env.GEMINI_API_KEY) {
       try {
         const geminiResult = await generateProjectTasksAndScheduleWithGemini({
@@ -168,6 +383,8 @@ export async function createProjectAction(input: CreateProjectInput) {
             'Advertencia: No se pudieron generar tareas con n8n al crear el proyecto:',
             n8nResult.error,
           );
+        } else {
+          tasksGenerated = true;
         }
       } catch (n8nErr) {
         console.warn(
@@ -180,7 +397,16 @@ export async function createProjectAction(input: CreateProjectInput) {
     revalidatePath('/proyectos');
     revalidatePath('/calendario');
     revalidatePath('/');
-    return { success: true, project };
+
+    return {
+      success: true,
+      project,
+      tasksGenerated,
+      aiAvailable: tasksGenerated,
+      aiMessage: tasksGenerated
+        ? undefined
+        : 'El servicio de Inteligencia Artificial se encuentra temporalmente fuera de servicio o no disponible. Tu proyecto ha sido creado con éxito y puedes añadir tus tareas manualmente.',
+    };
   } catch (error: unknown) {
     console.error('Error en createProjectAction:', error);
     const msg = error instanceof Error ? error.message : 'Error inesperado al crear el proyecto.';
@@ -498,6 +724,17 @@ export async function createTaskAction(data: {
       return { success: false, error: 'No tienes permiso para crear tareas en este proyecto.' };
     }
 
+    // [VALIDACIÓN BACKEND DE CONTENIDO]: Palabras obscenas o peligrosas
+    const contentValidation = validateContent(`${data.titulo} ${data.descripcion || ''}`);
+    if (!contentValidation.isValid) {
+      return {
+        success: false,
+        error:
+          contentValidation.error ||
+          'La tarea contiene términos obscenos o peligrosos no permitidos.',
+      };
+    }
+
     const db = supabase;
 
     let parsedFechaInicio: string | null = null;
@@ -510,9 +747,49 @@ export async function createTaskAction(data: {
       }
     }
 
-    // Comprobación de conflictos de horario con tareas existentes del proyecto
+    const trimmedTitle = (data.titulo || '').trim();
+    if (!trimmedTitle) {
+      return { success: false, error: 'El título de la tarea es obligatorio.' };
+    }
+    if (trimmedTitle.length > 100) {
+      return {
+        success: false,
+        error: 'El título de la tarea no puede exceder los 100 caracteres.',
+      };
+    }
+
+    // Comprobación de fecha y conflictos de horario en el backend
     if (parsedFechaInicio) {
-      const newStart = new Date(parsedFechaInicio).getTime();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDateTime = new Date(parsedFechaInicio);
+      if (startDateTime < today) {
+        return {
+          success: false,
+          error: 'El día de inicio no puede ser anterior a la fecha de hoy.',
+        };
+      }
+
+      // Validar contra la fecha límite del proyecto
+      const { data: projectRecord } = await db
+        .from('projects')
+        .select('fecha_limite')
+        .eq('id', data.projectId)
+        .maybeSingle();
+
+      if (projectRecord?.fecha_limite) {
+        const projectDeadline = new Date(projectRecord.fecha_limite);
+        projectDeadline.setHours(23, 59, 59, 999);
+        if (startDateTime > projectDeadline) {
+          const limitStr = projectDeadline.toISOString().split('T')[0];
+          return {
+            success: false,
+            error: `El día de inicio no puede superar la fecha límite del proyecto (${limitStr}).`,
+          };
+        }
+      }
+
+      const newStart = startDateTime.getTime();
       const newDurationMinutes = Math.max(1, Math.round(Number(data.duracion)) || 1);
       const newEnd = newStart + newDurationMinutes * 60 * 1000;
 
@@ -627,7 +904,9 @@ export async function createTaskAction(data: {
       try {
         const startIso = new Date(parsedFechaInicio).toISOString();
         const durMin = Math.max(15, Number(task.duracion) || 30);
-        const endIso = new Date(new Date(parsedFechaInicio).getTime() + durMin * 60 * 1000).toISOString();
+        const endIso = new Date(
+          new Date(parsedFechaInicio).getTime() + durMin * 60 * 1000,
+        ).toISOString();
         await db.from('eventos_calendario').insert({
           id: crypto.randomUUID(),
           usuario_id: user.id,
@@ -891,6 +1170,17 @@ export async function updateTaskAction(data: {
       };
     }
 
+    // [VALIDACIÓN BACKEND DE CONTENIDO]: Palabras obscenas o peligrosas
+    const contentValidation = validateContent(`${data.titulo} ${data.descripcion || ''}`);
+    if (!contentValidation.isValid) {
+      return {
+        success: false,
+        error:
+          contentValidation.error ||
+          'La tarea contiene términos obscenos o peligrosos no permitidos.',
+      };
+    }
+
     const db = supabase;
 
     let parsedFechaInicio: string | null = null;
@@ -903,8 +1193,47 @@ export async function updateTaskAction(data: {
       }
     }
 
-    // Comprobación de conflictos de horario con otras tareas del proyecto (excluyendo la tarea actual)
+    const trimmedTitle = (data.titulo || '').trim();
+    if (!trimmedTitle) {
+      return { success: false, error: 'El título de la tarea es obligatorio.' };
+    }
+    if (trimmedTitle.length > 100) {
+      return {
+        success: false,
+        error: 'El título de la tarea no puede exceder los 100 caracteres.',
+      };
+    }
+
+    // Comprobación de fecha y conflictos de horario con otras tareas del proyecto (excluyendo la tarea actual)
     if (parsedFechaInicio) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDateTime = new Date(parsedFechaInicio);
+      if (startDateTime < today) {
+        return {
+          success: false,
+          error: 'El día de inicio no puede ser anterior a la fecha de hoy.',
+        };
+      }
+
+      // Validar contra la fecha límite del proyecto
+      const { data: projectRecord } = await db
+        .from('projects')
+        .select('fecha_limite')
+        .eq('id', data.projectId)
+        .maybeSingle();
+
+      if (projectRecord?.fecha_limite) {
+        const projectDeadline = new Date(projectRecord.fecha_limite);
+        projectDeadline.setHours(23, 59, 59, 999);
+        if (startDateTime > projectDeadline) {
+          const limitStr = projectDeadline.toISOString().split('T')[0];
+          return {
+            success: false,
+            error: `El día de inicio no puede superar la fecha límite del proyecto (${limitStr}).`,
+          };
+        }
+      }
       const newStart = new Date(parsedFechaInicio).getTime();
       const newDurationMinutes = Math.max(1, Math.round(Number(data.duracion)) || 1);
       const newEnd = newStart + newDurationMinutes * 60 * 1000;
@@ -1084,7 +1413,12 @@ export async function generateTasksWithN8nAction(
     });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return {
+        success: false,
+        isAiUnavailable: true,
+        error:
+          'El servicio de Inteligencia Artificial se encuentra temporalmente fuera de servicio o no disponible. Puedes crear y organizar tus tareas manualmente usando el botón "Nueva tarea".',
+      };
     }
 
     revalidatePath(`/proyectos/${projectId}`);
@@ -1099,8 +1433,12 @@ export async function generateTasksWithN8nAction(
     };
   } catch (error: unknown) {
     console.error('Error en generateTasksWithN8nAction:', error);
-    const msg = error instanceof Error ? error.message : 'Error inesperado al generar tareas.';
-    return { success: false, error: msg };
+    return {
+      success: false,
+      isAiUnavailable: true,
+      error:
+        'El servicio de Inteligencia Artificial no está disponible en este momento. Puedes crear y organizar tus tareas manualmente usando el botón "Nueva tarea".',
+    };
   }
 }
 

@@ -35,24 +35,32 @@ export async function updateProfileIdentity(
     return { success: false, error: 'Por favor ingresa tu nombre.' };
   }
 
-  if (normalizedFirstName.length > 50) {
-    return { success: false, error: 'El nombre no puede exceder los 50 caracteres.' };
+  if (normalizedFirstName.length > 35) {
+    return { success: false, error: 'El nombre no puede exceder los 35 caracteres.' };
+  }
+
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(normalizedFirstName)) {
+    return { success: false, error: 'El nombre solo puede contener letras y espacios.' };
   }
 
   if (!normalizedLastName) {
     return { success: false, error: 'Por favor ingresa tu apellido.' };
   }
 
-  if (normalizedLastName.length > 50) {
-    return { success: false, error: 'El apellido no puede exceder los 50 caracteres.' };
+  if (normalizedLastName.length > 35) {
+    return { success: false, error: 'El apellido no puede exceder los 35 caracteres.' };
+  }
+
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(normalizedLastName)) {
+    return { success: false, error: 'El apellido solo puede contener letras y espacios.' };
   }
 
   if (!normalizedUsername || normalizedUsername.length < 3) {
     return { success: false, error: 'El nombre de usuario debe tener al menos 3 caracteres.' };
   }
 
-  if (normalizedUsername.length > 30) {
-    return { success: false, error: 'El nombre de usuario no puede exceder los 30 caracteres.' };
+  if (normalizedUsername.length > 25) {
+    return { success: false, error: 'El nombre de usuario no puede exceder los 25 caracteres.' };
   }
 
   if (!/^[a-zA-Z0-9_.-]+$/.test(normalizedUsername)) {
@@ -89,6 +97,21 @@ export async function updateProfileIdentity(
 
     if (authError || !user) {
       return { success: false, error: 'No se encontró una sesión activa. Inicia sesión de nuevo.' };
+    }
+
+    // [VALIDACIÓN BACKEND DE UNICIDAD]: Verificar que el nombre de usuario no pertenezca a otra cuenta
+    const { data: existingUserWithUsername } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('nombre_usuario', normalizedUsername)
+      .neq('id', user.id)
+      .maybeSingle();
+
+    if (existingUserWithUsername) {
+      return {
+        success: false,
+        error: 'El nombre de usuario ya está registrado por otra persona.',
+      };
     }
 
     // 1. Preparar payload para la tabla profiles (sin contexto_personal)
