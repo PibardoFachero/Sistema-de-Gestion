@@ -30,21 +30,24 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
       const metricTitle = metricTitles[activeMetric];
       const seriesData = data.series[activeMetric];
 
-      const response = await fetch(process.env.NEXT_PUBLIC_N8N_ANALYTICS_WEBHOOK_URL as string, {
+      const response = await fetch('/api/ai/analytics-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           metricTitle,
+          metricKey: activeMetric,
           summary: data.summary,
           seriesData,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Error obteniendo el reporte de la IA');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Error obteniendo el reporte de la IA');
       }
 
-      const { text: aiText } = await response.json();
+      const result = await response.json();
+      const aiText = result.text || 'Análisis no disponible en este momento.';
 
       if (format === 'png') {
         await exportAsImage('exportable-chart-area', aiText, metricTitle);
@@ -60,7 +63,8 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
       }
     } catch (error) {
       console.error('Error durante la exportación:', error);
-      alert('Hubo un error al generar el reporte. Revisa la consola o intenta de nuevo.');
+      const msg = error instanceof Error ? error.message : 'Error al generar el reporte';
+      alert(`Hubo un error al exportar el reporte: ${msg}`);
     } finally {
       setIsExporting(false);
     }
