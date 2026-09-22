@@ -101,6 +101,22 @@ export default async function PerfilPage() {
     user.app_metadata?.provider === 'google' ||
     identities.some((identity) => identity.provider === 'google');
 
+  // Normalizar avatares subidos
+  let uploadedAvatars: string[] = [];
+  if (Array.isArray(profile?.avatares_subidos)) {
+    uploadedAvatars = profile.avatares_subidos;
+  } else if (typeof profile?.avatares_subidos === 'string') {
+    try {
+      const parsed = JSON.parse(profile.avatares_subidos);
+      uploadedAvatars = Array.isArray(parsed) ? parsed : [profile.avatares_subidos];
+    } catch {
+      uploadedAvatars = [profile.avatares_subidos];
+    }
+  }
+  if (uploadedAvatars.length === 0 && avatarUrl) {
+    uploadedAvatars = [avatarUrl];
+  }
+
   const dashboardProfile: ProfileDashboardData = {
     firstName,
     lastName,
@@ -109,7 +125,7 @@ export default async function PerfilPage() {
     email: user.email ?? 'Correo no disponible',
     initials,
     avatarUrl,
-    uploadedAvatars: profile?.avatares_subidos || (avatarUrl ? [avatarUrl] : []),
+    uploadedAvatars,
     role: profile?.rol_condicion,
     age: profile?.edad,
     workSituation: profile?.situacion_laboral,

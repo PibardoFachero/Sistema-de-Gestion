@@ -1,12 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Coffee, Play, Calendar, ShieldCheck } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { HomeDashboardClient } from './HomeDashboardClient';
 
 export const metadata: Metadata = {
   title: 'Komorebi | Sistema de Gestión de Calendarios con Google OAuth',
@@ -41,140 +36,49 @@ export default async function HomePage() {
     user.email?.split('@')[0] ||
     'Estudiante';
 
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            ¡Buenos días, {displayName}!
-          </h1>
-          <Coffee className="size-8 text-outline" />
-        </div>
-        <p className="mt-2 text-on-surface-variant max-w-2xl">
-          Martes, 24 de Octubre de 2024 · Tienes 3 sesiones planificadas para hoy. Respeta tus
-          ritmos y tiempos de descanso.
-        </p>
-      </header>
+  // Obtener proyectos del usuario para luego buscar sus tareas pendientes
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, titulo')
+    .eq('user_id', user.id);
 
-      {/* Descripción oficial: Komorebi - Sistema de Gestión de Calendarios con Google OAuth */}
-      <section
-        aria-label="Información de la plataforma Komorebi"
-        className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-xs"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-amber/15 px-3 py-0.5 text-xs font-bold text-accent-amber uppercase tracking-wider">
-                <Calendar className="size-3.5" />
-                Komorebi
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-0.5 text-[11px] font-semibold text-on-surface-variant">
-                <ShieldCheck className="size-3 text-status-success" />
-                Google OAuth
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-primary">
-              Komorebi — Sistema de Gestión de Calendarios con Google OAuth
-            </h2>
-            <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
-              Esta aplicación es un sistema integral de gestión de calendarios con Google OAuth,
-              diseñado para sincronizar eventos en tiempo real con Google Calendar, organizar
-              bloques de estudio y gestionar proyectos académicos de manera segura.
-            </p>
-          </div>
-          <Link
-            href="/calendario"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-on-primary hover:bg-primary/90 transition-colors shadow-xs"
-          >
-            <Calendar className="size-3.5 text-accent-amber" />
-            <span>Ver Calendario</span>
-          </Link>
-        </div>
-      </section>
+  let upcomingTasks: import('./HomeDashboardClient').UpcomingTask[] = [];
+  let totalPendingTasks = 0;
+  
+  if (projects && projects.length > 0) {
+    const projectIds = projects.map(p => p.id);
+    
+    // Obtener total de tareas pendientes
+    const { count } = await supabase
+      .from('tareas')
+      .select('*', { count: 'exact', head: true })
+      .in('id_proyecto', projectIds)
+      .eq('completado', false);
+      
+    totalPendingTasks = count || 0;
+    
+    const { data: tareas } = await supabase
+      .from('tareas')
+      .select('id, titulo, duracion, prioridad, fecha_inicio, id_proyecto')
+      .in('id_proyecto', projectIds)
+      .eq('completado', false)
+      .order('fecha_inicio', { ascending: true, nullsFirst: false })
+      .limit(3);
 
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="streak" className="self-start">
-            Racha
-          </Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">
-              {rachaActiva} {rachaActiva === 1 ? 'día' : 'días'}
-            </span>
-          </div>
-          <p className="text-xs text-on-surface-variant">Hábito consolidado</p>
-        </Card>
+    if (tareas) {
+      upcomingTasks = tareas.map(t => {
+        const project = projects.find(p => p.id === t.id_proyecto);
+        return {
+          id: t.id,
+          titulo: t.titulo,
+          duracion: t.duracion,
+          prioridad: t.prioridad,
+          fecha_inicio: t.fecha_inicio,
+          project_titulo: project?.titulo || null,
+        };
+      });
+    }
+  }
 
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge className="self-start">Esta semana</Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">14h 20m</span>
-          </div>
-          <div className="flex items-center gap-2 mt-auto">
-            <ProgressBar progress={79} height="sm" />
-            <span className="text-[10px] text-on-surface-variant font-medium whitespace-nowrap">
-              Meta 18h
-            </span>
-          </div>
-        </Card>
-
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge variant="success" className="self-start">
-            Progreso hoy
-          </Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">2 / 5</span>
-          </div>
-          <p className="text-xs text-on-surface-variant">40% completado</p>
-        </Card>
-
-        <Card className="p-4 flex flex-col gap-2">
-          <Badge className="self-start">Ritmo Global</Badge>
-          <div className="mt-2">
-            <span className="text-3xl font-bold">88%</span>
-          </div>
-          <p className="text-xs text-status-success font-medium">+4% vs semana ant.</p>
-        </Card>
-      </section>
-
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold">Tareas de hoy</h2>
-            <p className="text-sm text-on-surface-variant">3 pendientes por abordar</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Tarea 1 */}
-          <Card className="p-0 overflow-hidden relative border-l-4 border-l-primary">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Badge>Aprender Python desde cero</Badge>
-                  <Badge variant="priority">Prioritario</Badge>
-                </div>
-                <span className="text-xs font-semibold text-accent-amber">Siguiente turno</span>
-              </div>
-
-              <h3 className="text-lg font-bold">Ejercicios prácticos de Listas y Diccionarios</h3>
-
-              <div className="flex items-center gap-4 mt-4 text-sm text-on-surface-variant">
-                <span className="flex items-center gap-1.5">
-                  <span className="font-semibold text-on-surface">10:30 AM</span>
-                </span>
-                <span className="flex items-center gap-1.5">45 min</span>
-              </div>
-
-              <div className="flex items-center gap-3 mt-6">
-                <Button variant="primary" className="ml-auto gap-2">
-                  Iniciar tarea <Play className="size-4 fill-current" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-    </div>
-  );
+  return <HomeDashboardClient displayName={displayName} rachaActiva={rachaActiva} upcomingTasks={upcomingTasks} totalPendingTasks={totalPendingTasks} />;
 }
