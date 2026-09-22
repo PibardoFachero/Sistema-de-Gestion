@@ -4,6 +4,7 @@ import {
   exchangeCodeForTokens,
   encryptTokens,
   decryptTokens,
+  getAppBaseUrl,
   GCAL_COOKIE_NAME,
   type GoogleCalendarTokens,
 } from '@/lib/google-calendar';
@@ -33,6 +34,7 @@ function getSafeReturnPath(state: string | null): string {
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
+  const baseUrl = getAppBaseUrl(origin);
   const action = searchParams.get('action');
   const code = searchParams.get('code');
   const error = searchParams.get('error');
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest) {
         { status: 400 },
       );
     }
-    const redirectUrl = new URL(`${origin}${safePath}`);
+    const redirectUrl = new URL(`${baseUrl}${safePath}`);
     redirectUrl.searchParams.set('gcal_error', 'true');
     redirectUrl.searchParams.set('calendar_error', error);
     return NextResponse.redirect(redirectUrl.toString());
@@ -100,7 +102,7 @@ export async function GET(request: NextRequest) {
       let tokens: GoogleCalendarTokens;
       try {
         // Primero intentamos intercambiar usando esta misma ruta como redirect_uri
-        tokens = await exchangeCodeForTokens(code, `${origin}/api/auth/google`);
+        tokens = await exchangeCodeForTokens(code, `${baseUrl}/api/auth/google`);
       } catch {
         // Fallback al redirect_uri por defecto configurado (/api/calendar/callback)
         tokens = await exchangeCodeForTokens(code);
@@ -129,7 +131,7 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
-      const redirectUrl = new URL(`${origin}${safePath}`);
+      const redirectUrl = new URL(`${baseUrl}${safePath}`);
       redirectUrl.searchParams.set('gcal_success', 'true');
       redirectUrl.searchParams.set('calendar_connected', 'true');
 
@@ -159,7 +161,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const redirectUrl = new URL(`${origin}${safePath}`);
+      const redirectUrl = new URL(`${baseUrl}${safePath}`);
       redirectUrl.searchParams.set('gcal_error', 'true');
       redirectUrl.searchParams.set('calendar_error', encodeURIComponent(message));
       return NextResponse.redirect(redirectUrl.toString());
@@ -197,7 +199,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const redirectUrl = new URL(`${origin}/calendario`);
+    const redirectUrl = new URL(`${baseUrl}/calendario`);
     redirectUrl.searchParams.set('gcal_error', 'true');
     redirectUrl.searchParams.set('calendar_error', encodeURIComponent(message));
     return NextResponse.redirect(redirectUrl.toString());
