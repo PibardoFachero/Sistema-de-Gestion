@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import React, { useRef, useState, useTransition } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
@@ -349,8 +350,17 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           actionLabel={editingSection === 'identity' ? 'Cerrar edición' : 'Editar'}
           onAction={() => toggleEditing('identity')}
         >
-          {editingSection === 'identity' ? (
-            <form onSubmit={handleSaveIdentity} className="space-y-6">
+          <AnimatePresence mode="wait">
+            {editingSection === 'identity' ? (
+              <motion.form
+                key="edit-identity"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                onSubmit={handleSaveIdentity}
+                className="space-y-6"
+              >
               {/* Bloque Avatar y subida */}
               <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low p-4 sm:p-5">
                 <p className="text-sm font-semibold text-on-surface">Foto de perfil y avatar</p>
@@ -871,10 +881,17 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </Button>
                 </div>
               </div>
-            </form>
+            </motion.form>
           ) : (
             /* Vista de lectura de Identidad y Presencia */
-            <div className="space-y-6">
+            <motion.div
+              key="view-identity"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+              className="space-y-6"
+            >
               <div className="grid min-w-0 gap-6 lg:grid-cols-[auto_minmax(0,1fr)_15rem] lg:items-center">
                 <div className="min-w-0">
                   <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-outline-variant/60 bg-surface-container-lowest text-2xl font-bold text-primary shadow-[0_10px_24px_-12px_rgba(74,53,37,0.35)]">
@@ -951,8 +968,9 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   })}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </WideSection>
 
         {/* SECCIÓN 2: Perfil de aprendizaje e Información complementaria */}
@@ -963,8 +981,17 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           actionLabel={editingSection === 'learning' ? 'Cerrar edición' : 'Editar'}
           onAction={() => toggleEditing('learning')}
         >
-          {editingSection === 'learning' ? (
-            <form onSubmit={handleSaveLearning} className="space-y-6">
+          <AnimatePresence mode="wait">
+            {editingSection === 'learning' ? (
+              <motion.form
+                key="edit-learning"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                onSubmit={handleSaveLearning}
+                className="space-y-6"
+              >
               {/* Bloque: Preferencias de disponibilidad y metodología */}
               <div>
                 <h3 className="text-base font-bold text-on-surface">Preferencias de aprendizaje</h3>
@@ -1150,10 +1177,17 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </Button>
                 </div>
               </div>
-            </form>
+            </motion.form>
           ) : (
             /* Vista de lectura de Perfil de Aprendizaje */
-            <div className="space-y-6">
+            <motion.div
+              key="view-learning"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+              className="space-y-6"
+            >
               <div>
                 <h3 className="text-sm font-bold text-on-surface">Preferencias de aprendizaje</h3>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1246,8 +1280,9 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </WideSection>
 
         {/* SECCIÓN 3: Mi espacio de aprendizaje y Rachas */}
@@ -1434,8 +1469,12 @@ function WideSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="max-w-full border-outline-variant/60 bg-surface-container-lowest/75 p-5 shadow-[0_10px_30px_-18px_rgba(74,53,37,0.3)] backdrop-blur-sm sm:p-6">
-      <div className="mb-6 flex flex-col gap-3 border-b border-outline-variant/40 pb-5 sm:flex-row sm:items-start sm:justify-between">
+    <motion.div 
+      layout
+      transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
+      className="max-w-full rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-5 shadow-[0_10px_30px_-18px_rgba(74,53,37,0.3)] backdrop-blur-sm sm:p-6"
+    >
+      <motion.div layout="position" className="mb-6 flex flex-col gap-3 border-b border-outline-variant/40 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             {icon}
@@ -1459,9 +1498,11 @@ function WideSection({
             {actionLabel}
           </Button>
         )}
-      </div>
-      {children}
-    </Card>
+      </motion.div>
+      <motion.div layout="position">
+        {children}
+      </motion.div>
+    </motion.div>
   );
 }
 
