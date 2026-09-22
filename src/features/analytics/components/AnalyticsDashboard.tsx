@@ -170,7 +170,9 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
               </div>
             </>
           ) : (
-            <EmptyMetric message={availability.message} />
+            <div id="exportable-chart-area">
+              <EmptyMetric message={availability.message} />
+            </div>
           )}
           {data.messages.length > 0 && (
             <ul className="mt-5 space-y-2 text-sm leading-relaxed text-on-surface-variant">
