@@ -401,6 +401,7 @@ export function CreateProjectWizard() {
                     <input
                       type="file"
                       multiple
+                      accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,image/*"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       onChange={handleFileUpload}
                     />
@@ -409,7 +410,7 @@ export function CreateProjectWizard() {
                       Haz click o arrastra tus archivos aquí
                     </p>
                     <p className="text-xs text-[#845326] mt-0.5">
-                      PDF, DOCX, TXT (Máx. 3 archivos)
+                      PDF, Imagen (PNG, JPG), DOCX, TXT (Máx. 3)
                     </p>
                   </div>
                 ) : (

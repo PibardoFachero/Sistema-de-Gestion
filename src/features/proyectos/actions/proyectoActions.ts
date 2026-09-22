@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateProjectTasksFromN8n } from '@/services/automation/n8nTasksService';
+import { generateProjectTasksAndScheduleWithGemini } from '@/services/ai/scheduleAiService';
 
 export interface CreateProjectInput {
   titulo: string;
@@ -114,21 +115,51 @@ export async function createProjectAction(input: CreateProjectInput) {
     }
 
     // =========================================================================
-    // [INTEGRACIÓN IA / N8N]:
-    // Si la URL del webhook de n8n está configurada, generamos automáticamente
-    // el plan de tareas inicial y lo guardamos en la tabla 'tareas' de Supabase.
+    // [INTEGRACIÓN IA - GENERACIÓN AUTOMÁTICA DE TAREAS Y CALENDARIO]:
+    // Genera tareas pedagógicas con Gemini desde la fecha de inicio hasta la
+    // fecha límite, calibradas a los minutos diarios disponibles y sin colisiones
+    // con el horario ocupado del usuario en 'eventos_calendario'.
     // =========================================================================
-    if (process.env.N8N_WEBHOOK_URL) {
+    let tasksGenerated = false;
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiResult = await generateProjectTasksAndScheduleWithGemini({
+          id: project.id,
+          user_id: user.id,
+          titulo: project.titulo,
+          objetivo: project.objetivo,
+          fecha_limite: project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined,
+          prioridad: project.prioridad,
+          nivel_conocimiento: project.nivel_conocimiento,
+          minutos_diarios: project.minutos_diarios,
+          material_url: project.material_url,
+        });
+
+        if (geminiResult.success) {
+          tasksGenerated = true;
+        } else {
+          console.warn(
+            'Advertencia: No se pudieron generar tareas con Gemini, intentando fallback:',
+            geminiResult.error,
+          );
+        }
+      } catch (geminiErr) {
+        console.warn('Advertencia: Excepción al generar tareas con Gemini:', geminiErr);
+      }
+    }
+
+    // Fallback a n8n si Gemini no generó las tareas y el webhook está configurado
+    if (!tasksGenerated && process.env.N8N_WEBHOOK_URL) {
       try {
         const n8nResult = await generateProjectTasksFromN8n({
           id: project.id,
           user_id: user.id,
           titulo: project.titulo,
           objetivo: project.objetivo,
-          fecha_limite: project.fecha_limite,
+          fecha_limite: project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined,
           prioridad: project.prioridad,
           nivel_conocimiento: project.nivel_conocimiento,
-          material_url: project.material_url,
           minutos_diarios: project.minutos_diarios,
         });
 
@@ -147,6 +178,7 @@ export async function createProjectAction(input: CreateProjectInput) {
     }
 
     revalidatePath('/proyectos');
+    revalidatePath('/calendario');
     revalidatePath('/');
     return { success: true, project };
   } catch (error: unknown) {
@@ -590,8 +622,32 @@ export async function createTaskAction(data: {
         .eq('user_id', user.id);
     }
 
+    // Sincronizar en eventos_calendario si la tarea tiene fecha asignada
+    if (task && parsedFechaInicio) {
+      try {
+        const startIso = new Date(parsedFechaInicio).toISOString();
+        const durMin = Math.max(15, Number(task.duracion) || 30);
+        const endIso = new Date(new Date(parsedFechaInicio).getTime() + durMin * 60 * 1000).toISOString();
+        await db.from('eventos_calendario').insert({
+          id: crypto.randomUUID(),
+          usuario_id: user.id,
+          proyecto_id: data.projectId,
+          tarea_id: task.id,
+          titulo: task.titulo,
+          descripcion: task.descripcion || '',
+          inicio: startIso,
+          fin: endIso,
+          estado: 'pendiente',
+          generado_por_ia: false,
+        });
+      } catch (calErr) {
+        console.warn('Aviso: no se pudo registrar evento en calendario para tarea:', calErr);
+      }
+    }
+
     revalidatePath(`/proyectos/${data.projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/calendario');
     revalidatePath('/');
 
     return { success: true, task, progreso: newProgreso, completado: false };
@@ -632,6 +688,12 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
 
     if (deleteError) {
       return { success: false, error: deleteError.message };
+    }
+
+    try {
+      await db.from('eventos_calendario').delete().eq('tarea_id', taskId);
+    } catch {
+      // Ignorar si se eliminó en cascada por foreign key
     }
 
     // Recalcular progreso con las tareas restantes
@@ -705,6 +767,7 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
 
     revalidatePath(`/proyectos/${projectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/calendario');
     revalidatePath('/perfil');
     revalidatePath('/');
 
