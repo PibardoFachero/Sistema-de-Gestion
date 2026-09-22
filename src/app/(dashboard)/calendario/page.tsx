@@ -262,6 +262,7 @@ export default function CalendarioPage() {
           <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto min-h-[42px] flex items-center justify-end">
             {!isMounted ? null : !isGoogleConnected ? (
               <button
+                type="button"
                 onClick={handleConnectGoogle}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-[#5F6368] hover:bg-gray-50 border border-gray-200 rounded-xl font-semibold shadow-sm transition-all w-full sm:w-auto"
               >
