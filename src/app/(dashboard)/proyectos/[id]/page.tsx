@@ -23,6 +23,11 @@ import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
 import { EditProjectModal } from '@/features/proyectos/components/EditProjectModal';
 import {
+  getCalendarDataAction,
+  CalendarEventItem,
+  AvailabilityBlockItem,
+} from '@/features/schedule/actions/calendarActions';
+import {
   getProjectDetailAction,
   toggleTaskStatusAction,
   createTaskAction,
@@ -65,6 +70,8 @@ function checkScheduleConflict(
   newDurationMinutes: number,
   existingTasks: Task[],
   excludeTaskId?: string,
+  calendarEvents?: CalendarEventItem[],
+  calendarAvailabilities?: AvailabilityBlockItem[],
 ): ScheduleConflictResult {
   if (!newDateStr || !newTimeStr) {
     return { hasConflict: false, message: null };
@@ -92,7 +99,7 @@ function checkScheduleConflict(
     if (newStart === exStart) {
       return {
         hasConflict: true,
-        message: `Ya hay una tarea asignada para ese horario ("${t.title}").`,
+        message: `El bloque horario seleccionado ya se encuentra ocupado por la tarea "${t.title}". Por favor, intenta utilizar otra hora o bloque disponible dentro del mismo día.`,
       };
     }
 
@@ -111,9 +118,144 @@ function checkScheduleConflict(
 
       return {
         hasConflict: true,
-        message: `El tiempo de duración entra en conflicto con la tarea "${t.title}" (${exStartTimeStr} - ${exEndTimeStr}). No se permite solapar horarios.`,
+        message: `El tiempo de duración entra en conflicto con la tarea "${t.title}" (${exStartTimeStr} - ${exEndTimeStr}). Por favor, intenta utilizar otra hora o bloque disponible dentro del mismo día.`,
       };
     }
+  }
+
+  // Verificar también eventos de calendario (otros proyectos o eventos agendados del usuario)
+  if (calendarEvents && calendarEvents.length > 0) {
+    for (const ev of calendarEvents) {
+      if (excludeTaskId && ev.tarea_id === excludeTaskId) continue;
+      if (!ev.inicio || !ev.fin) continue;
+
+      const evStart = new Date(ev.inicio).getTime();
+      const evEnd = new Date(ev.fin).getTime();
+      if (isNaN(evStart) || isNaN(evEnd)) continue;
+
+      // Solo si coincide el mismo día
+      const evDateStr = ev.inicio.split('T')[0];
+      if (evDateStr !== newDateStr) continue;
+
+      if (newStart === evStart) {
+        return {
+          hasConflict: true,
+          message: `El bloque horario seleccionado ya se encuentra ocupado por la tarea o evento "${ev.titulo}". Por favor, intenta utilizar otra hora o bloque disponible dentro del mismo día.`,
+        };
+      }
+
+      if (newStart < evEnd && evStart < newEnd) {
+        const evStartStr = new Date(ev.inicio).toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        const evEndStr = new Date(ev.fin).toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+
+        return {
+          hasConflict: true,
+          message: `El tiempo de duración entra en conflicto con "${ev.titulo}" (${evStartStr} - ${evEndStr}). Por favor, intenta utilizar otra hora o bloque disponible dentro del mismo día.`,
+        };
+      }
+    }
+  }
+
+  // Verificar bloques de disponibilidad ocupados guardados en Supabase (estudio, trabajo, ocupado, etc.)
+  if (calendarAvailabilities && calendarAvailabilities.length > 0) {
+    const taskDateObj = new Date(`${newDateStr}T${newTimeStr}:00`);
+    const taskDayOfWeek = taskDateObj.getDay();
+    const taskStartMin = taskDateObj.getHours() * 60 + taskDateObj.getMinutes();
+    const taskEndMin = taskStartMin + durationMin;
+
+    for (const b of calendarAvailabilities) {
+      if (b.tipo === 'tareas') continue; // 'tareas' indica tiempo libre asignable para tareas
+
+      let matchesDay = false;
+      if (b.fecha_especifica) {
+        matchesDay = b.fecha_especifica === newDateStr;
+      } else if (b.dia_semana !== null && b.dia_semana !== undefined) {
+        matchesDay = b.dia_semana === taskDayOfWeek;
+      }
+
+      if (matchesDay) {
+        const [bh1, bm1] = b.hora_inicio.split(':').map(Number);
+        const [bh2, bm2] = b.hora_fin.split(':').map(Number);
+        const bStartMin = (bh1 || 0) * 60 + (bm1 || 0);
+        const bEndMin = (bh2 || 0) * 60 + (bm2 || 0);
+
+        if (Math.max(taskStartMin, bStartMin) < Math.min(taskEndMin, bEndMin)) {
+          const tipoLabel =
+            b.tipo === 'estudio'
+              ? 'Estudio'
+              : b.tipo === 'trabajo'
+                ? 'Trabajo'
+                : b.tipo === 'ocupado'
+                  ? 'Ocupado'
+                  : b.tipo === 'otra_actividad'
+                    ? 'Otra actividad'
+                    : b.tipo;
+          return {
+            hasConflict: true,
+            message: `El tiempo de duración entra en conflicto con un bloque ocupado en tu calendario (${tipoLabel}) de ${b.hora_inicio.slice(0, 5)} a ${b.hora_fin.slice(0, 5)}. Por favor, intenta utilizar otra hora o bloque disponible.`,
+          };
+        }
+      }
+    }
+  }
+
+  // Verificar disponibilidad y bloques ocupados en localStorage de la sesión activa
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('komorebi_availabilities');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const taskDateObj = new Date(`${newDateStr}T${newTimeStr}:00`);
+          const taskStartMin = taskDateObj.getHours() * 60 + taskDateObj.getMinutes();
+          const taskEndMin = taskStartMin + durationMin;
+
+          for (const a of parsed) {
+            if (a.date !== newDateStr) continue;
+            if (excludeTaskId && a.eventId === excludeTaskId) continue;
+
+            const isBusyType = a.type && a.type !== 'tareas' && a.type !== 'libre';
+            const isGoogle = a.source === 'google';
+            const hasTask = Boolean(a.eventId && (!excludeTaskId || a.eventId !== excludeTaskId));
+            const hasCustomLabel = Boolean(
+              a.label &&
+              a.label !== 'Tareas' &&
+              a.label !== 'Libre' &&
+              !a.label.startsWith('📌 ') &&
+              a.type !== 'tareas',
+            );
+
+            if (isBusyType || isGoogle || hasTask || hasCustomLabel) {
+              const [ah1, am1] = a.startTime.split(':').map(Number);
+              const [ah2, am2] = a.endTime.split(':').map(Number);
+              const aStartMin = (ah1 || 0) * 60 + (am1 || 0);
+              const aEndMin = (ah2 || 0) * 60 + (am2 || 0);
+
+              if (Math.max(taskStartMin, aStartMin) < Math.min(taskEndMin, aEndMin)) {
+                const labelDisplay =
+                  a.label && !a.label.startsWith('📌 ')
+                    ? a.label
+                    : a.source === 'google'
+                      ? 'Google Calendar'
+                      : a.type || 'ocupado';
+                return {
+                  hasConflict: true,
+                  message: `El horario entra en conflicto con "${labelDisplay}" (${a.startTime} - ${a.endTime}) en tu calendario. Por favor, intenta utilizar otra hora o bloque disponible.`,
+                };
+              }
+            }
+          }
+        }
+      }
+    } catch {}
   }
 
   return { hasConflict: false, message: null };
@@ -135,6 +277,8 @@ export default function ProjectDetailPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [project, setProject] = useState<ProjectDetailState | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
+  const [calendarAvailabilities, setCalendarAvailabilities] = useState<AvailabilityBlockItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeletingProject, setIsDeletingProject] = useState<boolean>(false);
   const isAiOfflineParam = searchParams?.get('aiOffline') === 'true';
@@ -368,6 +512,7 @@ export default function ProjectDetailPage({
         });
 
         window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
 
         setAiSuccessMessage(`¡Se han generado ${newTasks.length} tareas automáticamente con IA!`);
         setTimeout(() => setAiSuccessMessage(null), 6000);
@@ -451,6 +596,16 @@ export default function ProjectDetailPage({
             setIsLoading(false);
           }
         });
+
+      // Cargar eventos y bloques de disponibilidad del calendario para detección de conflictos
+      getCalendarDataAction()
+        .then((res) => {
+          if (isMounted && res.success) {
+            if (res.events) setCalendarEvents(res.events);
+            if (res.availabilities) setCalendarAvailabilities(res.availabilities);
+          }
+        })
+        .catch((err) => console.warn('Aviso cargando eventos de calendario en proyecto:', err));
     });
 
     return () => {
@@ -488,6 +643,7 @@ export default function ProjectDetailPage({
         );
 
         window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
       }
     } catch (error) {
       console.error('Error actualizando estado de tarea en Supabase:', error);
@@ -535,6 +691,7 @@ export default function ProjectDetailPage({
         );
 
         window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
       } else {
         setProject((prev) =>
           prev ? { ...prev, progress: previousProgress, tasks: previousTasks } : null,
@@ -595,6 +752,14 @@ export default function ProjectDetailPage({
       }
     }
 
+    if (liveScheduleConflict.hasConflict) {
+      setTaskErrorMessage(
+        liveScheduleConflict.message ||
+          'El horario seleccionado entra en conflicto con un bloque ocupado en tu calendario.',
+      );
+      return;
+    }
+
     setIsSubmittingTask(true);
     setTaskErrorMessage(null);
 
@@ -650,6 +815,7 @@ export default function ProjectDetailPage({
         );
 
         window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
 
         setNewTaskTitle('');
         setNewTaskDescription('');
@@ -675,6 +841,14 @@ export default function ProjectDetailPage({
   const handleEditTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!project || !taskToEdit || isSubmittingEdit) return;
+
+    if (liveEditScheduleConflict.hasConflict) {
+      setEditErrorMessage(
+        liveEditScheduleConflict.message ||
+          'El horario seleccionado entra en conflicto con un bloque ocupado en tu calendario.',
+      );
+      return;
+    }
 
     setIsSubmittingEdit(true);
     setEditErrorMessage(null);
@@ -735,6 +909,7 @@ export default function ProjectDetailPage({
         );
 
         window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
 
         setTaskToEdit(null);
       } else {
@@ -796,6 +971,9 @@ export default function ProjectDetailPage({
     taskStartTime,
     currentDurationMin,
     project.tasks || [],
+    undefined,
+    calendarEvents,
+    calendarAvailabilities,
   );
 
   const numericEditDuration = Math.max(1, Math.round(Number(editDurationValue)) || 1);
@@ -809,6 +987,8 @@ export default function ProjectDetailPage({
         currentEditDurationMin,
         project.tasks || [],
         taskToEdit.id,
+        calendarEvents,
+        calendarAvailabilities,
       )
     : { hasConflict: false, message: null };
 
@@ -1330,10 +1510,16 @@ export default function ProjectDetailPage({
               {liveScheduleConflict.hasConflict && (
                 <div className="p-3.5 bg-amber-50 border-2 border-amber-300 text-amber-900 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in shadow-sm">
                   <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
-                  <div>
-                    <span className="font-bold block text-amber-950">Advertencia de horario:</span>
+                  <div className="flex-1">
+                    <span className="font-bold block text-amber-950">
+                      ⚠️ Conflicto de horario detectado:
+                    </span>
                     <span className="text-amber-800 mt-0.5 block leading-relaxed">
                       {liveScheduleConflict.message}
+                    </span>
+                    <span className="text-amber-950 font-semibold mt-1.5 block">
+                      💡 Sugerencia: Por favor, intenta utilizar otra hora o bloque disponible
+                      dentro del mismo día.
                     </span>
                   </div>
                 </div>
@@ -1736,10 +1922,16 @@ export default function ProjectDetailPage({
               {liveEditScheduleConflict.hasConflict && (
                 <div className="p-3.5 bg-amber-50 border-2 border-amber-300 text-amber-900 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in shadow-sm">
                   <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
-                  <div>
-                    <span className="font-bold block text-amber-950">Advertencia de horario:</span>
+                  <div className="flex-1">
+                    <span className="font-bold block text-amber-950">
+                      ⚠️ Conflicto de horario detectado:
+                    </span>
                     <span className="text-amber-800 mt-0.5 block leading-relaxed">
                       {liveEditScheduleConflict.message}
+                    </span>
+                    <span className="text-amber-950 font-semibold mt-1.5 block">
+                      💡 Sugerencia: Por favor, intenta utilizar otra hora o bloque disponible
+                      dentro del mismo día.
                     </span>
                   </div>
                 </div>
