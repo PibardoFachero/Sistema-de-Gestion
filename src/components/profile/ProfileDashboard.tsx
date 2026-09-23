@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Send,
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/profile/ChangePasswordModal';
 import { AddPasswordModal } from '@/components/profile/AddPasswordModal';
@@ -43,9 +42,9 @@ import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from '@/features/profile/data/cou
 import { formatPhoneNumber, parsePhoneNumber } from '@/features/profile/utils/phoneValidation';
 import { updateProfileIdentity } from '@/features/profile/actions/updateProfileIdentityAction';
 import { updateLearningPreferences } from '@/features/profile/actions/updateLearningPreferencesAction';
-import { verifyTelegramOtp } from '@/features/profile/actions/verifyTelegramOtpAction';
 
 export type ProfileDashboardData = {
+  userId?: string;
   firstName?: string;
   lastName?: string;
   name: string;
@@ -97,12 +96,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
   const [phonePrefix, setPhonePrefix] = useState(initialPhoneData.prefix || DEFAULT_COUNTRY_CODE);
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneData.number);
   const [phoneInputError, setPhoneInputError] = useState<string | null>(null);
-  const [telegramIdentifier, setTelegramIdentifier] = useState(profile.telegramUsername || '');
-  const [telegramCode, setTelegramCode] = useState('');
-  const [telegramVerifiedAt, setTelegramVerifiedAt] = useState(profile.telegramVerifiedAt || null);
-  const [telegramMessage, setTelegramMessage] = useState<string | null>(null);
-  const [telegramError, setTelegramError] = useState<string | null>(null);
-  const [isVerifyingTelegram, startVerifyingTelegram] = useTransition();
   const [avatarPreview, setAvatarPreview] = useState(profile.avatarUrl || '');
   const [uploadedAvatars, setUploadedAvatars] = useState<string[]>(
     profile.uploadedAvatars && profile.uploadedAvatars.length > 0
@@ -150,33 +143,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
     setLearningMessage(null);
     setLearningError(null);
     setEditingSection((current) => (current === section ? null : section));
-  }
-
-  function openTelegramBot() {
-    setTelegramError(null);
-    setTelegramMessage(
-      'Abre el bot, presiona Iniciar y copia el código de seis dígitos que recibas.',
-    );
-    window.open('https://t.me/aulaverify_bot?start=verificacion', '_blank', 'noopener,noreferrer');
-  }
-
-  function handleVerifyTelegram() {
-    setTelegramMessage(null);
-    setTelegramError(null);
-
-    startVerifyingTelegram(async () => {
-      const result = await verifyTelegramOtp(telegramIdentifier, telegramCode);
-      if (!result.success) {
-        setTelegramError(result.error);
-        return;
-      }
-
-      setTelegramIdentifier(result.telegramUsername);
-      setTelegramVerifiedAt(result.verifiedAt);
-      setTelegramCode('');
-      setTelegramMessage(`Telegram @${result.telegramUsername} verificado correctamente.`);
-      router.refresh();
-    });
   }
 
   function updateAnswer(field: keyof OnboardingAnswersInput, value: string) {
@@ -605,118 +571,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </span>
                 </div>
 
-                <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Send className="size-4 text-primary" />
-                        <h3 className="text-sm font-bold text-on-surface">
-                          Verificación con Telegram
-                        </h3>
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-                        Confirma que controlas tu cuenta de Telegram. Esta verificación no valida tu
-                        número telefónico.
-                      </p>
-                    </div>
-                    <span
-                      className={
-                        telegramVerifiedAt
-                          ? 'inline-flex w-fit items-center gap-1.5 rounded-full bg-status-success-bg px-2.5 py-1 text-xs font-bold text-status-success'
-                          : 'inline-flex w-fit items-center gap-1.5 rounded-full bg-surface-container px-2.5 py-1 text-xs font-bold text-on-surface-variant'
-                      }
-                    >
-                      {telegramVerifiedAt ? (
-                        <ShieldCheck className="size-3.5" />
-                      ) : (
-                        <ShieldAlert className="size-3.5" />
-                      )}
-                      {telegramVerifiedAt ? 'Verificado' : 'Pendiente'}
-                    </span>
-                  </div>
-
-                  <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-on-surface-variant">
-                    <li>1. Abre el bot y presiona Iniciar.</li>
-                    <li>2. Copia el código de seis dígitos que recibirás.</li>
-                    <li>3. Ingresa tu usuario de Telegram y el código para confirmarlo.</li>
-                  </ol>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
-                    <div>
-                      <label
-                        htmlFor="telegram_identifier_input"
-                        className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                      >
-                        Usuario o ID de Telegram
-                      </label>
-                      <input
-                        id="telegram_identifier_input"
-                        type="text"
-                        value={telegramIdentifier}
-                        onChange={(event) => setTelegramIdentifier(event.target.value)}
-                        placeholder="@tu_usuario"
-                        maxLength={64}
-                        className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="telegram_code_input"
-                        className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                      >
-                        Código
-                      </label>
-                      <input
-                        id="telegram_code_input"
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        value={telegramCode}
-                        onChange={(event) =>
-                          setTelegramCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-                        }
-                        placeholder="000000"
-                        maxLength={6}
-                        className="mt-2 block w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={openTelegramBot}
-                        className="min-h-11"
-                      >
-                        Abrir bot
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={handleVerifyTelegram}
-                        disabled={isVerifyingTelegram}
-                        className="min-h-11 gap-2"
-                      >
-                        {isVerifyingTelegram ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <ShieldCheck className="size-4" />
-                        )}
-                        Verificar
-                      </Button>
-                    </div>
-                  </div>
-
-                  {telegramError && (
-                    <p role="alert" className="mt-3 text-sm font-medium text-status-error">
-                      {telegramError}
-                    </p>
-                  )}
-                  {telegramMessage && (
-                    <p role="status" className="mt-3 text-sm font-medium text-status-success">
-                      {telegramMessage}
-                    </p>
-                  )}
-                </div>
-
                 {/* Descripción de perfil con límites de resize mínimo y máximo */}
                 <div>
                   <label
@@ -924,9 +778,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                     <CompactDetail
                       label="Telegram"
                       value={
-                        telegramVerifiedAt
-                          ? `Verificado${telegramIdentifier ? ` · @${telegramIdentifier}` : ''}`
-                          : 'Sin verificar'
+                        profile.telegramUsername ? `@${profile.telegramUsername}` : 'Bot disponible'
                       }
                     />
                   </div>
