@@ -145,7 +145,11 @@ export async function getCalendarDataAction() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (!calAvailErr && calAvailData?.availability && typeof calAvailData.availability === 'object') {
+      if (
+        !calAvailErr &&
+        calAvailData?.availability &&
+        typeof calAvailData.availability === 'object'
+      ) {
         const availObj = calAvailData.availability as {
           blocks?: Array<{
             date: string;
@@ -319,10 +323,7 @@ export async function syncAvailabilityBlocksAction(
     const db = adminDb || supabase;
 
     // Eliminar bloques previos del usuario en bloques_disponibilidad para actualizarlos de forma consistente
-    await db
-      .from('bloques_disponibilidad')
-      .delete()
-      .eq('usuario_id', user.id);
+    await db.from('bloques_disponibilidad').delete().eq('usuario_id', user.id);
 
     if (blocks.length > 0) {
       const inserts = blocks.map((b) => ({
@@ -443,10 +444,7 @@ export async function updateCalendarEventDetailsAction(input: {
         taskUpdatePayload.descripcion = input.descripcion;
       }
 
-      await db
-        .from('tareas')
-        .update(taskUpdatePayload)
-        .eq('id', existingEvent.tarea_id);
+      await db.from('tareas').update(taskUpdatePayload).eq('id', existingEvent.tarea_id);
     }
 
     revalidatePath('/calendario');
