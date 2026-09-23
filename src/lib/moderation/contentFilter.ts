@@ -1,4 +1,9 @@
 import 'server-only';
+import esDict from './locales/es.json';
+import enDict from './locales/en.json';
+import { SupportedLocale, ModerationDictionary, ContentValidationResult } from './types';
+
+export type { SupportedLocale, ModerationDictionary, ContentValidationResult };
 
 /**
  * Normaliza el texto removiendo diacríticos (tildes), caracteres repetidos o símbolos leet.
@@ -23,188 +28,108 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Lista de términos obscenos, vulgares, insultos o contenido no apto en contextos académicos.
+ * Diccionarios cargados por idioma para mensajes localizados.
  */
-const OBSCENE_TERMS = [
-  'puta',
-  'puto',
-  'putas',
-  'putos',
-  'putita',
-  'putito',
-  'mierda',
-  'mierdas',
-  'pendejo',
-  'pendeja',
-  'pendejos',
-  'pendejas',
-  'coño',
-  'coños',
-  'marica',
-  'maricon',
-  'maricones',
-  'cabron',
-  'cabrona',
-  'cabrones',
-  'verga',
-  'vergas',
-  'vergacion',
-  'chucha',
-  'chuchas',
-  'mamaguevo',
-  'mamahuevo',
-  'mamaguevos',
-  'malparido',
-  'malparida',
-  'estupido',
-  'estupida',
-  'imbecil',
-  'imbeciles',
-  'zorra',
-  'zorras',
-  'culo',
-  'culos',
-  'culiao',
-  'culiaos',
-  'carajo',
-  'carajos',
-  'perra',
-  'perras',
-  'idiota',
-  'idiotas',
-  'bastardo',
-  'bastarda',
-  'fuck',
-  'fucking',
-  'shit',
-  'bitch',
-  'asshole',
-  'cunt',
-  'dick',
-  'pussy',
-  'hijo de puta',
-  'hija de puta',
-  'gonorrea',
-  'carechimba',
-  'huevon',
-  'huevona',
-];
+const DICTIONARIES: Record<SupportedLocale, ModerationDictionary> = {
+  es: esDict as ModerationDictionary,
+  en: enDict as ModerationDictionary,
+};
 
 /**
- * Lista de términos peligrosos, que incitan a la violencia, amenazas, armas,
- * actividades ilegales o daño físico/psicológico.
+ * Prepara un Set de palabras normalizadas para búsquedas en O(1).
  */
-const DANGEROUS_TERMS = [
-  'bomba',
-  'bombas',
-  'atentado',
-  'atentados',
-  'terrorismo',
-  'terrorista',
-  'asesinar',
-  'asesinato',
-  'asesinatos',
-  'homicidio',
-  'homicidios',
-  'suicidio',
-  'suicidarse',
-  'matar',
-  'descuartizar',
-  'tiroteo',
-  'tiroteos',
-  'secuestro',
-  'secuestros',
-  'secuestrar',
-  'extorsion',
-  'extorsionar',
-  'veneno',
-  'envenenar',
-  'explosivo',
-  'explosivos',
-  'cianuro',
-  'arma de fuego',
-  'armas de fuego',
-  'rifle',
-  'dinamita',
-  'narcotrafico',
-  'cocaina',
-  'heroina',
-  'fentanilo',
-  'hackear banco',
-  'fabricar arma',
-  'fabricar bomba',
-  'hacer una bomba',
-  'como matar',
-  'como suicidarse',
-];
-
-export interface ContentValidationResult {
-  isValid: boolean;
-  error?: string;
-  detectedTerm?: string;
-  type?: 'obscene' | 'dangerous';
+function prepareWordSet(words: string[]): Set<string> {
+  const set = new Set<string>();
+  for (const word of words) {
+    const norm = normalizeText(word);
+    if (norm) {
+      set.add(norm);
+    }
+  }
+  return set;
 }
 
 /**
- * Valida si un texto contiene palabras peligrosas u obscenas.
- * Se ejecuta exclusivamente en el backend para impedir la creación o actualización de proyectos
- * con lenguaje inapropiado o potencialmente dañino.
+ * Prepara una lista de frases compuestas normalizadas.
  */
-export function validateContent(text: string): ContentValidationResult {
+function preparePhrases(phrases: string[]): string[] {
+  return phrases.map((phrase) => normalizeText(phrase)).filter(Boolean);
+}
+
+// 1. Unificamos los términos de todos los idiomas para proteger globalmente la plataforma
+const DANGEROUS_WORDS = prepareWordSet([...esDict.dangerous.words, ...enDict.dangerous.words]);
+
+const DANGEROUS_PHRASES = preparePhrases([
+  ...esDict.dangerous.phrases,
+  ...enDict.dangerous.phrases,
+]);
+
+const OBSCENE_WORDS = prepareWordSet([...esDict.obscene.words, ...enDict.obscene.words]);
+
+const OBSCENE_PHRASES = preparePhrases([...esDict.obscene.phrases, ...enDict.obscene.phrases]);
+
+/**
+ * Valida si un texto contiene palabras o frases peligrosas u obscenas en cualquier idioma configurado.
+ * Retorna los mensajes de error en el idioma solicitado (`locale`, por defecto 'es').
+ * Se ejecuta exclusivamente en el backend.
+ */
+export function validateContent(
+  text: string,
+  locale: SupportedLocale = 'es',
+): ContentValidationResult {
   if (!text || text.trim() === '') {
     return { isValid: true };
   }
 
+  const messages = DICTIONARIES[locale]?.messages || DICTIONARIES.es.messages;
   const normalized = normalizeText(text);
-  const words = normalized.split(' ');
+  const words = normalized.split(' ').filter(Boolean);
 
-  // 1. Verificar términos peligrosos (frases compuestas o palabras individuales)
-  for (const dangerous of DANGEROUS_TERMS) {
-    if (dangerous.includes(' ')) {
-      if (normalized.includes(dangerous)) {
-        return {
-          isValid: false,
-          error:
-            'El contenido contiene términos peligrosos o no permitidos relacionados con violencia o seguridad.',
-          detectedTerm: dangerous,
-          type: 'dangerous',
-        };
-      }
-    } else {
-      if (words.includes(dangerous)) {
-        return {
-          isValid: false,
-          error:
-            'El contenido contiene términos peligrosos o no permitidos relacionados con violencia o seguridad.',
-          detectedTerm: dangerous,
-          type: 'dangerous',
-        };
-      }
+  // 1. Búsqueda O(1) de palabras individuales peligrosas
+  for (const word of words) {
+    if (DANGEROUS_WORDS.has(word)) {
+      return {
+        isValid: false,
+        error: messages.dangerous,
+        detectedTerm: word,
+        type: 'dangerous',
+      };
     }
   }
 
-  // 2. Verificar términos obscenos o vulgares
-  for (const obscene of OBSCENE_TERMS) {
-    if (obscene.includes(' ')) {
-      if (normalized.includes(obscene)) {
-        return {
-          isValid: false,
-          error:
-            'El contenido contiene lenguaje obsceno, vulgar o inapropiado. Por favor utiliza un lenguaje profesional y respetuoso.',
-          detectedTerm: obscene,
-          type: 'obscene',
-        };
-      }
-    } else {
-      if (words.includes(obscene)) {
-        return {
-          isValid: false,
-          error:
-            'El contenido contiene lenguaje obsceno, vulgar o inapropiado. Por favor utiliza un lenguaje profesional y respetuoso.',
-          detectedTerm: obscene,
-          type: 'obscene',
-        };
-      }
+  // 2. Búsqueda de frases compuestas peligrosas
+  for (const phrase of DANGEROUS_PHRASES) {
+    if (normalized.includes(phrase)) {
+      return {
+        isValid: false,
+        error: messages.dangerous,
+        detectedTerm: phrase,
+        type: 'dangerous',
+      };
+    }
+  }
+
+  // 3. Búsqueda O(1) de palabras individuales obscenas o vulgares
+  for (const word of words) {
+    if (OBSCENE_WORDS.has(word)) {
+      return {
+        isValid: false,
+        error: messages.obscene,
+        detectedTerm: word,
+        type: 'obscene',
+      };
+    }
+  }
+
+  // 4. Búsqueda de frases compuestas obscenas
+  for (const phrase of OBSCENE_PHRASES) {
+    if (normalized.includes(phrase)) {
+      return {
+        isValid: false,
+        error: messages.obscene,
+        detectedTerm: phrase,
+        type: 'obscene',
+      };
     }
   }
 
@@ -217,14 +142,15 @@ export function validateContent(text: string): ContentValidationResult {
 export function validateProjectContent(
   titulo: string,
   objetivo?: string | null,
+  locale: SupportedLocale = 'es',
 ): ContentValidationResult {
-  const titleValidation = validateContent(titulo);
+  const titleValidation = validateContent(titulo, locale);
   if (!titleValidation.isValid) {
     return titleValidation;
   }
 
   if (objetivo) {
-    const objectiveValidation = validateContent(objetivo);
+    const objectiveValidation = validateContent(objetivo, locale);
     if (!objectiveValidation.isValid) {
       return objectiveValidation;
     }
