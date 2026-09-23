@@ -376,6 +376,7 @@ export async function createProjectAction(input: CreateProjectInput) {
           prioridad: project.prioridad,
           nivel_conocimiento: project.nivel_conocimiento,
           minutos_diarios: project.minutos_diarios,
+          material_url: project.material_url,
         });
 
         if (!n8nResult.success) {
@@ -758,6 +759,13 @@ export async function createTaskAction(data: {
       };
     }
 
+    // Obtener fecha límite del proyecto para validación
+    const { data: projectRecord } = await db
+      .from('projects')
+      .select('fecha_limite')
+      .eq('id', data.projectId)
+      .maybeSingle();
+
     // Comprobación de fecha y conflictos de horario en el backend
     if (parsedFechaInicio) {
       const today = new Date();
@@ -770,21 +778,20 @@ export async function createTaskAction(data: {
         };
       }
 
-      // Validar contra la fecha límite del proyecto
-      const { data: projectRecord } = await db
-        .from('projects')
-        .select('fecha_limite')
-        .eq('id', data.projectId)
-        .maybeSingle();
-
       if (projectRecord?.fecha_limite) {
-        const projectDeadline = new Date(projectRecord.fecha_limite);
-        projectDeadline.setHours(23, 59, 59, 999);
-        if (startDateTime > projectDeadline) {
-          const limitStr = projectDeadline.toISOString().split('T')[0];
+        const deadlineDay = projectRecord.fecha_limite.split('T')[0];
+        const [deadY, deadM, deadD] = deadlineDay.split('-').map(Number);
+        const projectDeadline = new Date(deadY, deadM - 1, deadD, 23, 59, 59, 999);
+
+        const taskDayStr = data.fecha_inicio
+          ? data.fecha_inicio.split('T')[0]
+          : parsedFechaInicio.split('T')[0];
+
+        // Se permite registrar tareas hasta el mismo día límite inclusive (taskDayStr <= deadlineDay)
+        if (taskDayStr > deadlineDay || startDateTime.getTime() > projectDeadline.getTime()) {
           return {
             success: false,
-            error: `El día de inicio no puede superar la fecha límite del proyecto (${limitStr}).`,
+            error: `El día de inicio no puede superar la fecha límite del proyecto (${deadlineDay}).`,
           };
         }
       }
@@ -1224,13 +1231,19 @@ export async function updateTaskAction(data: {
         .maybeSingle();
 
       if (projectRecord?.fecha_limite) {
-        const projectDeadline = new Date(projectRecord.fecha_limite);
-        projectDeadline.setHours(23, 59, 59, 999);
-        if (startDateTime > projectDeadline) {
-          const limitStr = projectDeadline.toISOString().split('T')[0];
+        const deadlineDay = projectRecord.fecha_limite.split('T')[0];
+        const [deadY, deadM, deadD] = deadlineDay.split('-').map(Number);
+        const projectDeadline = new Date(deadY, deadM - 1, deadD, 23, 59, 59, 999);
+
+        const taskDayStr = data.fecha_inicio
+          ? data.fecha_inicio.split('T')[0]
+          : parsedFechaInicio.split('T')[0];
+
+        // Se permite registrar o editar tareas hasta el mismo día límite inclusive (taskDayStr <= deadlineDay)
+        if (taskDayStr > deadlineDay || startDateTime.getTime() > projectDeadline.getTime()) {
           return {
             success: false,
-            error: `El día de inicio no puede superar la fecha límite del proyecto (${limitStr}).`,
+            error: `El día de inicio no puede superar la fecha límite del proyecto (${deadlineDay}).`,
           };
         }
       }
@@ -1358,7 +1371,9 @@ export async function updateTaskAction(data: {
 
 /**
  * generateTasksWithN8nAction
- * Server Action para invocar la IA de n8n bajo demanda para un proyecto existente.
+ * Server Action para invocar la generación inteligente de tareas para un proyecto existente.
+ * Prioridad 1: Gemini (con scheduleAiService, respetando disponibilidad y tareas previas).
+ * Prioridad 2 / Fallback: Webhook de n8n (generateProjectTasksFromN8n).
  */
 export async function generateTasksWithN8nAction(
   projectId: string,
@@ -1397,22 +1412,112 @@ export async function generateTasksWithN8nAction(
       .eq('id_proyecto', projectId)
       .order('fecha_inicio', { ascending: true });
 
-    const result = await generateProjectTasksFromN8n({
-      user_id: user.id,
-      id: project.id,
-      titulo: project.titulo,
-      objetivo: project.objetivo,
-      fecha_limite: project.fecha_limite,
-      prioridad: project.prioridad,
-      nivel_conocimiento: project.nivel_conocimiento,
-      material_url: extraOptions?.material_url?.trim() || project.material_url,
-      minutos_diarios: project.minutos_diarios,
-      file_content: extraOptions?.file_content,
-      file_name: extraOptions?.file_name,
-      existing_tasks: existingTasks || [],
-    });
+    // Validar si las tareas existentes ya cubren toda la duración del proyecto hasta su fecha límite
+    if (project.fecha_limite && existingTasks && existingTasks.length > 0) {
+      const deadlineDay = project.fecha_limite.split('T')[0];
+      const hasTaskAtDeadline = existingTasks.some((t) => {
+        if (!t.fecha_inicio) return false;
+        const taskDay = t.fecha_inicio.split('T')[0];
+        return taskDay >= deadlineDay;
+      });
 
-    if (!result.success) {
+      if (hasTaskAtDeadline) {
+        return {
+          success: false,
+          error:
+            'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.',
+        };
+      }
+    }
+
+    let result: {
+      success: boolean;
+      count?: number;
+      tasks?: TaskRecord[];
+      progreso?: number;
+      error?: string;
+    } | null = null;
+
+    const materialUrl = extraOptions?.material_url?.trim() || project.material_url;
+
+    // =========================================================================
+    // PRIORIDAD 1: Google Gemini (@google/genai con gemini-3.8-flash)
+    // =========================================================================
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiResult = await generateProjectTasksAndScheduleWithGemini({
+          id: project.id,
+          user_id: user.id,
+          titulo: project.titulo,
+          objetivo: project.objetivo,
+          fecha_limite: project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined,
+          prioridad: project.prioridad,
+          nivel_conocimiento: project.nivel_conocimiento,
+          material_url: materialUrl,
+          minutos_diarios: project.minutos_diarios,
+          file_content: extraOptions?.file_content,
+          file_name: extraOptions?.file_name,
+          existing_tasks: existingTasks || [],
+        });
+
+        if (geminiResult.success && geminiResult.tasks && geminiResult.tasks.length > 0) {
+          result = {
+            success: true,
+            count: geminiResult.count,
+            tasks: geminiResult.tasks as unknown as TaskRecord[],
+            progreso: geminiResult.progreso,
+          };
+        } else {
+          console.warn(
+            'Advertencia: Falló generación con Gemini en proyecto existente, recurriendo a n8n:',
+            geminiResult.error,
+          );
+        }
+      } catch (geminiErr) {
+        console.warn(
+          'Advertencia: Excepción al generar tareas con Gemini en proyecto existente, recurriendo a n8n:',
+          geminiErr,
+        );
+      }
+    }
+
+    // =========================================================================
+    // PRIORIDAD 2 / FALLBACK: n8n Webhook
+    // =========================================================================
+    if ((!result || !result.success) && process.env.N8N_WEBHOOK_URL) {
+      try {
+        const n8nResult = await generateProjectTasksFromN8n({
+          user_id: user.id,
+          id: project.id,
+          titulo: project.titulo,
+          objetivo: project.objetivo,
+          fecha_limite: project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined,
+          prioridad: project.prioridad,
+          nivel_conocimiento: project.nivel_conocimiento,
+          material_url: materialUrl,
+          minutos_diarios: project.minutos_diarios,
+          file_content: extraOptions?.file_content,
+          file_name: extraOptions?.file_name,
+          existing_tasks: existingTasks || [],
+        });
+
+        if (n8nResult.success) {
+          result = n8nResult;
+        } else {
+          console.warn(
+            'Advertencia: Falló generación con n8n en proyecto existente:',
+            n8nResult.error,
+          );
+        }
+      } catch (n8nErr) {
+        console.warn(
+          'Advertencia: Excepción al generar tareas con n8n en proyecto existente:',
+          n8nErr,
+        );
+      }
+    }
+
+    if (!result || !result.success) {
       return {
         success: false,
         isAiUnavailable: true,

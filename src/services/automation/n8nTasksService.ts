@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { calculateAvailableStudyDates } from '@/services/ai/scheduleAiService';
 
 export interface ProjectForTaskGeneration {
   id: string;
@@ -361,26 +362,6 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
 }
 
 /**
- * Calcula fechas de inicio sucesivas (una por día hábil a las 09:00 AM)
- * para evitar colisiones de horario entre tareas generadas automáticamente.
- * Si se pasa startDate, comienza a partir del día siguiente a esa fecha.
- */
-function calculateDefaultStartDates(count: number, startDate?: string | Date): string[] {
-  const dates: string[] = [];
-  const base = startDate ? new Date(startDate) : new Date();
-  base.setDate(base.getDate() + 1); // Comenzar a partir del día siguiente
-
-  for (let i = 0; i < count; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    d.setHours(9, 0, 0, 0); // 09:00 AM
-    dates.push(d.toISOString());
-  }
-
-  return dates;
-}
-
-/**
  * Genera tareas para un proyecto llamando al webhook configurado en n8n
  * e insertándolas en la tabla 'tareas' de Supabase.
  */
@@ -396,8 +377,79 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
   }
 
   try {
-    // 1. Preparar mensaje explicito para el Agente/Chatbot de n8n
     const existingTasks = project.existing_tasks || [];
+    let latestExistingDayStr: string | null = null;
+    for (const t of existingTasks) {
+      if (t.fecha_inicio) {
+        const dStr = t.fecha_inicio.split('T')[0];
+        if (!latestExistingDayStr || dStr > latestExistingDayStr) {
+          latestExistingDayStr = dStr;
+        }
+      }
+    }
+
+    const deadlineStr = project.fecha_limite ? project.fecha_limite.split('T')[0] : '';
+
+    // 0. Validar si las tareas existentes ya cubren toda la duración del proyecto hasta su fecha límite
+    if (deadlineStr && latestExistingDayStr && latestExistingDayStr >= deadlineStr) {
+      return {
+        success: false,
+        error:
+          'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.',
+      };
+    }
+
+    // Determinar fecha de inicio y ranuras de estudio autorizadas
+    const today = new Date();
+    const ty = today.getFullYear();
+    const tm = String(today.getMonth() + 1).padStart(2, '0');
+    const td = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${ty}-${tm}-${td}`;
+
+    let startDateStr = todayStr;
+    if (latestExistingDayStr && latestExistingDayStr >= todayStr) {
+      const [ey, em, ed] = latestExistingDayStr.split('-').map(Number);
+      const nextD = new Date(ey, em - 1, ed + 1);
+      const ny = nextD.getFullYear();
+      const nm = String(nextD.getMonth() + 1).padStart(2, '0');
+      const nd = String(nextD.getDate()).padStart(2, '0');
+      startDateStr = `${ny}-${nm}-${nd}`;
+    } else {
+      if (deadlineStr && todayStr < deadlineStr) {
+        const [cy, cm, cd] = todayStr.split('-').map(Number);
+        const tomD = new Date(cy, cm - 1, cd + 1);
+        const tomy = tomD.getFullYear();
+        const tomm = String(tomD.getMonth() + 1).padStart(2, '0');
+        const tomd = String(tomD.getDate()).padStart(2, '0');
+        startDateStr = `${tomy}-${tomm}-${tomd}`;
+      } else {
+        startDateStr = todayStr;
+      }
+    }
+
+    let effectiveDeadlineStr = deadlineStr;
+    if (!effectiveDeadlineStr) {
+      const [sy, sm, sd] = startDateStr.split('-').map(Number);
+      const defDead = new Date(sy, sm - 1, sd + 30);
+      const dy = defDead.getFullYear();
+      const dm = String(defDead.getMonth() + 1).padStart(2, '0');
+      const dd = String(defDead.getDate()).padStart(2, '0');
+      effectiveDeadlineStr = `${dy}-${dm}-${dd}`;
+    }
+
+    const targetDates = calculateAvailableStudyDates(startDateStr, effectiveDeadlineStr);
+    if (targetDates.length === 0) {
+      return {
+        success: false,
+        error:
+          'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.',
+      };
+    }
+
+    const maxTasks = targetDates.length;
+    const datesListFormatted = targetDates.map((d, i) => `   - Tarea ${i + 1}: ${d}`).join('\n');
+
+    // 1. Preparar mensaje explicito para el Agente/Chatbot de n8n
     const hasExisting = existingTasks.length > 0;
 
     let existingTasksPrompt = '';
@@ -425,39 +477,11 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       ? ` Documento de referencia adjunto ("${project.file_name || 'archivo'}"):\n--- INICIO DEL DOCUMENTO ---\n${project.file_content}\n--- FIN DEL DOCUMENTO ---\nPor favor toma en cuenta este documento para extraer o estructurar las tareas del proyecto.`
       : '';
 
-    // Cálculo previo de días restantes y carga total de estudio
-    let diasRestantes: number | null = null;
-    let semanasRestantes: number | null = null;
-    let horasTotalesEstimadas: number | null = null;
-    let tiempoInfo = '';
-
     const minutosDiarios = project.minutos_diarios || 30;
 
-    if (project.fecha_limite) {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      const deadline = new Date(project.fecha_limite);
-      deadline.setHours(0, 0, 0, 0);
-      const diffMs = deadline.getTime() - now.getTime();
-      const diffDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-      diasRestantes = diffDays;
-      semanasRestantes = Math.max(1, Math.round((diffDays / 7) * 10) / 10);
-      horasTotalesEstimadas = Math.round((diffDays * minutosDiarios) / 60);
-
-      const fechaStr = project.fecha_limite.includes('T')
-        ? project.fecha_limite.split('T')[0]
-        : project.fecha_limite;
-
-      tiempoInfo =
-        `\n\nCÁLCULO PREVIO DE TIEMPO, PLAZO Y CARGA:\n` +
-        `- Plazo disponible hasta la fecha límite (${fechaStr}): ${diasRestantes} días (~${semanasRestantes} semanas).\n` +
-        `- Dedicación configurada por el usuario: ${minutosDiarios} minutos diarios (~${horasTotalesEstimadas} horas de trabajo en total durante todo el proyecto).\n` +
-        `- DIRECTRIZ OBLIGATORIA DE TAREAS: Debes generar una cantidad suficiente, proporcional y realista de tareas para abarcar todo este periodo de ${diasRestantes} días sin quedarte corto (no te limites a solo 3 o 4 tareas si el plazo es amplio). Cada tarea debe poder realizarse en aproximadamente ${minutosDiarios} minutos diarios. Distribuye el temario de manera progresiva hacia la meta.`;
-    }
-
     const promptMessage = hasExisting
-      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${tiempoInfo}${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
-      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${project.fecha_limite || 'Flexible'}.${tiempoInfo}${materialPart}${filePart} Por favor genera el listado de tareas estructurado acorde al plazo calculado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
+      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
+      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart} Por favor genera el listado de tareas estructurado acorde al plazo calculado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
 
     // 2. Preparar payload completo con compatibilidad para nodos de Supabase (userId, user_id) y agentes de chat (chatInput, message)
     const payload = {
@@ -474,7 +498,7 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       // Datos directos de la tabla 'projects'
       titulo: project.titulo,
       objetivo: project.objetivo || '',
-      fecha_limite: project.fecha_limite || null,
+      fecha_limite: effectiveDeadlineStr,
       prioridad: project.prioridad || 'Prioritario',
       nivel_conocimiento: project.nivel_conocimiento || '',
       material_url: project.material_url || null,
@@ -483,9 +507,10 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       minutos_diarios: minutosDiarios,
 
       // Datos calculados de plazo y carga
-      dias_restantes: diasRestantes,
-      semanas_restantes: semanasRestantes,
-      horas_totales_estimadas: horasTotalesEstimadas,
+      dias_restantes: maxTasks,
+      semanas_restantes: Math.max(1, Math.round((maxTasks / 7) * 10) / 10),
+      horas_totales_estimadas: Math.round((maxTasks * minutosDiarios) / 60),
+      fechas_autorizadas: targetDates,
 
       // Tareas ya existentes para prevenir duplicación
       tareas_existentes: existingTasks.map((t) => ({
@@ -612,23 +637,11 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       }));
     }
 
-    // Calcular la fecha base posterior a la última tarea existente para evitar solapamientos
-    let latestExistingDate: Date | null = null;
-    for (const t of existingTasks) {
-      if (t.fecha_inicio) {
-        const d = new Date(t.fecha_inicio);
-        if (!isNaN(d.getTime())) {
-          if (!latestExistingDate || d > latestExistingDate) {
-            latestExistingDate = d;
-          }
-        }
-      }
+    // Truncar estrictamente al número máximo de ranuras de estudio autorizadas
+    if (candidatesToUse.length > targetDates.length) {
+      candidatesToUse = candidatesToUse.slice(0, targetDates.length);
     }
 
-    const defaultDates = calculateDefaultStartDates(
-      candidatesToUse.length,
-      latestExistingDate || undefined,
-    );
     const defaultDuration = Math.max(10, Number(project.minutos_diarios) || 30);
 
     const tasksToInsert = candidatesToUse.map((candidate, index) => {
@@ -639,26 +652,34 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
         defaultDuration,
       );
 
-      let fechaInicio: string | null = null;
-      const rawDate = candidate.fecha_inicio || candidate.startDate;
-      if (rawDate) {
-        const d = new Date(rawDate);
-        fechaInicio = !isNaN(d.getTime()) ? d.toISOString() : defaultDates[index];
-      } else {
-        const defaultDate = new Date(defaultDates[index]);
-        if (candidate.timeSlot) {
-          const timeMatch = candidate.timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-          if (timeMatch) {
-            let hours = parseInt(timeMatch[1], 10);
-            const minutes = parseInt(timeMatch[2], 10);
-            const ampm = timeMatch[3]?.toUpperCase();
-            if (ampm === 'PM' && hours < 12) hours += 12;
-            if (ampm === 'AM' && hours === 12) hours = 0;
-            defaultDate.setHours(hours, minutes, 0, 0);
-          }
+      // Asignar determinísticamente la fecha autorizada correspondiente a esta ranura
+      const assignedDate = targetDates[index] || targetDates[targetDates.length - 1];
+      let hours = 9;
+      let minutes = 0;
+
+      if (candidate.timeSlot) {
+        const timeMatch = candidate.timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (timeMatch) {
+          let h = parseInt(timeMatch[1], 10);
+          const m = parseInt(timeMatch[2], 10);
+          const ampm = timeMatch[3]?.toUpperCase();
+          if (ampm === 'PM' && h < 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          hours = h;
+          minutes = m;
         }
-        fechaInicio = defaultDate.toISOString();
+      } else if (candidate.fecha_inicio || candidate.startDate) {
+        const rawDate = candidate.fecha_inicio || candidate.startDate;
+        const d = new Date(rawDate!);
+        if (!isNaN(d.getTime())) {
+          hours = d.getHours() || 9;
+          minutes = d.getMinutes() || 0;
+        }
       }
+
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const fechaInicio = new Date(`${assignedDate}T${hStr}:${mStr}:00`).toISOString();
 
       const resources =
         (
