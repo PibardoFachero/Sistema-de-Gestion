@@ -6,6 +6,7 @@ import type { RegisterActionResponse, RegisterFormData } from '@/features/auth/t
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { hashPasswordForBackend } from '@/lib/auth/passwordSecurity';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 export async function registerUser(formData: RegisterFormData): Promise<RegisterActionResponse> {
   const validationResult = registerSchema.safeParse(formData);
@@ -20,6 +21,30 @@ export async function registerUser(formData: RegisterFormData): Promise<Register
   }
 
   const { firstName, lastName, username, email, password } = validationResult.data;
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos en nombre, apellido y usuario
+  const nameValidation = validateContent(`${firstName} ${lastName}`);
+  if (!nameValidation.isValid) {
+    const fnInvalid = !validateContent(firstName).isValid;
+    const lnInvalid = !validateContent(lastName).isValid;
+    return {
+      success: false,
+      error: nameValidation.error || 'El nombre o apellido contiene términos no permitidos.',
+      fieldErrors: {
+        ...(fnInvalid ? { firstName: [nameValidation.error || 'Nombre no permitido'] } : {}),
+        ...(lnInvalid ? { lastName: [nameValidation.error || 'Apellido no permitido'] } : {}),
+      },
+    };
+  }
+
+  const usernameValidation = validateContent(username);
+  if (!usernameValidation.isValid) {
+    return {
+      success: false,
+      error: usernameValidation.error || 'El nombre de usuario contiene términos no permitidos.',
+      fieldErrors: { username: [usernameValidation.error || 'Nombre de usuario no permitido'] },
+    };
+  }
 
   try {
     const supabase = await createClient();

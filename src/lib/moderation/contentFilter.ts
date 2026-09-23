@@ -85,8 +85,19 @@ export function validateContent(
   const normalized = normalizeText(text);
   const words = normalized.split(' ').filter(Boolean);
 
+  // Extraer también palabras alfabéticas directas para detectar términos con números adyacentes (ej. terrorista123 -> terrorista)
+  const rawAlphabeticalWords = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 3);
+
+  const candidateWords = new Set([...words, ...rawAlphabeticalWords]);
+
   // 1. Búsqueda O(1) de palabras individuales peligrosas
-  for (const word of words) {
+  for (const word of candidateWords) {
     if (DANGEROUS_WORDS.has(word)) {
       return {
         isValid: false,
@@ -110,7 +121,7 @@ export function validateContent(
   }
 
   // 3. Búsqueda O(1) de palabras individuales obscenas o vulgares
-  for (const word of words) {
+  for (const word of candidateWords) {
     if (OBSCENE_WORDS.has(word)) {
       return {
         isValid: false,

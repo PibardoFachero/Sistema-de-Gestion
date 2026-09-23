@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { calculateAvailableStudyDates } from '@/services/ai/scheduleAiService';
+import { getUserAiContext } from '@/services/ai/contextBuilderService';
 
 export interface ProjectForTaskGeneration {
   id: string;
@@ -479,9 +480,20 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
 
     const minutosDiarios = project.minutos_diarios || 30;
 
+    // Obtener contexto de perfil de aprendizaje y biblioteca de temas/fuentes autorizadas
+    const userAiContext = await getUserAiContext({
+      userId: project.user_id,
+      projectId: project.id,
+    });
+
+    const contextExtraText = [userAiContext.perfilTexto, userAiContext.temasTexto]
+      .filter(Boolean)
+      .join('\n\n');
+    const contextPart = contextExtraText ? `\n\n${contextExtraText}` : '';
+
     const promptMessage = hasExisting
-      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources".`
-      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart} Por favor genera el listado de tareas estructurado acorde al plazo calculado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources".`;
+      ? `Genera las SIGUIENTES tareas de continuidad para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart}${contextPart}${existingTasksPrompt}\n\nPor favor genera tareas estructuradas completamente NUEVAS sin duplicar nada anterior. Para cada tarea, incluye una URL o enlace recomendado en el campo "resourceUrl" o "resources". Adapta el ritmo y temas a las preferencias y fuentes del usuario.`
+      : `Genera un plan de tareas detallado para el proyecto: "${project.titulo}". Objetivo: ${project.objetivo || 'Avanzar en el aprendizaje'}. Nivel de conocimiento actual: ${project.nivel_conocimiento || 'Principiante'}. Minutos diarios disponibles: ${minutosDiarios}. Fecha límite: ${effectiveDeadlineStr}.\n\n🚨 LÍMITE ESTRICTO DE TAREAS Y FECHAS:\n- Quedan exactamente ${maxTasks} fecha(s) autorizada(s) para este proyecto antes de la fecha límite (${effectiveDeadlineStr}):\n${datesListFormatted}\n- Debes generar ${maxTasks <= 3 ? `EXACTAMENTE ${maxTasks}` : `como máximo ${maxTasks}`} tareas en total (¡PROHIBIDO generar más de ${maxTasks} tareas!).\n- ¡BAJO NINGUNA CIRCUNSTANCIA generes tareas con fechas posteriores al ${effectiveDeadlineStr}!${materialPart}${filePart}${contextPart} Por favor genera el listado de tareas estructurado acorde al plazo calculado. Para cada tarea, incluye obligatoriamente una URL o enlace recomendado (documentación oficial, tutorial o recurso web) en el campo "resourceUrl" o "resources". Adapta el enfoque a su perfil de aprendizaje y biblioteca de temas.`;
 
     // 2. Preparar payload completo con compatibilidad para nodos de Supabase (userId, user_id) y agentes de chat (chatInput, message)
     const payload = {
@@ -505,6 +517,11 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       archivo_nombre: project.file_name || null,
       archivo_contenido: project.file_content || null,
       minutos_diarios: minutosDiarios,
+
+      // Contexto pedagógico del perfil y temas autorizados
+      perfil_usuario: userAiContext.perfilRaw,
+      temas_y_fuentes: userAiContext.temasRaw,
+      fuentes_activas_contexto_count: userAiContext.fuentesActivasCount,
 
       // Datos calculados de plazo y carga
       dias_restantes: maxTasks,
