@@ -10,6 +10,7 @@ import {
   extractedScheduleResponseSchema,
 } from '@/features/schedule/types/scheduleSchemas';
 import { logAiInteraction } from './aiLogger';
+import { extractScheduleFromN8n } from '@/services/automation/n8nTasksService';
 import { getUserAiContext } from './contextBuilderService';
 
 export interface GenerateScheduleParams {
@@ -144,7 +145,7 @@ REGLAS:
             },
           },
         }),
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
+      { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
     );
 
     const rawText = response.text || '{}';
@@ -227,7 +228,7 @@ REGLAS:
             },
           },
         }),
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
+      { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
     );
 
     const rawText = response.text || '{}';
@@ -300,7 +301,7 @@ Devuelve la lista de bloques en formato JSON.`;
             hora_fin: { type: Type.STRING, description: 'HH:MM' },
             tipo: {
               type: Type.STRING,
-              description: 'ocupado, libre, estudio, trabajo o otra_actividad',
+              description: 'ocupado, tareas, estudio, trabajo o otra_actividad',
             },
             etiqueta: { type: Type.STRING, description: 'Materia o actividad' },
           },
@@ -340,7 +341,7 @@ Devuelve la lista de bloques en formato JSON.`;
             },
           },
         }),
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
+      { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 30000 },
     );
 
     const rawText = response.text || '{}';
@@ -359,6 +360,34 @@ Devuelve la lista de bloques en formato JSON.`;
     return validated;
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `[Extracción Horario] Gemini tardó más de 8s o falló (${errMessage}). Reintentando con n8n...`,
+    );
+
+    // Fallback a n8n si Gemini tarda más de 5-10 segundos o experimenta error
+    if (process.env.N8N_WEBHOOK_URL) {
+      try {
+        const n8nResult = await extractScheduleFromN8n({
+          base64Data: params.base64Data,
+          mimeType: params.mimeType,
+          usuarioId: params.usuarioId,
+        });
+
+        await logAiInteraction({
+          usuarioId: params.usuarioId,
+          tipoOperacion: 'extraccion_horario',
+          modelo: 'n8n-webhook',
+          promptEnviado: `Reintento con n8n tras timeout/fallo de Gemini (${errMessage})`,
+          respuestaCruda: JSON.stringify(n8nResult),
+          duracionMs: Date.now() - startTime,
+        });
+
+        return n8nResult;
+      } catch (n8nErr) {
+        console.error('[Extracción Horario] El reintento con n8n también falló:', n8nErr);
+      }
+    }
+
     await logAiInteraction({
       usuarioId: params.usuarioId,
       tipoOperacion: 'extraccion_horario',
@@ -368,7 +397,7 @@ Devuelve la lista de bloques en formato JSON.`;
       duracionMs: Date.now() - startTime,
       error: errMessage,
     });
-    throw new Error(`Error extrayendo horario con visión de Gemini: ${errMessage}`);
+    throw new Error(`Error extrayendo horario con IA: ${errMessage}`);
   }
 }
 
@@ -666,17 +695,27 @@ DIRECTRICES ADICIONALES:
 3. ASIGNACIÓN AL CALENDARIO COHERENTE Y SIN COLISIONES:
    - Para cada tarea debes proponer la fecha ("fecha": YYYY-MM-DD seleccionada de las autorizadas), una hora de inicio ("hora_inicio": HH:MM militar) y hora de fin ("hora_fin": HH:MM militar).
    - Las horas deben ser diurnas y lógicas (entre las 08:00 y las 21:00).
-   - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario esté libre.
+   - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario tenga bloques de tareas.
 4. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).
-5. ADAPTACIÓN AL PERFIL DEL USUARIO:
+5. EVALUACIÓN DE VIABILIDAD: Determina si el objetivo es humanamente posible en el plazo disponible. Si es manifiestamente imposible (ej. aprender medicina o una carrera entera en 3 días), marca es_posible: false y detalla motivo_imposible. Si es viable, marca es_posible: true y genera las tareas.
+6. ADAPTACIÓN AL PERFIL DEL USUARIO:
    - Si el perfil define una metodología de aprendizaje preferida (ej. Pomodoro, práctica intensiva, proyectos paso a paso), adapta la secuencia y dinámica de las sesiones a esa metodología.
    - Toma en cuenta su situación laboral y retos o dificultades declaradas para que el plan sea alcanzable.
-6. INCORPORACIÓN DE TEMAS, NOTAS PRINCIPALES Y FUENTES AUTORIZADAS:
+7. INCORPORACIÓN DE TEMAS, NOTAS PRINCIPALES Y FUENTES AUTORIZADAS:
    - Si el usuario tiene temas vinculados a este proyecto o fuentes autorizadas en su biblioteca de Temas, úsalas como guía temática y documental central para estructurar las tareas.`;
 
     const projectTasksSchema = {
       type: Type.OBJECT,
       properties: {
+        es_posible: {
+          type: Type.BOOLEAN,
+          description:
+            'true si el objetivo es factible en el tiempo y plazo; false si es imposible.',
+        },
+        motivo_imposible: {
+          type: Type.STRING,
+          description: 'Explicación si el proyecto es manifiestamente imposible.',
+        },
         resumen: {
           type: Type.STRING,
           description: 'Breve resumen pedagógico del plan de trabajo estructurado.',
@@ -742,11 +781,13 @@ DIRECTRICES ADICIONALES:
             },
           },
         }),
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
+      { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
     );
 
     const rawText = response.text || '{}';
     const parsed = JSON.parse(rawText) as {
+      es_posible?: boolean;
+      motivo_imposible?: string;
       resumen?: string;
       tareas?: Array<{
         titulo: string;
@@ -759,6 +800,16 @@ DIRECTRICES ADICIONALES:
         url_recomendada?: string;
       }>;
     };
+
+    // Si la IA dictaminó que el proyecto es pedagógicamente imposible
+    if (parsed.es_posible === false) {
+      return {
+        success: false,
+        es_imposible: true,
+        motivo: parsed.motivo_imposible || 'El tiempo asignado es insuficiente para este objetivo.',
+        error: `Es imposible realizar el proyecto en el tiempo límite indicado. ${parsed.motivo_imposible || ''}`,
+      };
+    }
 
     let tasksList = parsed.tareas || [];
     if (tasksList.length === 0) {
@@ -899,14 +950,55 @@ DIRECTRICES ADICIONALES:
       duracionMs: Date.now() - startTime,
       error: errMessage,
     });
-    console.error('Error en generateProjectTasksAndScheduleWithGemini:', error);
+    console.warn(
+      `[Generación Tareas] Gemini falló o tardó más de 8s (${errMessage}). Intentando fallback con n8n...`,
+    );
+
+    if (process.env.N8N_WEBHOOK_URL) {
+      try {
+        const { generateProjectTasksFromN8n } =
+          await import('@/services/automation/n8nTasksService');
+        const n8nResult = await generateProjectTasksFromN8n({
+          id: project.id,
+          user_id: project.user_id,
+          titulo: project.titulo,
+          objetivo: project.objetivo,
+          fecha_limite: project.fecha_limite,
+          prioridad: project.prioridad,
+          nivel_conocimiento: project.nivel_conocimiento,
+          minutos_diarios: project.minutos_diarios,
+          material_url: project.material_url,
+        });
+
+        if (n8nResult.success) {
+          await logAiInteraction({
+            usuarioId: project.user_id,
+            proyectoId: project.id,
+            tipoOperacion: 'generacion_cronograma',
+            modelo: 'n8n-webhook',
+            promptEnviado: `Fallback n8n tras fallo de Gemini (${errMessage})`,
+            respuestaCruda: JSON.stringify(n8nResult),
+            duracionMs: Date.now() - startTime,
+          });
+
+          return {
+            success: true,
+            count: n8nResult.count || n8nResult.tasks?.length || 0,
+            tasks: n8nResult.tasks || [],
+            resumen: 'Tareas generadas mediante el servicio de respaldo (n8n).',
+          };
+        }
+      } catch (n8nErr) {
+        console.error('[Generación Tareas] El fallback con n8n también falló:', n8nErr);
+      }
+    }
+
     return {
       success: false,
       error: `Error al generar tareas con Gemini: ${errMessage}`,
     };
   }
 }
-
 export interface CheckProjectFeasibilityParams {
   titulo: string;
   objetivo?: string | null;
@@ -991,7 +1083,6 @@ export async function checkProjectFeasibilityWithGemini(
       // Omitir si no se puede cargar el contexto
     }
   }
-
   const prompt = `Eres un evaluador académico, pedagógico y de viabilidad de proyectos de estudio.
 Tu labor es determinar con rigurosidad y honestidad pedagógica si el siguiente proyecto es FACTIBLE o IMPOSIBLE de realizar en el plazo y tiempo diario asignado por el estudiante.
 
@@ -1078,5 +1169,396 @@ Responde ÚNICAMENTE un objeto JSON que siga el esquema especificado.`;
     );
     // En caso de falla de red con Gemini, no bloquear al usuario a menos que sea plazo 0 o negativo
     return { es_posible: true };
+  }
+}
+
+export interface RescheduledTaskItem {
+  eventoId: string;
+  tareaId?: string | null;
+  titulo: string;
+  fechaAnterior: string;
+  horaAnterior: string;
+  nuevaFecha: string;
+  nuevaHoraInicio: string;
+  nuevaHoraFin: string;
+  motivo?: string;
+}
+
+export interface RescheduleConflictingTasksResult {
+  success: boolean;
+  reagendadas: number;
+  tareasReagendadas: RescheduledTaskItem[];
+  resumen?: string;
+  error?: string;
+}
+
+function timeStrToMinutes(timeStr: string): number {
+  const parts = timeStr.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+}
+
+function minutesToTimeStr(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+function intervalsOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
+  return Math.max(startA, startB) < Math.min(endA, endB);
+}
+
+/**
+ * Detecta si hay tareas en 'eventos_calendario' que colisionen con los bloques ocupados
+ * del usuario en 'bloques_disponibilidad' y las reagenda automáticamente usando Gemini
+ * (con fallback determinista) a horas y días libres sin solapamientos.
+ */
+export async function rescheduleConflictingCalendarTasksWithGemini(
+  usuarioId: string,
+): Promise<RescheduleConflictingTasksResult> {
+  const startTime = Date.now();
+  const supabase = await createClient();
+  const adminDb = getAdminClient();
+  const db = adminDb || supabase;
+
+  try {
+    // 1. Obtener bloques de disponibilidad donde el usuario esté ocupado (no tareas)
+    const { data: busyBlocks, error: busyErr } = await db
+      .from('bloques_disponibilidad')
+      .select('*')
+      .eq('usuario_id', usuarioId)
+      .neq('tipo', 'tareas');
+
+    if (busyErr) {
+      console.warn('Error consultando bloques_disponibilidad en reagendamiento:', busyErr);
+    }
+
+    if (!busyBlocks || busyBlocks.length === 0) {
+      return {
+        success: true,
+        reagendadas: 0,
+        tareasReagendadas: [],
+        resumen: 'No hay bloques ocupados que generen conflictos.',
+      };
+    }
+
+    // 2. Obtener eventos de calendario activos futuros o pendientes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = today.toISOString();
+
+    const { data: pendingEvents, error: eventsErr } = await db
+      .from('eventos_calendario')
+      .select('*')
+      .eq('usuario_id', usuarioId)
+      .eq('estado', 'pendiente')
+      .gte('fin', todayIso)
+      .order('inicio', { ascending: true });
+
+    if (eventsErr) {
+      console.warn('Error consultando eventos_calendario en reagendamiento:', eventsErr);
+    }
+
+    if (!pendingEvents || pendingEvents.length === 0) {
+      return {
+        success: true,
+        reagendadas: 0,
+        tareasReagendadas: [],
+        resumen: 'No hay tareas agendadas pendientes para reagendar.',
+      };
+    }
+
+    // 3. Identificar eventos en conflicto
+    interface ConflictingItem {
+      ev: (typeof pendingEvents)[0];
+      dateStr: string;
+      dayOfWeek: number;
+      startSlot: string;
+      endSlot: string;
+      durationMin: number;
+      conflictReason: string;
+    }
+
+    interface NonConflictingItem {
+      ev: (typeof pendingEvents)[0];
+      dateStr: string;
+      dayOfWeek: number;
+      startSlot: string;
+      endSlot: string;
+      startMin: number;
+      endMin: number;
+    }
+
+    const conflictingEvents: ConflictingItem[] = [];
+    const nonConflictingEvents: NonConflictingItem[] = [];
+
+    for (const ev of pendingEvents) {
+      const startDate = new Date(ev.inicio);
+      const endDate = new Date(ev.fin);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) continue;
+
+      const year = startDate.getFullYear();
+      const month = String(startDate.getMonth() + 1).padStart(2, '0');
+      const day = String(startDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      const dayOfWeek = startDate.getDay(); // 0: Dom, 1: Lun, ... 6: Sab
+
+      const startH = String(startDate.getHours()).padStart(2, '0');
+      const startM = String(startDate.getMinutes()).padStart(2, '0');
+      const endH = String(endDate.getHours()).padStart(2, '0');
+      const endM = String(endDate.getMinutes()).padStart(2, '0');
+      const startSlot = `${startH}:${startM}`;
+      const endSlot = `${endH}:${endM}`;
+
+      const evStartMin = startDate.getHours() * 60 + startDate.getMinutes();
+      const evEndMin = endDate.getHours() * 60 + endDate.getMinutes();
+      const durationMin = Math.max(
+        15,
+        Math.round((endDate.getTime() - startDate.getTime()) / (60 * 1000)),
+      );
+
+      let conflictReason = '';
+      let hasConflict = false;
+
+      for (const busy of busyBlocks) {
+        let matchesDay = false;
+        if (busy.fecha_especifica) {
+          matchesDay = busy.fecha_especifica === dateStr;
+        } else if (busy.dia_semana !== null && busy.dia_semana !== undefined) {
+          matchesDay = busy.dia_semana === dayOfWeek;
+        }
+
+        if (matchesDay) {
+          const busyStartMin = timeStrToMinutes(busy.hora_inicio);
+          const busyEndMin = timeStrToMinutes(busy.hora_fin);
+
+          if (intervalsOverlap(evStartMin, evEndMin, busyStartMin, busyEndMin)) {
+            hasConflict = true;
+            conflictReason = `Cruce con horario ocupado (${busy.tipo}) de ${busy.hora_inicio} a ${busy.hora_fin}`;
+            break;
+          }
+        }
+      }
+
+      if (hasConflict) {
+        conflictingEvents.push({
+          ev,
+          dateStr,
+          dayOfWeek,
+          startSlot,
+          endSlot,
+          durationMin,
+          conflictReason,
+        });
+      } else {
+        nonConflictingEvents.push({
+          ev,
+          dateStr,
+          dayOfWeek,
+          startSlot,
+          endSlot,
+          startMin: evStartMin,
+          endMin: evEndMin,
+        });
+      }
+    }
+
+    if (conflictingEvents.length === 0) {
+      return {
+        success: true,
+        reagendadas: 0,
+        tareasReagendadas: [],
+        resumen: 'No se encontraron tareas en conflicto con el horario.',
+      };
+    }
+
+    // 4. Reagendamiento determinista local instantáneo (0 tokens de IA, sin colisiones)
+    console.info(
+      `[Reagendamiento Local] Reorganizando ${conflictingEvents.length} tareas en conflicto de forma determinista y sin solapamientos...`,
+    );
+
+    // Helper de fallback determinista para encontrar el primer slot libre
+    const findDeterministicSlot = (
+      dateStr: string,
+      durationMin: number,
+      alreadyBooked: Array<{ date: string; startMin: number; endMin: number }>,
+    ): { fecha: string; startMin: number; endMin: number } => {
+      let candidateDate = new Date(`${dateStr}T00:00:00`);
+      if (isNaN(candidateDate.getTime())) candidateDate = new Date();
+
+      for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+        const curDate = new Date(candidateDate);
+        curDate.setDate(curDate.getDate() + dayOffset);
+        const y = curDate.getFullYear();
+        const m = String(curDate.getMonth() + 1).padStart(2, '0');
+        const d = String(curDate.getDate()).padStart(2, '0');
+        const curDateStr = `${y}-${m}-${d}`;
+        const curDayOfWeek = curDate.getDay();
+
+        // Buscar entre las 08:00 (480 min) y 20:00 (1200 min)
+        for (let candidateStart = 480; candidateStart + durationMin <= 1260; candidateStart += 30) {
+          const candidateEnd = candidateStart + durationMin;
+
+          // Verificar si solapa con busyBlocks
+          const collidesBusy = busyBlocks.some((b) => {
+            let mDay = false;
+            if (b.fecha_especifica) mDay = b.fecha_especifica === curDateStr;
+            else if (b.dia_semana !== null && b.dia_semana !== undefined)
+              mDay = b.dia_semana === curDayOfWeek;
+
+            if (mDay) {
+              const bStart = timeStrToMinutes(b.hora_inicio);
+              const bEnd = timeStrToMinutes(b.hora_fin);
+              return intervalsOverlap(candidateStart, candidateEnd, bStart, bEnd);
+            }
+            return false;
+          });
+
+          if (collidesBusy) continue;
+
+          // Verificar si solapa con alreadyBooked
+          const collidesBooked = alreadyBooked.some(
+            (b) =>
+              b.date === curDateStr &&
+              intervalsOverlap(candidateStart, candidateEnd, b.startMin, b.endMin),
+          );
+
+          if (collidesBooked) continue;
+
+          // Slot encontrado
+          return { fecha: curDateStr, startMin: candidateStart, endMin: candidateEnd };
+        }
+      }
+
+      // Último recurso: 18:00 del mismo día
+      return { fecha: dateStr, startMin: 18 * 60, endMin: 18 * 60 + durationMin };
+    };
+
+    const bookedSlots: Array<{ date: string; startMin: number; endMin: number }> =
+      nonConflictingEvents.map((n) => ({
+        date: n.dateStr,
+        startMin: n.startMin,
+        endMin: n.endMin,
+      }));
+
+    const finalRescheduled: RescheduledTaskItem[] = [];
+
+    for (const conf of conflictingEvents) {
+      const slot = findDeterministicSlot(conf.dateStr, conf.durationMin, bookedSlots);
+      const targetDate = slot.fecha;
+      const targetStart = minutesToTimeStr(slot.startMin);
+      const targetEnd = minutesToTimeStr(slot.endMin);
+      const motivo = 'Reagendado automáticamente al siguiente horario libre disponible';
+
+      bookedSlots.push({
+        date: targetDate,
+        startMin: slot.startMin,
+        endMin: slot.endMin,
+      });
+
+      // 5. Actualizar en Supabase
+      const startIso = new Date(`${targetDate}T${targetStart}:00`).toISOString();
+      const endIso = new Date(`${targetDate}T${targetEnd}:00`).toISOString();
+
+      // Actualizar evento_calendario
+      await db
+        .from('eventos_calendario')
+        .update({
+          inicio: startIso,
+          fin: endIso,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conf.ev.id)
+        .eq('usuario_id', usuarioId);
+
+      // Si tiene tarea_id, actualizar fecha_inicio en tareas
+      if (conf.ev.tarea_id) {
+        await db
+          .from('tareas')
+          .update({
+            fecha_inicio: startIso,
+          })
+          .eq('id', conf.ev.tarea_id);
+      }
+
+      // Si tiene proyecto_id, actualizar cronograma activo si existe
+      if (conf.ev.proyecto_id) {
+        const { data: activeCron } = await db
+          .from('cronogramas')
+          .select('id, datos')
+          .eq('proyecto_id', conf.ev.proyecto_id)
+          .eq('activo', true)
+          .maybeSingle();
+
+        if (activeCron && activeCron.datos) {
+          const rawDatos = activeCron.datos as { bloques?: Array<Record<string, unknown>> };
+          const bloques = rawDatos.bloques || [];
+          let updatedCron = false;
+
+          const updatedBloques = bloques.map((b) => {
+            const bTarea = typeof b.tarea === 'string' ? b.tarea : '';
+            if (bTarea && (bTarea === conf.ev.titulo || conf.ev.titulo.includes(bTarea))) {
+              updatedCron = true;
+              return {
+                ...b,
+                fecha: targetDate,
+                hora_inicio: targetStart,
+                hora_fin: targetEnd,
+              };
+            }
+            return b;
+          });
+
+          if (updatedCron) {
+            await db
+              .from('cronogramas')
+              .update({
+                datos: { ...rawDatos, bloques: updatedBloques },
+                estado: 'vigente',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', activeCron.id);
+          }
+        }
+      }
+
+      finalRescheduled.push({
+        eventoId: conf.ev.id,
+        tareaId: conf.ev.tarea_id,
+        titulo: conf.ev.titulo,
+        fechaAnterior: conf.dateStr,
+        horaAnterior: `${conf.startSlot}-${conf.endSlot}`,
+        nuevaFecha: targetDate,
+        nuevaHoraInicio: targetStart,
+        nuevaHoraFin: targetEnd,
+        motivo,
+      });
+    }
+
+    // 6. Registrar log del reagendamiento algorítmico local
+    await logAiInteraction({
+      usuarioId,
+      tipoOperacion: 'regeneracion_cronograma',
+      modelo: 'algoritmo-local-determinista',
+      promptEnviado: `Reagendadas ${finalRescheduled.length} tareas en conflicto`,
+      respuestaCruda: JSON.stringify(finalRescheduled),
+      duracionMs: Date.now() - startTime,
+    });
+
+    return {
+      success: true,
+      reagendadas: finalRescheduled.length,
+      tareasReagendadas: finalRescheduled,
+      resumen: `Se reagendaron exitosamente ${finalRescheduled.length} tareas para evitar cruces con tu nuevo horario sin consumir cuota de IA.`,
+    };
+  } catch (err) {
+    console.error('Error general en rescheduleConflictingCalendarTasksWithGemini:', err);
+    return {
+      success: false,
+      reagendadas: 0,
+      tareasReagendadas: [],
+      error: err instanceof Error ? err.message : 'Error inesperado al reagendar tareas',
+    };
   }
 }

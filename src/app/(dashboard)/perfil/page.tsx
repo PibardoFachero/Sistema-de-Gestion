@@ -122,6 +122,7 @@ export default async function PerfilPage() {
   }
 
   const dashboardProfile: ProfileDashboardData = {
+    userId: user.id,
     firstName,
     lastName,
     name,

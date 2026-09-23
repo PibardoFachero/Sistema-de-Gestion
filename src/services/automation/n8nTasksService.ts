@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import {
+  ExtractedScheduleBlock,
+  ExtractedScheduleResponse,
+} from '@/features/schedule/types/scheduleSchemas';
 import { calculateAvailableStudyDates } from '@/services/ai/scheduleAiService';
 import { getUserAiContext } from '@/services/ai/contextBuilderService';
 
@@ -542,6 +546,16 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       message: promptMessage,
       prompt: promptMessage,
       input: promptMessage,
+
+      // Claves de Gemini para que el servidor de n8n las utilice o rote si tiene cuota agotada
+      geminiApiKey: process.env.GEMINI_API_KEY || null,
+      geminiApiKey2: process.env.GEMINI_API_KEY_2 || null,
+      geminiApiKey3: process.env.GEMINI_API_KEY_3 || null,
+      geminiApiKeys: [
+        process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_2,
+        process.env.GEMINI_API_KEY_3,
+      ].filter(Boolean) as string[],
     };
 
     // 2. Llamada HTTP al Webhook de n8n con timeout de 60 segundos (permite procesar videos y temarios extensos)
@@ -797,5 +811,280 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
     console.error('Error en generateProjectTasksFromN8n:', error);
     const msg = error instanceof Error ? error.message : 'Error de conexión con el webhook de n8n';
     return { success: false, error: msg };
+  }
+}
+
+function normalizeDayOfWeek(dia: unknown): number {
+  if (typeof dia === 'number' && Number.isInteger(dia) && dia >= 0 && dia <= 6) {
+    return dia;
+  }
+  const str = String(dia || '')
+    .toLowerCase()
+    .trim();
+  if (str.includes('dom') || str === '0') return 0;
+  if (str.includes('lun') || str === '1') return 1;
+  if (str.includes('mar') || str === '2') return 2;
+  if (str.includes('mie') || str.includes('mié') || str === '3') return 3;
+  if (str.includes('jue') || str === '4') return 4;
+  if (str.includes('vie') || str === '5') return 5;
+  if (str.includes('sab') || str.includes('sáb') || str === '6') return 6;
+  return 1;
+}
+
+function normalizeTimeSlot(time: unknown): string {
+  const str = String(time || '').trim();
+  const match = str.match(/(\d{1,2}):(\d{2})/);
+  if (match) {
+    const h = match[1].padStart(2, '0');
+    const m = match[2];
+    return `${h}:${m}`;
+  }
+  return '08:00';
+}
+
+function normalizeType(
+  tipo: unknown,
+): 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' {
+  const str = String(tipo || '')
+    .toLowerCase()
+    .trim();
+  if (
+    str.includes('estud') ||
+    str.includes('clase') ||
+    str.includes('materia') ||
+    str.includes('universidad')
+  ) {
+    return 'estudio';
+  }
+  if (str.includes('trabaj') || str.includes('laboral')) {
+    return 'trabajo';
+  }
+  if (str.includes('tarea') || str.includes('libre')) {
+    return 'tareas';
+  }
+  if (str.includes('ocupad')) {
+    return 'ocupado';
+  }
+  return 'otra_actividad';
+}
+
+function parseScheduleFromN8nResponse(rawResponse: unknown): ExtractedScheduleBlock[] {
+  if (!rawResponse) return [];
+
+  // 1. Si es un array
+  if (Array.isArray(rawResponse)) {
+    if (rawResponse.length === 0) return [];
+
+    const blocks: ExtractedScheduleBlock[] = [];
+    for (const item of rawResponse) {
+      if (typeof item !== 'object' || item === null) continue;
+      const rec = item as Record<string, unknown>;
+      if (
+        rec.hora_inicio ||
+        rec.horaInicio ||
+        rec.start ||
+        rec.inicio ||
+        rec.hora_fin ||
+        rec.horaFin ||
+        rec.end ||
+        rec.fin
+      ) {
+        blocks.push({
+          dia_semana: normalizeDayOfWeek(rec.dia_semana ?? rec.diaSemana ?? rec.dia ?? rec.day),
+          hora_inicio: normalizeTimeSlot(
+            rec.hora_inicio ?? rec.horaInicio ?? rec.start ?? rec.inicio,
+          ),
+          hora_fin: normalizeTimeSlot(rec.hora_fin ?? rec.horaFin ?? rec.end ?? rec.fin),
+          tipo: normalizeType(rec.tipo ?? rec.type),
+          etiqueta: String(
+            rec.etiqueta ??
+              rec.label ??
+              rec.materia ??
+              rec.titulo ??
+              rec.nombre ??
+              'Clase/Actividad',
+          ),
+        });
+      }
+    }
+
+    if (blocks.length > 0) return blocks;
+
+    // Si es un formato envoltorio de n8n [ { json: ... } ] o [ { output: ... } ]
+    const first = rawResponse[0] as Record<string, unknown>;
+    for (const key of [
+      'bloques',
+      'schedule',
+      'horario',
+      'output',
+      'json',
+      'data',
+      'reply',
+      'text',
+      'message',
+      'response',
+    ]) {
+      if (first[key]) {
+        const nested = parseScheduleFromN8nResponse(first[key]);
+        if (nested.length > 0) return nested;
+      }
+    }
+  }
+
+  // 2. Si es un string (JSON serializado o Markdown)
+  if (typeof rawResponse === 'string') {
+    const trimmed = rawResponse.trim();
+    const markdownMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    const contentToParse = markdownMatch ? markdownMatch[1].trim() : trimmed;
+
+    try {
+      const parsed = JSON.parse(contentToParse);
+      const res = parseScheduleFromN8nResponse(parsed);
+      if (res.length > 0) return res;
+    } catch {
+      const jsonMatch = contentToParse.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const res = parseScheduleFromN8nResponse(parsed);
+          if (res.length > 0) return res;
+        } catch {
+          // Ignorar y continuar
+        }
+      }
+    }
+  }
+
+  // 3. Si es un objeto directo
+  if (typeof rawResponse === 'object' && rawResponse !== null) {
+    const rec = rawResponse as Record<string, unknown>;
+    for (const key of [
+      'bloques',
+      'schedule',
+      'horario',
+      'clases',
+      'output',
+      'json',
+      'data',
+      'result',
+      'body',
+    ]) {
+      if (rec[key]) {
+        const nested = parseScheduleFromN8nResponse(rec[key]);
+        if (nested.length > 0) return nested;
+      }
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Extrae bloques de horario enviando el archivo al webhook de n8n cuando Gemini
+ * tarda más de 5-10 segundos o experimenta problemas de lectura.
+ */
+export async function extractScheduleFromN8n(params: {
+  base64Data: string;
+  mimeType: string;
+  usuarioId?: string;
+  nombreArchivo?: string;
+}): Promise<ExtractedScheduleResponse> {
+  const webhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
+
+  if (!webhookUrl) {
+    throw new Error('N8N_WEBHOOK_URL no está configurada en las variables de entorno.');
+  }
+
+  const promptMessage = `Analiza la imagen o documento adjunto correspondiente a un horario laboral, académico, universitario o escolar.
+Extrae minuciosamente todos los bloques de clases, materias, asignaturas, turnos o actividades con su día de la semana y horas de inicio y fin.
+Instrucciones clave:
+1. Mapea el día a un número: 0 = Domingo, 1 = Lunes, 2 = Martes, 3 = Miércoles, 4 = Jueves, 5 = Viernes, 6 = Sábado.
+2. Cada bloque debe tener hora_inicio y hora_fin en formato militar HH:MM (ejemplo "08:00", "10:30", "14:00").
+3. Clasifica el campo "tipo" exactamente como una de estas opciones: "ocupado", "estudio", "trabajo" o "otra_actividad" (usa "estudio" u "ocupado" para materias de clase).
+4. En "etiqueta" coloca el nombre de la materia o actividad (ej. "Cálculo I", "Física", "Laboratorio", "Programación").
+Devuelve un JSON con la estructura:
+{
+  "bloques": [
+    {
+      "dia_semana": 1,
+      "hora_inicio": "08:00",
+      "hora_fin": "10:00",
+      "tipo": "estudio",
+      "etiqueta": "Matemáticas"
+    }
+  ],
+  "observaciones": "Horario extraído con IA vía n8n"
+}`;
+
+  const payload = {
+    sessionId: params.usuarioId || 'calendar-schedule',
+    userId: params.usuarioId || 'calendar-schedule',
+    user_id: params.usuarioId || 'calendar-schedule',
+    chatInput: promptMessage,
+    message: promptMessage,
+    mensaje: promptMessage,
+    input: promptMessage,
+    prompt: promptMessage,
+    tipo_evento: 'extraccion_horario',
+    archivo_nombre: params.nombreArchivo || 'horario',
+    archivo: {
+      nombre: params.nombreArchivo || 'horario',
+      tipo: params.mimeType,
+      contenido: params.base64Data,
+    },
+    archivo_base64: params.base64Data,
+    base64Data: params.base64Data,
+    mimeType: params.mimeType,
+
+    // Claves de Gemini para que el servidor de n8n las utilice o rote si tiene cuota agotada
+    geminiApiKey: process.env.GEMINI_API_KEY || null,
+    geminiApiKey2: process.env.GEMINI_API_KEY_2 || null,
+    geminiApiKey3: process.env.GEMINI_API_KEY_3 || null,
+    geminiApiKeys: [
+      process.env.GEMINI_API_KEY,
+      process.env.GEMINI_API_KEY_2,
+      process.env.GEMINI_API_KEY_3,
+    ].filter(Boolean) as string[],
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/plain, */*',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`n8n webhook respondió con código ${response.status}: ${errorText}`);
+    }
+
+    const rawText = await response.text();
+    let parsedJson: unknown = null;
+    try {
+      parsedJson = JSON.parse(rawText);
+    } catch {
+      parsedJson = rawText;
+    }
+
+    const extractedBlocks = parseScheduleFromN8nResponse(parsedJson);
+
+    if (extractedBlocks.length === 0) {
+      throw new Error('La IA de n8n no devolvió bloques de horario interpretables.');
+    }
+
+    return {
+      bloques: extractedBlocks,
+      observaciones: 'Horario extraído exitosamente con n8n tras timeout de Gemini.',
+    };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

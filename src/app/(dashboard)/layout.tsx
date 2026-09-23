@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { UserProfileButton } from '@/components/layout/UserProfileButton';
+import { TelegramBotWidget } from '@/components/layout/TelegramBotWidget';
 import { FolderKanban } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -10,10 +11,26 @@ import { ToastProvider } from '@/components/ui/Toast';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let user = null;
+  let username = 'estudiante';
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
     user = data.user;
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nombre_usuario')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      username =
+        profile?.nombre_usuario ||
+        user.user_metadata?.username ||
+        user.user_metadata?.nombre_usuario ||
+        user.email?.split('@')[0] ||
+        'estudiante';
+    }
   } catch {
     user = null;
   }
@@ -52,6 +69,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
         <MobileNav />
+
+        {/* Asistente de Telegram disponible en todas las vistas */}
+        <TelegramBotWidget username={username} />
       </div>
     </ToastProvider>
   );
