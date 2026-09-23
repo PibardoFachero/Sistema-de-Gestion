@@ -42,6 +42,7 @@ import { updateProfileIdentity } from '@/features/profile/actions/updateProfileI
 import { updateLearningPreferences } from '@/features/profile/actions/updateLearningPreferencesAction';
 
 export type ProfileDashboardData = {
+  userId?: string;
   firstName?: string;
   lastName?: string;
   name: string;
@@ -86,6 +87,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
   const [lastName, setLastName] = useState(profile.lastName || '');
   const [username, setUsername] = useState(profile.username);
   const [description, setDescription] = useState(profile.description || '');
+
   const [avatarPreview, setAvatarPreview] = useState(profile.avatarUrl || '');
   const [uploadedAvatars, setUploadedAvatars] = useState<string[]>(
     profile.uploadedAvatars && profile.uploadedAvatars.length > 0
@@ -484,6 +486,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </span>
                 </div>
 
+
                 {/* Descripción de perfil con límites de resize mínimo y máximo */}
                 <div>
                   <label
@@ -680,6 +683,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   <div className="grid grid-cols-1 gap-2 border-t border-outline-variant/40 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
                     <CompactDetail label="Usuario" value={`@${username}`} />
                     <CompactDetail label="Rol actual" value={answers.rol_condicion || unknown} />
+
                   </div>
                 </div>
 

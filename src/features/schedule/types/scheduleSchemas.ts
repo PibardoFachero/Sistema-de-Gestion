@@ -33,7 +33,7 @@ export const extractedScheduleBlockSchema = z.object({
   dia_semana: z.number().int().min(0).max(6), // 0: Domingo, 1: Lunes, ... 6: Sábado
   hora_inicio: z.string().regex(/^\d{2}:\d{2}$/),
   hora_fin: z.string().regex(/^\d{2}:\d{2}$/),
-  tipo: z.enum(['ocupado', 'libre', 'estudio', 'trabajo', 'otra_actividad']),
+  tipo: z.enum(['ocupado', 'tareas', 'estudio', 'trabajo', 'otra_actividad']),
   etiqueta: z.string().default(''),
 });
 
@@ -83,7 +83,7 @@ export const availabilityChangeItemSchema = z.object({
     .nullable(),
   hora_inicio: z.string().regex(/^\d{2}:\d{2}$/),
   hora_fin: z.string().regex(/^\d{2}:\d{2}$/),
-  tipo: z.enum(['ocupado', 'libre', 'estudio', 'trabajo', 'otra_actividad']),
+  tipo: z.enum(['ocupado', 'tareas', 'estudio', 'trabajo', 'otra_actividad']),
   origen: z.enum(['manual', 'extraido_ia', 'google_calendar']).default('manual'),
   accion: z.enum(['agregar', 'eliminar']).default('agregar'),
 });
