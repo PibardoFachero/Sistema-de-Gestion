@@ -24,7 +24,7 @@ export interface AvailabilityBlockItem {
   fecha_especifica?: string | null;
   hora_inicio: string;
   hora_fin: string;
-  tipo: 'ocupado' | 'libre' | 'estudio' | 'trabajo' | 'otra_actividad';
+  tipo: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad';
   origen: string;
 }
 
