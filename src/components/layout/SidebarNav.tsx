@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LibraryBig } from 'lucide-react';
+import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LibraryBig, Timer } from 'lucide-react';
 import {
   getProjectsAction,
   type ProjectRecord,
@@ -17,6 +17,7 @@ export function SidebarNav() {
     { href: '/proyectos', icon: FolderKanban, label: 'Proyectos' },
     { href: '/temas', icon: LibraryBig, label: 'Temas' },
     { href: '/calendario', icon: Calendar, label: 'Calendario' },
+    { href: '/tecnicas', icon: Timer, label: 'Técnicas de Estudio' },
     { href: '/analitica', icon: BarChart2, label: 'Analítica' },
     { href: '/ia', icon: Sparkles, label: 'Asistente IA' },
   ];
