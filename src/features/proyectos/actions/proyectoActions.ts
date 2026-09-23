@@ -86,6 +86,48 @@ export async function createProjectAction(input: CreateProjectInput) {
           error: 'La fecha límite no puede ser anterior al día de creación.',
         };
       }
+<<<<<<< HEAD
+=======
+
+      const maxYear = today.getFullYear() + 10;
+      const maxDate = new Date(`${maxYear}-12-31T23:59:59`);
+      if (selected > maxDate) {
+        return {
+          success: false,
+          error: `La fecha límite no puede superar los 10 años desde el año actual (${maxYear}).`,
+        };
+      }
+    }
+
+    // [VALIDACIÓN PREVIA HEURÍSTICA DE VIABILIDAD]:
+    // Detección inmediata sin consumo de tokens de casos manifiestamente imposibles
+    if (input.fecha_limite) {
+      const todayZero = new Date();
+      todayZero.setHours(0, 0, 0, 0);
+      const deadlineZero = new Date(input.fecha_limite);
+      deadlineZero.setHours(0, 0, 0, 0);
+      const diffDays = Math.max(1, Math.ceil((deadlineZero.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)));
+      const minDiarios = Math.round(Number(input.minutos_diarios)) || 30;
+      const horasTotales = Math.round((diffDays * minDiarios) / 60);
+
+      const objLower = (trimmedObjective + ' ' + trimmedTitle).toLowerCase();
+      const esMetaMasiva =
+        objLower.includes('carrera') ||
+        objLower.includes('medicina') ||
+        objLower.includes('ingeniería desde cero') ||
+        objLower.includes('sistema operativo') ||
+        objLower.includes('doctorado');
+
+      if (diffDays <= 2 && (esMetaMasiva || (trimmedObjective.length > 200 && horasTotales < 3))) {
+        return {
+          success: false,
+          error: `Es imposible realizar el proyecto en solo ${diffDays} día(s). Se necesita más tiempo para alcanzar este objetivo.`,
+          es_imposible: true,
+          motivo: 'El plazo asignado es insuficiente para abarcar la complejidad y alcance del objetivo declarado.',
+          tiempo_minimo_recomendado: 'Al menos 1 a 3 meses',
+        };
+      }
+>>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
     }
 
     const projectId = crypto.randomUUID();
@@ -115,10 +157,9 @@ export async function createProjectAction(input: CreateProjectInput) {
     }
 
     // =========================================================================
-    // [INTEGRACIÓN IA - GENERACIÓN AUTOMÁTICA DE TAREAS Y CALENDARIO]:
-    // Genera tareas pedagógicas con Gemini desde la fecha de inicio hasta la
-    // fecha límite, calibradas a los minutos diarios disponibles y sin colisiones
-    // con el horario ocupado del usuario en 'eventos_calendario'.
+    // [INTEGRACIÓN IA UNIFICADA - VIABILIDAD + TAREAS Y CALENDARIO]:
+    // Realiza 1 sola llamada a la IA que evalúa viabilidad pedagógica y genera
+    // tareas calibradas sin colisiones en el calendario (50% ahorro de cuota).
     // =========================================================================
     let tasksGenerated = false;
 
@@ -135,6 +176,20 @@ export async function createProjectAction(input: CreateProjectInput) {
           minutos_diarios: project.minutos_diarios,
           material_url: project.material_url,
         });
+
+        // Si la IA dictaminó que el proyecto es pedagógicamente inviable
+        if ((geminiResult as any).es_imposible) {
+          // Revertir inserción de proyecto limpio
+          await supabase.from('projects').delete().eq('id', project.id);
+          return {
+            success: false,
+            error:
+              geminiResult.error ||
+              'Es imposible realizar el proyecto en el tiempo límite indicado, se necesita más tiempo.',
+            es_imposible: true,
+            motivo: (geminiResult as any).motivo,
+          };
+        }
 
         if (geminiResult.success) {
           tasksGenerated = true;

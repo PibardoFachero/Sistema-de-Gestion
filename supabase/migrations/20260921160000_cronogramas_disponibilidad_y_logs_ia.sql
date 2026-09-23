@@ -46,7 +46,7 @@ create table if not exists public.bloques_disponibilidad (
   fecha_especifica date null,                         -- Opcional si es un bloqueo puntual de una sola fecha
   hora_inicio time not null,
   hora_fin time not null,
-  tipo text not null check (tipo in ('ocupado', 'libre', 'estudio', 'trabajo', 'otra_actividad')),
+  tipo text not null check (tipo in ('ocupado', 'tareas', 'estudio', 'trabajo', 'otra_actividad')),
   origen text not null default 'manual' check (origen in ('manual', 'extraido_ia', 'google_calendar')),
   fecha_vigencia_desde date null,
   fecha_vigencia_hasta date null,

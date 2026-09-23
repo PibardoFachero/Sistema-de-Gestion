@@ -83,7 +83,7 @@ export async function detectScheduleConflicts(
     .from('bloques_disponibilidad')
     .select('*')
     .eq('usuario_id', usuarioId)
-    .neq('tipo', 'libre');
+    .neq('tipo', 'tareas');
 
   if (busyErr || !busyBlocks || busyBlocks.length === 0) {
     return { hasConflict: false, conflicts: [] };

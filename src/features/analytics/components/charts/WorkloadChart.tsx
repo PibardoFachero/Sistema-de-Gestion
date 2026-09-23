@@ -34,7 +34,12 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
                   <div className="rounded-xl border border-outline-variant/40 bg-surface/95 px-3 py-2 text-sm shadow-md backdrop-blur">
                     <p className="font-bold text-on-surface">{data.label}</p>
                     <p className="font-semibold" style={{ color: 'var(--color-accent-amber)' }}>
+<<<<<<< HEAD
                       {data.plannedMinutes ? formatMinutes(data.plannedMinutes) : 'Libre'} planificados
+=======
+                      {data.plannedMinutes ? formatMinutes(data.plannedMinutes) : 'Tareas'}{' '}
+                      planificados
+>>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
                     </p>
                   </div>
                 );
