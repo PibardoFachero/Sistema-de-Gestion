@@ -1,11 +1,7 @@
 import 'server-only';
 import esDict from './locales/es.json';
 import enDict from './locales/en.json';
-import {
-  SupportedLocale,
-  ModerationDictionary,
-  ContentValidationResult,
-} from './types';
+import { SupportedLocale, ModerationDictionary, ContentValidationResult } from './types';
 
 export type { SupportedLocale, ModerationDictionary, ContentValidationResult };
 
@@ -61,25 +57,16 @@ function preparePhrases(phrases: string[]): string[] {
 }
 
 // 1. Unificamos los términos de todos los idiomas para proteger globalmente la plataforma
-const DANGEROUS_WORDS = prepareWordSet([
-  ...esDict.dangerous.words,
-  ...enDict.dangerous.words,
-]);
+const DANGEROUS_WORDS = prepareWordSet([...esDict.dangerous.words, ...enDict.dangerous.words]);
 
 const DANGEROUS_PHRASES = preparePhrases([
   ...esDict.dangerous.phrases,
   ...enDict.dangerous.phrases,
 ]);
 
-const OBSCENE_WORDS = prepareWordSet([
-  ...esDict.obscene.words,
-  ...enDict.obscene.words,
-]);
+const OBSCENE_WORDS = prepareWordSet([...esDict.obscene.words, ...enDict.obscene.words]);
 
-const OBSCENE_PHRASES = preparePhrases([
-  ...esDict.obscene.phrases,
-  ...enDict.obscene.phrases,
-]);
+const OBSCENE_PHRASES = preparePhrases([...esDict.obscene.phrases, ...enDict.obscene.phrases]);
 
 /**
  * Valida si un texto contiene palabras o frases peligrosas u obscenas en cualquier idioma configurado.

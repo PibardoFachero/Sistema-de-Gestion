@@ -4,10 +4,10 @@ import path from 'path';
 
 // Cargar los JSONs directamente
 const esDict = JSON.parse(
-  fs.readFileSync(path.resolve('src/lib/moderation/locales/es.json'), 'utf8')
+  fs.readFileSync(path.resolve('src/lib/moderation/locales/es.json'), 'utf8'),
 );
 const enDict = JSON.parse(
-  fs.readFileSync(path.resolve('src/lib/moderation/locales/en.json'), 'utf8')
+  fs.readFileSync(path.resolve('src/lib/moderation/locales/en.json'), 'utf8'),
 );
 
 function normalizeText(text) {
@@ -44,22 +44,13 @@ function preparePhrases(phrases) {
   return phrases.map((phrase) => normalizeText(phrase)).filter(Boolean);
 }
 
-const DANGEROUS_WORDS = prepareWordSet([
-  ...esDict.dangerous.words,
-  ...enDict.dangerous.words,
-]);
+const DANGEROUS_WORDS = prepareWordSet([...esDict.dangerous.words, ...enDict.dangerous.words]);
 const DANGEROUS_PHRASES = preparePhrases([
   ...esDict.dangerous.phrases,
   ...enDict.dangerous.phrases,
 ]);
-const OBSCENE_WORDS = prepareWordSet([
-  ...esDict.obscene.words,
-  ...enDict.obscene.words,
-]);
-const OBSCENE_PHRASES = preparePhrases([
-  ...esDict.obscene.phrases,
-  ...enDict.obscene.phrases,
-]);
+const OBSCENE_WORDS = prepareWordSet([...esDict.obscene.words, ...enDict.obscene.words]);
+const OBSCENE_PHRASES = preparePhrases([...esDict.obscene.phrases, ...enDict.obscene.phrases]);
 
 function validateContent(text, locale = 'es') {
   if (!text || text.trim() === '') return { isValid: true };
@@ -91,14 +82,61 @@ function validateContent(text, locale = 'es') {
 }
 
 const testCases = [
-  { text: 'Proyecto de investigación sobre redes neuronales', locale: 'es', expectValid: true, desc: 'Texto legítimo' },
-  { text: 'Este proyecto es una mierda total', locale: 'es', expectValid: false, expectType: 'obscene', desc: 'Insulto español' },
-  { text: 'Como fabricar bomba casera en el laboratorio', locale: 'es', expectValid: false, expectType: 'dangerous', desc: 'Peligroso español frase' },
-  { text: 'This is a fucking disaster', locale: 'en', expectValid: false, expectType: 'obscene', desc: 'Insulto inglés con locale en' },
-  { text: 'How to commit suicide with cyanide', locale: 'en', expectValid: false, expectType: 'dangerous', desc: 'Peligroso inglés con locale en' },
-  { text: 'Un proyecto sobre cianuro y veneno', locale: 'es', expectValid: false, expectType: 'dangerous', desc: 'Palabra peligrosa español' },
-  { text: 'Que p3nd3jo y estúpido eres', locale: 'es', expectValid: false, expectType: 'obscene', desc: 'Leet y tildes' },
-  { text: 'Mi tarea contiene la palabra bitch', locale: 'es', expectValid: false, expectType: 'obscene', desc: 'Cruce multilingüe (insulto en inglés con locale es)' }
+  {
+    text: 'Proyecto de investigación sobre redes neuronales',
+    locale: 'es',
+    expectValid: true,
+    desc: 'Texto legítimo',
+  },
+  {
+    text: 'Este proyecto es una mierda total',
+    locale: 'es',
+    expectValid: false,
+    expectType: 'obscene',
+    desc: 'Insulto español',
+  },
+  {
+    text: 'Como fabricar bomba casera en el laboratorio',
+    locale: 'es',
+    expectValid: false,
+    expectType: 'dangerous',
+    desc: 'Peligroso español frase',
+  },
+  {
+    text: 'This is a fucking disaster',
+    locale: 'en',
+    expectValid: false,
+    expectType: 'obscene',
+    desc: 'Insulto inglés con locale en',
+  },
+  {
+    text: 'How to commit suicide with cyanide',
+    locale: 'en',
+    expectValid: false,
+    expectType: 'dangerous',
+    desc: 'Peligroso inglés con locale en',
+  },
+  {
+    text: 'Un proyecto sobre cianuro y veneno',
+    locale: 'es',
+    expectValid: false,
+    expectType: 'dangerous',
+    desc: 'Palabra peligrosa español',
+  },
+  {
+    text: 'Que p3nd3jo y estúpido eres',
+    locale: 'es',
+    expectValid: false,
+    expectType: 'obscene',
+    desc: 'Leet y tildes',
+  },
+  {
+    text: 'Mi tarea contiene la palabra bitch',
+    locale: 'es',
+    expectValid: false,
+    expectType: 'obscene',
+    desc: 'Cruce multilingüe (insulto en inglés con locale es)',
+  },
 ];
 
 console.log('=== Iniciando pruebas de moderación i18n ===\n');
