@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, ExternalLink, GraduationCap, ShieldCheck, FileText, Mail } from 'lucide-react';
+import { ArrowLeft, ExternalLink, GraduationCap, ShieldCheck, FileText } from 'lucide-react';
 
 export interface LegalHighlightItem {
   icon: React.ReactNode;
@@ -72,7 +72,7 @@ export function LegalPageLayout({
 
           {/* Selector de Pestañas Legales */}
           <nav
-            aria-label="Páginas Legales"
+            aria-label="Información del proyecto"
             className="hidden sm:flex items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1"
           >
             <Link
@@ -95,7 +95,7 @@ export function LegalPageLayout({
               }`}
             >
               <FileText className="size-3.5" />
-              <span>Términos</span>
+              <span>Uso académico</span>
             </Link>
           </nav>
 
@@ -105,7 +105,7 @@ export function LegalPageLayout({
               href="/login"
               className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-3.5 py-1.5 text-xs font-bold text-primary shadow-xs transition-all hover:bg-surface-container-low hover:border-outline-variant"
             >
-              <span>Acceder al estudio</span>
+              <span>Volver al acceso</span>
               <ExternalLink className="size-3 text-accent-amber" />
             </Link>
           </div>
@@ -133,7 +133,7 @@ export function LegalPageLayout({
             }`}
           >
             <FileText className="size-3.5" />
-            <span>Términos</span>
+            <span>Uso académico</span>
           </Link>
         </div>
       </header>
@@ -177,7 +177,7 @@ export function LegalPageLayout({
                 </span>
                 <span>•</span>
                 <span>
-                  <strong>Ámbito:</strong> Comunidad Universitaria e Investigadores
+                  <strong>Ámbito:</strong> Prototipo académico
                 </span>
                 <span>•</span>
                 <span>
@@ -232,25 +232,18 @@ export function LegalPageLayout({
                   </nav>
                 </div>
 
-                {/* Tarjeta de Asistencia Institucional */}
+                {/* Tarjeta de contexto académico */}
                 <div className="rounded-2xl border border-outline-variant/20 bg-primary p-5 text-on-primary shadow-xs">
                   <div className="flex items-center gap-2 text-accent-amber mb-2">
                     <GraduationCap className="size-4" />
                     <span className="text-[11px] font-bold uppercase tracking-wider text-accent-amber">
-                      Komorebi Académico
+                      Proyecto académico
                     </span>
                   </div>
                   <p className="text-xs text-on-primary/85 leading-relaxed mb-4">
-                    ¿Tienes dudas sobre el tratamiento de tus datos o los estatutos de uso en tu
-                    facultad?
+                    Este documento describe el alcance de la demostración. Evita introducir
+                    información sensible o archivos que no puedas respaldar por tu cuenta.
                   </p>
-                  <a
-                    href="mailto:legal@komorebi.studio"
-                    className="inline-flex items-center gap-2 rounded-xl bg-surface px-3.5 py-2 text-xs font-bold text-primary hover:bg-surface-dim transition-colors"
-                  >
-                    <Mail className="size-3.5 text-accent-amber" />
-                    <span>Contactar equipo legal</span>
-                  </a>
                 </div>
               </div>
             </aside>
@@ -267,13 +260,12 @@ export function LegalPageLayout({
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-primary mb-1">
-                      Compromiso de Transparencia y Cero Venta de Datos
+                      Uso académico y transparente
                     </h3>
                     <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
-                      Komorebi Study Studio fue concebido para potenciar la educación superior y la
-                      investigación sin ánimo de lucro sobre los hábitos de los estudiantes. Ningún
-                      apunte, proyecto, métrica o archivo subido será utilizado para publicidad
-                      comercial ni cedido a brokers de datos.
+                      Komorebi Study Studio es un prototipo para pruebas y demostraciones. Utiliza
+                      únicamente información necesaria para sus funciones y evita incluir datos
+                      sensibles o contenido que no puedas respaldar fuera de la Plataforma.
                     </p>
                   </div>
                 </div>
@@ -295,8 +287,7 @@ export function LegalPageLayout({
               className="size-6 object-contain"
             />
             <p className="text-xs text-on-surface-variant">
-              © {new Date().getFullYear()} Komorebi Study Studio. Plataforma de Productividad y
-              Aprendizaje Universitario.
+              © {new Date().getFullYear()} Komorebi Study Studio · Prototipo académico.
             </p>
           </div>
 
@@ -316,7 +307,7 @@ export function LegalPageLayout({
                 currentPage === 'terms' ? 'text-primary underline font-bold' : ''
               }`}
             >
-              Términos de Servicio
+              Términos de uso académico
             </Link>
             <span>•</span>
             <Link href="/login" className="hover:text-primary transition-colors">
