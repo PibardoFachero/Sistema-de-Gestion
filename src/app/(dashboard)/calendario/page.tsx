@@ -42,6 +42,7 @@ import {
   getCalendarDataAction,
   deleteCalendarEventAction,
   updateCalendarEventScheduleAction,
+  syncAvailabilityBlocksAction,
 } from '@/features/schedule/actions/calendarActions';
 import { createClient } from '@/lib/supabase/client';
 
@@ -129,6 +130,13 @@ for (let h = 0; h <= 23; h++) {
 }
 TIME_SLOTS.push('24:00');
 
+const parseISODate = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const endOfMonthFn = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
 export default function CalendarioPage() {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -187,16 +195,6 @@ export default function CalendarioPage() {
   } | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ date: string; time: string } | null>(null);
 
-  // Asignación de disponibilidad mediante clic simple o sostenido (sin multi-clic disperso)
-  const [isHoldingMouse, setIsHoldingMouse] = useState(false);
-  const [holdStart, setHoldStart] = useState<{
-    dateStr: string;
-    dayOfWeek: string;
-    startIdx: number;
-    isMacro: boolean;
-  } | null>(null);
-  const [currentHoldEndIdx, setCurrentHoldEndIdx] = useState<number | null>(null);
-
   const [expandedHours, setExpandedHours] = useState<number[]>([]);
   const [hoveredTimeStr, setHoveredTimeStr] = useState<string | null>(null);
 
@@ -225,52 +223,97 @@ export default function CalendarioPage() {
   const loadCalendarEventsFromSupabase = React.useCallback(async () => {
     try {
       const res = await getCalendarDataAction();
-      if (res.success && res.events && res.events.length > 0) {
+      if (res.success) {
         const dbEvents: Availability[] = [];
-        res.events.forEach((ev) => {
-          const startD = new Date(ev.inicio);
-          const endD = new Date(ev.fin);
-          if (isNaN(startD.getTime()) || isNaN(endD.getTime())) return;
+        if (res.events && res.events.length > 0) {
+          res.events.forEach((ev) => {
+            const startD = new Date(ev.inicio);
+            const endD = new Date(ev.fin);
+            if (isNaN(startD.getTime()) || isNaN(endD.getTime())) return;
 
-          const dateStr = format(startD, 'yyyy-MM-dd');
-          const dayOfWeekName = format(startD, 'EEEE', { locale: es });
-          const startSlot = format(startD, 'HH:mm');
-          const endSlot = format(endD, 'HH:mm');
+            const dateStr = format(startD, 'yyyy-MM-dd');
+            const dayOfWeekName = format(startD, 'EEEE', { locale: es });
+            const startSlot = format(startD, 'HH:mm');
+            const endSlot = format(endD, 'HH:mm');
 
-          const startIdx = TIME_SLOTS.indexOf(startSlot);
-          const endIdx = TIME_SLOTS.indexOf(endSlot);
-          const fromIdx = startIdx !== -1 ? startIdx : 0;
-          const toIdx =
-            endIdx !== -1 && endIdx > fromIdx
-              ? endIdx
-              : fromIdx +
-                Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)));
+            const startIdx = TIME_SLOTS.indexOf(startSlot);
+            const endIdx = TIME_SLOTS.indexOf(endSlot);
+            const fromIdx = startIdx !== -1 ? startIdx : 0;
+            const toIdx =
+              endIdx !== -1 && endIdx > fromIdx
+                ? endIdx
+                : fromIdx +
+                  Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)));
 
-          for (let i = fromIdx; i < toIdx; i++) {
-            const slot = TIME_SLOTS[i];
-            if (slot && slot !== '24:00') {
-              dbEvents.push({
-                date: dateStr,
-                dayOfWeek: dayOfWeekName,
-                startTime: slot,
-                endTime: TIME_SLOTS[i + 1] || '24:00',
-                label: `📌 ${ev.titulo}`,
-                type: 'tareas',
-                source: 'supabase',
-                eventId: ev.id,
-              });
+            for (let i = fromIdx; i < toIdx; i++) {
+              const slot = TIME_SLOTS[i];
+              if (slot && slot !== '24:00') {
+                dbEvents.push({
+                  date: dateStr,
+                  dayOfWeek: dayOfWeekName,
+                  startTime: slot,
+                  endTime: TIME_SLOTS[i + 1] || '24:00',
+                  label: `📌 ${ev.titulo}`,
+                  type: 'tareas',
+                  source: 'supabase',
+                  eventId: ev.id,
+                });
+              }
             }
-          }
-        });
+          });
+        }
 
-        setAvailabilities((prev) => {
-          const nonSupabase = prev.filter((p) => p.source !== 'supabase' && !p.eventId);
-          const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
-          const filteredNonSupabase = nonSupabase.filter(
-            (p) => !keys.has(`${p.date}_${p.startTime}`),
-          );
-          return [...filteredNonSupabase, ...dbEvents];
-        });
+        // Cargar bloques de disponibilidad guardados en Supabase
+        if (res.availabilities && res.availabilities.length > 0) {
+          res.availabilities.forEach((b) => {
+            if (b.tipo === 'tareas') return; // 'tareas' representan slots libres
+            if (!b.fecha_especifica) return;
+
+            const startSlot = b.hora_inicio.slice(0, 5);
+            const endSlot = b.hora_fin.slice(0, 5);
+            const startIdx = TIME_SLOTS.indexOf(startSlot);
+            const endIdx = TIME_SLOTS.indexOf(endSlot);
+            if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return;
+
+            let normalizedType:
+              'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'trabajo';
+            if (b.tipo === 'estudio') normalizedType = 'estudiando';
+            else if (b.tipo === 'trabajo') normalizedType = 'trabajo';
+            else if (b.tipo === 'otra_actividad') normalizedType = 'otra_actividad';
+            else if (b.tipo === 'ocupado') normalizedType = 'trabajo';
+
+            const dayOfWeekName = format(parseISODate(b.fecha_especifica), 'EEEE', { locale: es });
+            const blockId = `block_${b.fecha_especifica}_${startIdx}_${endIdx}`;
+
+            for (let i = startIdx; i < endIdx; i++) {
+              const slot = TIME_SLOTS[i];
+              if (slot && slot !== '24:00') {
+                dbEvents.push({
+                  date: b.fecha_especifica,
+                  dayOfWeek: dayOfWeekName,
+                  startTime: slot,
+                  endTime: TIME_SLOTS[i + 1] || '24:00',
+                  label:
+                    b.tipo === 'estudio' ? 'Estudio' : b.tipo === 'trabajo' ? 'Trabajo' : 'Ocupado',
+                  type: normalizedType,
+                  source: 'supabase',
+                  blockId,
+                });
+              }
+            }
+          });
+        }
+
+        if (dbEvents.length > 0) {
+          setAvailabilities((prev) => {
+            const nonSupabase = prev.filter((p) => p.source !== 'supabase' && !p.eventId);
+            const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
+            const filteredNonSupabase = nonSupabase.filter(
+              (p) => !keys.has(`${p.date}_${p.startTime}`),
+            );
+            return [...filteredNonSupabase, ...dbEvents];
+          });
+        }
       }
     } catch (err) {
       console.warn('Aviso cargando eventos de calendario:', err);
@@ -394,91 +437,6 @@ export default function CalendarioPage() {
     }
   }, [loadCalendarEventsFromSupabase]);
 
-  const applyRange = React.useCallback(
-    (
-      dateStr: string,
-      dayOfWeek: string,
-      minIdx: number,
-      maxIdx: number,
-      action: 'add' | 'remove',
-    ) => {
-      if (action === 'add') {
-        const newBlocks: Availability[] = [];
-        const newBlockId = `block_${dateStr}_${minIdx}_${maxIdx}`;
-        for (let i = minIdx; i <= maxIdx; i++) {
-          const slotTime = TIME_SLOTS[i];
-          if (slotTime === '24:00') continue;
-
-          const [h, m] = slotTime.split(':').map(Number);
-          let endH = h;
-          let endM = m + 5;
-          if (endM >= 60) {
-            endH += 1;
-            endM -= 60;
-          }
-          const endTimeStr = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-
-          newBlocks.push({
-            date: dateStr,
-            dayOfWeek: dayOfWeek,
-            startTime: slotTime,
-            endTime: endTimeStr,
-            label: '',
-            type: 'tareas',
-            source: 'local',
-            blockId: newBlockId,
-          });
-        }
-
-        setAvailabilities((prev) => {
-          const filtered = prev.filter(
-            (p) => !newBlocks.some((n) => n.date === p.date && n.startTime === p.startTime),
-          );
-          return [...filtered, ...newBlocks];
-        });
-
-        setSelectedBlock({
-          date: dateStr,
-          startTime: TIME_SLOTS[minIdx],
-          endTime: TIME_SLOTS[maxIdx + 1] || '24:00',
-          blockId: newBlockId,
-        });
-      } else {
-        const timesToRemove = new Set<string>();
-        for (let i = minIdx; i <= maxIdx; i++) {
-          if (TIME_SLOTS[i] !== '24:00') {
-            timesToRemove.add(TIME_SLOTS[i]);
-          }
-        }
-
-        setAvailabilities((prev) =>
-          prev.filter((a) => !(a.date === dateStr && timesToRemove.has(a.startTime))),
-        );
-        setSelectedBlock(null);
-      }
-    },
-    [],
-  );
-
-  // Listener global de mouseup para completar selección con clic sostenido
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (isHoldingMouse && holdStart && currentHoldEndIdx !== null) {
-        const minIdx = Math.min(holdStart.startIdx, currentHoldEndIdx);
-        const maxIdx = Math.max(holdStart.startIdx, currentHoldEndIdx);
-        applyRange(holdStart.dateStr, holdStart.dayOfWeek, minIdx, maxIdx, 'add');
-      }
-      setIsHoldingMouse(false);
-      setHoldStart(null);
-      setCurrentHoldEndIdx(null);
-    };
-
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [isHoldingMouse, holdStart, currentHoldEndIdx, applyRange]);
-
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 5000);
@@ -512,6 +470,37 @@ export default function CalendarioPage() {
 
   useEffect(() => {
     localStorage.setItem('komorebi_availabilities', JSON.stringify(availabilities));
+
+    // Sincronizar bloques de disponibilidad manuales con Supabase
+    const timer = setTimeout(() => {
+      const localBlocks = availabilities
+        .filter((a) => a.source !== 'supabase' && !a.eventId && a.source !== 'google')
+        .map((a) => {
+          let normalizedType: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' =
+            'tareas';
+          if (a.type === 'estudio' || a.type === 'estudiando') normalizedType = 'estudio';
+          else if (a.type === 'trabajo' || a.type === 'ocupado') normalizedType = 'trabajo';
+          else if (a.type === 'otra_actividad' || a.type === 'descanso')
+            normalizedType = 'otra_actividad';
+          else normalizedType = 'tareas';
+
+          return {
+            fecha_especifica: a.date,
+            hora_inicio: a.startTime,
+            hora_fin: a.endTime,
+            tipo: normalizedType,
+            origen: 'manual',
+          };
+        });
+
+      if (localBlocks.length > 0) {
+        syncAvailabilityBlocksAction(localBlocks).catch((err) =>
+          console.warn('Aviso sincronizando bloques en Supabase:', err),
+        );
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, [availabilities]);
 
   const visibleTimeSlots: string[] = [];
@@ -996,7 +985,7 @@ export default function CalendarioPage() {
     };
   };
 
-  // Asignación simple (click por click) o Selección de bloque asignado
+  // Selección de celda o bloque asignado y apertura de edición
   const handleCellClick = (
     dateStr: string,
     dayOfWeek: string,
@@ -1015,8 +1004,7 @@ export default function CalendarioPage() {
     const block = getBlockForCell(dateStr, timeStr, isCollapsedHour);
 
     if (block) {
-      // Si el bloque tiene algo asignado, seleccionar o alternar selección
-      setEditingCell(null);
+      // Si el bloque tiene algo asignado, alternar selección
       if (
         selectedBlock &&
         selectedBlock.date === block.date &&
@@ -1026,6 +1014,7 @@ export default function CalendarioPage() {
         (selectedBlock.blockId ? selectedBlock.blockId === block.blockId : true)
       ) {
         setSelectedBlock(null);
+        setEditingCell(null);
       } else {
         setSelectedBlock({
           date: block.date,
@@ -1034,51 +1023,42 @@ export default function CalendarioPage() {
           eventId: block.eventId,
           blockId: block.blockId,
         });
+
+        // Si es un bloque editable (manual/disponibilidad), abrir edición
+        if (!block.eventId && block.source !== 'google') {
+          setEditingCell({ date: dateStr, time: timeStr });
+          setEditLabel(
+            block.label === 'Tareas' || block.label === 'Libre' ? '' : block.label || '',
+          );
+          let normalized: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
+            'tareas';
+          if (block.type === 'estudio' || block.type === 'estudiando') normalized = 'estudiando';
+          else if (block.type === 'trabajo' || block.type === 'ocupado') normalized = 'trabajo';
+          else if (block.type === 'descanso') normalized = 'descanso';
+          else if (block.type === 'otra_actividad') normalized = 'otra_actividad';
+          setEditType(normalized);
+        } else {
+          setEditingCell(null);
+        }
       }
       return;
     }
 
-    // Celda vacía: limpiar selección previa y asignar disponibilidad inmediatamente
-    setSelectedBlock(null);
-    applyRange(dateStr, dayOfWeek, clickStartIdx, clickEndIdx, 'add');
-  };
-
-  // Inicio de selección por clic sostenido (arrastrar mouse para asignar rango continuo en celdas vacías)
-  const handleCellMouseDown = (
-    dateStr: string,
-    dayOfWeek: string,
-    timeStr: string,
-    isPast: boolean,
-    isOccupied: boolean,
-    isTask: boolean,
-    e: React.MouseEvent,
-  ) => {
-    if (isPast || e.button !== 0 || isTask || isOccupied) return;
-
-    const [hStr, mStr] = timeStr.split(':');
-    const h = parseInt(hStr, 10);
-    const isCollapsedHour = mStr === '00' && !expandedHours.includes(h);
-    const startIdx = TIME_SLOTS.indexOf(timeStr);
-
-    setIsHoldingMouse(true);
-    setHoldStart({
-      dateStr,
-      dayOfWeek,
-      startIdx,
-      isMacro: isCollapsedHour,
+    // Celda en blanco: NO crear bloque ocupado automáticamente.
+    // Solo seleccionar ese recuadro y abrir la opción de editar.
+    const endSlot = TIME_SLOTS[clickEndIdx + 1] || '24:00';
+    setSelectedBlock({
+      date: dateStr,
+      startTime: timeStr,
+      endTime: endSlot,
     });
-    setCurrentHoldEndIdx(isCollapsedHour ? startIdx + 11 : startIdx);
+    setEditingCell({ date: dateStr, time: timeStr });
+    setEditLabel('');
+    setEditType('tareas');
   };
 
-  const handleCellMouseEnter = (dateStr: string, timeStr: string) => {
+  const handleCellMouseEnter = (_dateStr: string, timeStr: string) => {
     setHoveredTimeStr(timeStr);
-    if (isHoldingMouse && holdStart && holdStart.dateStr === dateStr) {
-      const [hStr, mStr] = timeStr.split(':');
-      const h = parseInt(hStr, 10);
-      const isCollapsedHour = mStr === '00' && !expandedHours.includes(h);
-      const currIdx = TIME_SLOTS.indexOf(timeStr);
-      setCurrentHoldEndIdx(isCollapsedHour ? currIdx + 11 : currIdx);
-    }
   };
 
   // Manejo de Drag and Drop para reordenamiento de tareas y bloques manuales
@@ -1144,7 +1124,7 @@ export default function CalendarioPage() {
     e.preventDefault();
     if (!draggedTask) return;
 
-    const isPastDate = isBefore(parseISO(dateStr), startOfDay(new Date()));
+    const isPastDate = isBefore(parseISODate(dateStr), startOfDay(new Date()));
     if (isPastDate) {
       setToastMessage({
         type: 'error',
@@ -1215,7 +1195,7 @@ export default function CalendarioPage() {
 
     // Actualización optimista inmediata
     const newSlots: Availability[] = [];
-    const dayOfWeekName = format(parseISO(dateStr), 'EEEE', { locale: es });
+    const dayOfWeekName = format(parseISODate(dateStr), 'EEEE', { locale: es });
     const newBlockId = draggedTask.blockId || `manual_${dateStr}_${targetTimeStr}`;
 
     for (let i = startSlotIdx; i < endSlotIdx; i++) {
@@ -1253,7 +1233,7 @@ export default function CalendarioPage() {
       const daySuffix =
         draggedTask.sourceDate === dateStr
           ? ''
-          : ` (${format(parseISO(dateStr), "EEE d 'de' MMM", { locale: es })})`;
+          : ` (${format(parseISODate(dateStr), "EEE d 'de' MMM", { locale: es })})`;
       setToastMessage({
         type: 'success',
         text: `¡Horario de "${cleanTitle}" actualizado a ${format12h(targetTimeStr)} - ${format12h(newEndTimeStr)}${daySuffix}!`,
@@ -1317,7 +1297,7 @@ export default function CalendarioPage() {
       const daySuffix =
         draggedTask.sourceDate === dateStr
           ? ''
-          : ` (${format(parseISO(dateStr), "EEE d 'de' MMM", { locale: es })})`;
+          : ` (${format(parseISODate(dateStr), "EEE d 'de' MMM", { locale: es })})`;
       setToastMessage({
         type: 'success',
         text: `¡${displayTitle} movido a ${format12h(targetTimeStr)} - ${format12h(newEndTimeStr)}${daySuffix}!`,
@@ -1385,32 +1365,66 @@ export default function CalendarioPage() {
   };
 
   const saveEditedLabel = () => {
-    if (editingCell) {
-      const isCollapsed =
-        editingCell.time.endsWith(':00') &&
-        !expandedHours.includes(parseInt(editingCell.time.split(':')[0], 10));
+    if (!editingCell) return;
 
-      if (isCollapsed) {
-        const startIdx = TIME_SLOTS.indexOf(editingCell.time);
-        const hourTimes = new Set(TIME_SLOTS.slice(startIdx, startIdx + 12));
+    const [hStr, mStr] = editingCell.time.split(':');
+    const h = parseInt(hStr, 10);
+    const isCollapsed = mStr === '00' && !expandedHours.includes(h);
 
-        setAvailabilities((prev) =>
-          prev.map((a) =>
-            a.date === editingCell.date && hourTimes.has(a.startTime)
-              ? { ...a, label: editLabel.trim().substring(0, 15), type: editType }
-              : a,
-          ),
-        );
-      } else {
-        setAvailabilities((prev) =>
-          prev.map((a) =>
-            a.date === editingCell.date && a.startTime === editingCell.time
-              ? { ...a, label: editLabel.trim().substring(0, 15), type: editType }
-              : a,
-          ),
-        );
+    const startIdx = TIME_SLOTS.indexOf(editingCell.time);
+    const endIdx = isCollapsed ? startIdx + 11 : startIdx;
+    const targetSlots: string[] = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      if (TIME_SLOTS[i] && TIME_SLOTS[i] !== '24:00') {
+        targetSlots.push(TIME_SLOTS[i]);
       }
     }
+    const targetSet = new Set(targetSlots);
+    const existingCount = availabilities.filter(
+      (a) => a.date === editingCell.date && targetSet.has(a.startTime),
+    ).length;
+
+    const labelClean = editLabel.trim().substring(0, 15);
+    const displayLabel = labelClean || (editType === 'tareas' ? 'Tareas' : '');
+    const newBlockId = `block_${editingCell.date}_${startIdx}_${endIdx}`;
+
+    if (existingCount > 0) {
+      // Ya existían slots: actualizarlos
+      setAvailabilities((prev) =>
+        prev.map((a) =>
+          a.date === editingCell.date && targetSet.has(a.startTime)
+            ? { ...a, label: displayLabel, type: editType }
+            : a,
+        ),
+      );
+    } else {
+      // Bloque nuevo desde celda en blanco
+      const dayOfWeekName = format(parseISODate(editingCell.date), 'EEEE', { locale: es });
+      const newItems: Availability[] = targetSlots.map((slot, idx) => {
+        const nextSlot = TIME_SLOTS[startIdx + idx + 1] || '24:00';
+        return {
+          date: editingCell.date,
+          dayOfWeek: dayOfWeekName,
+          startTime: slot,
+          endTime: nextSlot,
+          label: displayLabel,
+          type: editType,
+          source: 'local',
+          blockId: newBlockId,
+        };
+      });
+
+      setAvailabilities((prev) => [...prev, ...newItems]);
+    }
+
+    // Mantener la selección en el bloque guardado
+    setSelectedBlock({
+      date: editingCell.date,
+      startTime: editingCell.time,
+      endTime: TIME_SLOTS[endIdx + 1] || '24:00',
+      blockId: newBlockId,
+    });
+
     setEditingCell(null);
   };
 
@@ -1420,12 +1434,6 @@ export default function CalendarioPage() {
     const period = h >= 12 ? 'PM' : 'AM';
     const displayH = h % 12 === 0 ? 12 : h % 12;
     return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
-  };
-
-  const endOfMonthFn = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  const parseISO = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
   };
 
   const generateFutureWeeks = (currentWeekStart: Date) => {
@@ -1480,7 +1488,7 @@ export default function CalendarioPage() {
         const dayIndex = currentWeekDates.indexOf(avail.date);
         if (dayIndex !== -1) {
           const targetDateStr = targetWeekDates[dayIndex];
-          if (!isBefore(parseISO(targetDateStr), startOfDay(new Date()))) {
+          if (!isBefore(parseISODate(targetDateStr), startOfDay(new Date()))) {
             newAvails.push({ ...avail, date: targetDateStr });
           }
         }
@@ -1984,15 +1992,7 @@ export default function CalendarioPage() {
                       const isOccupied = !!avail || (isCollapsedHour && macroAvailCount > 0);
                       const isDraggable = !isPast && (isTask || (isOccupied && !isGoogleEvent));
 
-                      // Comprobar si esta celda está en el rango de selección con clic sostenido
                       const slotIdx = TIME_SLOTS.indexOf(timeStr);
-                      const isHoldSelection =
-                        isHoldingMouse &&
-                        holdStart &&
-                        currentHoldEndIdx !== null &&
-                        holdStart.dateStr === dateStr &&
-                        slotIdx >= Math.min(holdStart.startIdx, currentHoldEndIdx) &&
-                        slotIdx <= Math.max(holdStart.startIdx, currentHoldEndIdx);
 
                       const isSelected = Boolean(
                         selectedBlock &&
@@ -2001,8 +2001,7 @@ export default function CalendarioPage() {
                           effectiveAvail?.eventId === selectedBlock.eventId) ||
                           (selectedBlock.blockId &&
                             effectiveAvail?.blockId === selectedBlock.blockId) ||
-                          (isOccupied &&
-                            slotIdx >= TIME_SLOTS.indexOf(selectedBlock.startTime) &&
+                          (slotIdx >= TIME_SLOTS.indexOf(selectedBlock.startTime) &&
                             slotIdx < TIME_SLOTS.indexOf(selectedBlock.endTime))),
                       );
 
@@ -2028,17 +2027,6 @@ export default function CalendarioPage() {
                         <div
                           key={`cell-${dateStr}-${timeStr}`}
                           onMouseEnter={() => handleCellMouseEnter(dateStr, timeStr)}
-                          onMouseDown={(e) =>
-                            handleCellMouseDown(
-                              dateStr,
-                              dayOfWeek,
-                              timeStr,
-                              isPast,
-                              isOccupied,
-                              isTask,
-                              e,
-                            )
-                          }
                           onClick={() => handleCellClick(dateStr, dayOfWeek, timeStr, isPast)}
                           onDragOver={(e) => handleDragOver(e, dateStr, timeStr)}
                           onDragLeave={handleDragLeave}
@@ -2058,10 +2046,9 @@ export default function CalendarioPage() {
                             ${isHourStart ? 'border-b border-[#EAE3DC]' : 'border-b border-dashed border-[#EAE3DC]/40'}
                             ${isHourEnd ? 'mb-3' : ''}
                             ${isPast ? '' : isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
-                            ${isHoveredRow && !isOccupied && !isHoldSelection && !isDropTarget ? 'bg-[#f5e5d9]/60' : ''}
-                            ${isOccupied && !isHoldSelection ? `${colorTheme.bg}` : ''}
-                            ${isMacroPartiallyOccupied && !isHoldSelection ? `${colorTheme.bgPale} border-[1px] border-dashed ${colorTheme.border}` : ''}
-                            ${isHoldSelection ? 'bg-[#C8D6AF]/70 ring-2 ring-[#845326]/40 z-20' : ''}
+                            ${isHoveredRow && !isOccupied && !isDropTarget ? 'bg-[#f5e5d9]/60' : ''}
+                            ${isOccupied ? `${colorTheme.bg}` : ''}
+                            ${isMacroPartiallyOccupied ? `${colorTheme.bgPale} border-[1px] border-dashed ${colorTheme.border}` : ''}
                             ${isDropTarget ? 'ring-2 ring-[#845326] bg-[#845326]/20 scale-[0.98] z-20' : ''}
                             ${isBeingDragged ? 'opacity-35 scale-95' : ''}
                             ${isSelected ? 'ring-2 ring-black ring-inset z-30 shadow-sm' : ''}
@@ -2143,57 +2130,103 @@ export default function CalendarioPage() {
                           )}
 
                           {isEditing && !isPast && (
-                            <div
-                              className="absolute top-0 left-0 z-[60] bg-white p-3 border border-[#EAE3DC] rounded-xl shadow-xl flex flex-col gap-3 min-w-[150px]"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <input
-                                autoFocus
-                                type="text"
-                                value={editLabel}
-                                onChange={(e) => setEditLabel(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') saveEditedLabel();
-                                  if (e.key === 'Escape') setEditingCell(null);
+                            <>
+                              <div
+                                className="fixed inset-0 z-[55]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCell(null);
+                                  if (!effectiveAvail) setSelectedBlock(null);
                                 }}
-                                maxLength={15}
-                                className="w-full text-xs font-bold text-on-surface bg-[#FDFBF9] border border-[#EAE3DC] rounded-md p-1.5 focus:outline-none focus:border-[#845326]"
-                                placeholder="Nota..."
                               />
-                              <div className="flex gap-2 justify-center flex-wrap px-2">
-                                <button
-                                  onClick={() => setEditType('tareas')}
-                                  className={`w-6 h-6 rounded border ${editType === 'tareas' ? 'border-[#845326] ring-2 ring-[#C8D6AF]/50' : 'border-[#EAE3DC]'} bg-[#C8D6AF]`}
-                                  title="Tareas"
-                                ></button>
-                                <button
-                                  onClick={() => setEditType('estudiando')}
-                                  className={`w-6 h-6 rounded border ${editType === 'estudiando' ? 'border-[#845326] ring-2 ring-[#BBD0F4]/50' : 'border-[#EAE3DC]'} bg-[#BBD0F4]`}
-                                  title="Estudiando"
-                                ></button>
-                                <button
-                                  onClick={() => setEditType('trabajo')}
-                                  className={`w-6 h-6 rounded border ${editType === 'trabajo' ? 'border-[#845326] ring-2 ring-[#F4C2BA]/50' : 'border-[#EAE3DC]'} bg-[#F4C2BA]`}
-                                  title="Trabajo"
-                                ></button>
-                                <button
-                                  onClick={() => setEditType('descanso')}
-                                  className={`w-6 h-6 rounded border ${editType === 'descanso' ? 'border-[#845326] ring-2 ring-[#F9EBB2]/50' : 'border-[#EAE3DC]'} bg-[#F9EBB2]`}
-                                  title="Descanso"
-                                ></button>
-                                <button
-                                  onClick={() => setEditType('otra_actividad')}
-                                  className={`w-6 h-6 rounded border ${editType === 'otra_actividad' ? 'border-[#845326] ring-2 ring-[#E1C6F5]/50' : 'border-[#EAE3DC]'} bg-[#E1C6F5]`}
-                                  title="Otra actividad"
-                                ></button>
-                              </div>
-                              <button
-                                onClick={saveEditedLabel}
-                                className="w-full bg-[#845326] text-white text-xs font-bold py-1.5 rounded-lg hover:bg-[#6c421f] transition-colors"
+                              <div
+                                className="absolute top-0 left-0 z-[60] bg-white p-3 border border-[#EAE3DC] rounded-xl shadow-xl flex flex-col gap-2.5 min-w-[170px]"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                Guardar
-                              </button>
-                            </div>
+                                <div className="flex items-center justify-between pb-1 border-b border-[#EAE3DC]/60">
+                                  <span className="text-[11px] font-bold text-[#845326]">
+                                    {effectiveAvail ? 'Editar bloque' : 'Nuevo bloque'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCell(null);
+                                      if (!effectiveAvail) setSelectedBlock(null);
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600 p-0.5 rounded transition-colors"
+                                  >
+                                    <X className="size-3.5" />
+                                  </button>
+                                </div>
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={editLabel}
+                                  onChange={(e) => setEditLabel(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEditedLabel();
+                                    if (e.key === 'Escape') {
+                                      setEditingCell(null);
+                                      if (!effectiveAvail) setSelectedBlock(null);
+                                    }
+                                  }}
+                                  maxLength={15}
+                                  className="w-full text-xs font-bold text-on-surface bg-[#FDFBF9] border border-[#EAE3DC] rounded-md p-1.5 focus:outline-none focus:border-[#845326]"
+                                  placeholder="Nombre / Nota..."
+                                />
+                                <div className="flex gap-2 justify-center flex-wrap px-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('tareas')}
+                                    className={`w-6 h-6 rounded border ${editType === 'tareas' ? 'border-[#845326] ring-2 ring-[#C8D6AF]/50' : 'border-[#EAE3DC]'} bg-[#C8D6AF] transition-transform hover:scale-110`}
+                                    title="Tareas"
+                                  ></button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('estudiando')}
+                                    className={`w-6 h-6 rounded border ${editType === 'estudiando' ? 'border-[#845326] ring-2 ring-[#BBD0F4]/50' : 'border-[#EAE3DC]'} bg-[#BBD0F4] transition-transform hover:scale-110`}
+                                    title="Estudiando"
+                                  ></button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('trabajo')}
+                                    className={`w-6 h-6 rounded border ${editType === 'trabajo' ? 'border-[#845326] ring-2 ring-[#F4C2BA]/50' : 'border-[#EAE3DC]'} bg-[#F4C2BA] transition-transform hover:scale-110`}
+                                    title="Trabajo"
+                                  ></button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('descanso')}
+                                    className={`w-6 h-6 rounded border ${editType === 'descanso' ? 'border-[#845326] ring-2 ring-[#F9EBB2]/50' : 'border-[#EAE3DC]'} bg-[#F9EBB2] transition-transform hover:scale-110`}
+                                    title="Descanso"
+                                  ></button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('otra_actividad')}
+                                    className={`w-6 h-6 rounded border ${editType === 'otra_actividad' ? 'border-[#845326] ring-2 ring-[#E1C6F5]/50' : 'border-[#EAE3DC]'} bg-[#E1C6F5] transition-transform hover:scale-110`}
+                                    title="Otra actividad"
+                                  ></button>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCell(null);
+                                      if (!effectiveAvail) setSelectedBlock(null);
+                                    }}
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-1.5 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={saveEditedLabel}
+                                    className="flex-1 bg-[#845326] text-white text-xs font-bold py-1.5 rounded-lg hover:bg-[#6c421f] transition-colors cursor-pointer"
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
+                              </div>
+                            </>
                           )}
                         </div>
                       );

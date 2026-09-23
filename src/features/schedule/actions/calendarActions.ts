@@ -247,3 +247,63 @@ export async function updateCalendarEventScheduleAction(input: {
     return { success: false, error: 'Error al actualizar horario del evento' };
   }
 }
+
+/**
+ * Sincroniza y guarda los bloques de disponibilidad del usuario en Supabase (tabla 'bloques_disponibilidad').
+ */
+export async function syncAvailabilityBlocksAction(
+  blocks: Array<{
+    dia_semana?: number | null;
+    fecha_especifica?: string | null;
+    hora_inicio: string;
+    hora_fin: string;
+    tipo: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad';
+    origen?: string;
+  }>,
+) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const adminDb = getAdminClient();
+    const db = adminDb || supabase;
+
+    // Eliminar bloques previos con origen 'manual' para actualizarlos de forma consistente
+    await db
+      .from('bloques_disponibilidad')
+      .delete()
+      .eq('usuario_id', user.id)
+      .eq('origen', 'manual');
+
+    if (blocks.length > 0) {
+      const inserts = blocks.map((b) => ({
+        usuario_id: user.id,
+        dia_semana: b.dia_semana ?? null,
+        fecha_especifica: b.fecha_especifica ?? null,
+        hora_inicio: b.hora_inicio.length === 5 ? `${b.hora_inicio}:00` : b.hora_inicio,
+        hora_fin: b.hora_fin.length === 5 ? `${b.hora_fin}:00` : b.hora_fin,
+        tipo: b.tipo,
+        origen: b.origen || 'manual',
+      }));
+
+      const { error: insErr } = await db.from('bloques_disponibilidad').insert(inserts);
+      if (insErr) {
+        console.warn('Error insertando bloques_disponibilidad:', insErr);
+        return { success: false, error: insErr.message };
+      }
+    }
+
+    revalidatePath('/calendario');
+    return { success: true };
+  } catch (error) {
+    console.error('Error en syncAvailabilityBlocksAction:', error);
+    return { success: false, error: 'Error al sincronizar bloques de disponibilidad' };
+  }
+}

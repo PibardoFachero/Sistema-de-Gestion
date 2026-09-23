@@ -895,6 +895,89 @@ export async function createTaskAction(data: {
           }
         }
       }
+
+      // 2. Verificar colisiones con eventos_calendario (incluyendo eventos de IA u otros proyectos)
+      const { data: calEvents } = await db
+        .from('eventos_calendario')
+        .select('id, titulo, inicio, fin')
+        .eq('usuario_id', user.id)
+        .neq('estado', 'cancelado');
+
+      if (calEvents && calEvents.length > 0) {
+        for (const ev of calEvents) {
+          if (!ev.inicio || !ev.fin) continue;
+          const evStart = new Date(ev.inicio).getTime();
+          const evEnd = new Date(ev.fin).getTime();
+          if (isNaN(evStart) || isNaN(evEnd)) continue;
+
+          if (newStart < evEnd && evStart < newEnd) {
+            const evStartStr = new Date(ev.inicio).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            const evEndStr = new Date(ev.fin).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            return {
+              success: false,
+              error: `El horario seleccionado entra en conflicto con el evento o tarea "${ev.titulo}" (${evStartStr} - ${evEndStr}) en tu calendario. Por favor, intenta utilizar otra hora o bloque disponible.`,
+            };
+          }
+        }
+      }
+
+      // 3. Verificar colisiones con bloques_disponibilidad ocupados (estudio, trabajo, ocupado, descanso, otra_actividad)
+      const { data: busyBlocks } = await db
+        .from('bloques_disponibilidad')
+        .select('id, dia_semana, fecha_especifica, hora_inicio, hora_fin, tipo')
+        .eq('usuario_id', user.id)
+        .neq('tipo', 'tareas');
+
+      if (busyBlocks && busyBlocks.length > 0) {
+        const taskDateStr = parsedFechaInicio.split('T')[0];
+        const taskDateObj = new Date(parsedFechaInicio);
+        const taskDayOfWeek = taskDateObj.getDay();
+        const taskStartMin = taskDateObj.getHours() * 60 + taskDateObj.getMinutes();
+        const taskEndMin = taskStartMin + newDurationMinutes;
+
+        for (const busy of busyBlocks) {
+          let matchesDay = false;
+          if (busy.fecha_especifica) {
+            matchesDay = busy.fecha_especifica === taskDateStr;
+          } else if (busy.dia_semana !== null && busy.dia_semana !== undefined) {
+            matchesDay = busy.dia_semana === taskDayOfWeek;
+          }
+
+          if (matchesDay) {
+            const [bh1, bm1] = busy.hora_inicio.split(':').map(Number);
+            const [bh2, bm2] = busy.hora_fin.split(':').map(Number);
+            const busyStartMin = (bh1 || 0) * 60 + (bm1 || 0);
+            const busyEndMin = (bh2 || 0) * 60 + (bm2 || 0);
+
+            if (Math.max(taskStartMin, busyStartMin) < Math.min(taskEndMin, busyEndMin)) {
+              const tipoLabel =
+                busy.tipo === 'estudio'
+                  ? 'Estudio'
+                  : busy.tipo === 'trabajo'
+                    ? 'Trabajo'
+                    : busy.tipo === 'ocupado'
+                      ? 'Ocupado'
+                      : busy.tipo === 'otra_actividad'
+                        ? 'Otra actividad'
+                        : busy.tipo === 'descanso'
+                          ? 'Descanso'
+                          : busy.tipo;
+              return {
+                success: false,
+                error: `El horario entra en conflicto con un bloque ocupado en tu calendario (${tipoLabel}) de ${busy.hora_inicio.slice(0, 5)} a ${busy.hora_fin.slice(0, 5)}. Por favor, intenta utilizar otra hora o bloque disponible.`,
+              };
+            }
+          }
+        }
+      }
     }
 
     const newTaskId = crypto.randomUUID();
@@ -1356,6 +1439,90 @@ export async function updateTaskAction(data: {
               success: false,
               error: `El tiempo de duración entra en conflicto con la tarea "${existing.titulo}" (${exStartStr} - ${exEndStr}). Por favor, intenta utilizar otra hora o bloque disponible dentro del mismo día.`,
             };
+          }
+        }
+      }
+
+      // 2. Verificar colisiones con eventos_calendario (excluyendo el evento de esta misma tarea)
+      const { data: calEvents } = await db
+        .from('eventos_calendario')
+        .select('id, titulo, inicio, fin, tarea_id')
+        .eq('usuario_id', user.id)
+        .neq('estado', 'cancelado');
+
+      if (calEvents && calEvents.length > 0) {
+        for (const ev of calEvents) {
+          if (ev.tarea_id === data.taskId) continue;
+          if (!ev.inicio || !ev.fin) continue;
+          const evStart = new Date(ev.inicio).getTime();
+          const evEnd = new Date(ev.fin).getTime();
+          if (isNaN(evStart) || isNaN(evEnd)) continue;
+
+          if (newStart < evEnd && evStart < newEnd) {
+            const evStartStr = new Date(ev.inicio).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            const evEndStr = new Date(ev.fin).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            return {
+              success: false,
+              error: `El horario seleccionado entra en conflicto con el evento o tarea "${ev.titulo}" (${evStartStr} - ${evEndStr}) en tu calendario. Por favor, intenta utilizar otra hora o bloque disponible.`,
+            };
+          }
+        }
+      }
+
+      // 3. Verificar colisiones con bloques_disponibilidad ocupados (estudio, trabajo, ocupado, descanso, otra_actividad)
+      const { data: busyBlocks } = await db
+        .from('bloques_disponibilidad')
+        .select('id, dia_semana, fecha_especifica, hora_inicio, hora_fin, tipo')
+        .eq('usuario_id', user.id)
+        .neq('tipo', 'tareas');
+
+      if (busyBlocks && busyBlocks.length > 0) {
+        const taskDateStr = parsedFechaInicio.split('T')[0];
+        const taskDateObj = new Date(parsedFechaInicio);
+        const taskDayOfWeek = taskDateObj.getDay();
+        const taskStartMin = taskDateObj.getHours() * 60 + taskDateObj.getMinutes();
+        const taskEndMin = taskStartMin + newDurationMinutes;
+
+        for (const busy of busyBlocks) {
+          let matchesDay = false;
+          if (busy.fecha_especifica) {
+            matchesDay = busy.fecha_especifica === taskDateStr;
+          } else if (busy.dia_semana !== null && busy.dia_semana !== undefined) {
+            matchesDay = busy.dia_semana === taskDayOfWeek;
+          }
+
+          if (matchesDay) {
+            const [bh1, bm1] = busy.hora_inicio.split(':').map(Number);
+            const [bh2, bm2] = busy.hora_fin.split(':').map(Number);
+            const busyStartMin = (bh1 || 0) * 60 + (bm1 || 0);
+            const busyEndMin = (bh2 || 0) * 60 + (bm2 || 0);
+
+            if (Math.max(taskStartMin, busyStartMin) < Math.min(taskEndMin, busyEndMin)) {
+              const tipoLabel =
+                busy.tipo === 'estudio'
+                  ? 'Estudio'
+                  : busy.tipo === 'trabajo'
+                    ? 'Trabajo'
+                    : busy.tipo === 'ocupado'
+                      ? 'Ocupado'
+                      : busy.tipo === 'otra_actividad'
+                        ? 'Otra actividad'
+                        : busy.tipo === 'descanso'
+                          ? 'Descanso'
+                          : busy.tipo;
+              return {
+                success: false,
+                error: `El horario entra en conflicto con un bloque ocupado en tu calendario (${tipoLabel}) de ${busy.hora_inicio.slice(0, 5)} a ${busy.hora_fin.slice(0, 5)}. Por favor, intenta utilizar otra hora o bloque disponible.`,
+              };
+            }
           }
         }
       }
