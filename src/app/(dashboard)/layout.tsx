@@ -42,8 +42,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <FocusSessionProvider>
-      <ToastProvider>
+    <ToastProvider>
+      <FocusSessionProvider>
         <div className="flex min-h-screen">
         <Sidebar initialUser={user} />
 
@@ -81,7 +81,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {/* Asistente de Telegram disponible en todas las vistas */}
         <TelegramBotWidget username={username} />
       </div>
+      </FocusSessionProvider>
     </ToastProvider>
-    </FocusSessionProvider>
   );
 }

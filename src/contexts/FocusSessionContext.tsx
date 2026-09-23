@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { STUDY_TECHNIQUES, StudyTechnique } from '@/features/study-methods/data/techniques';
+import { useToast } from '@/components/ui/Toast';
 
 export type SessionPhase = 'idle' | 'focus' | 'break' | 'longBreak';
 
@@ -38,8 +39,9 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
     cycleCount: 0,
     activeTaskId: null,
     activeTaskTitle: null,
-    technique: null,
   });
+
+  const { toast } = useToast();
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -78,7 +80,13 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
         totalDuration: duration,
         isPlaying: false, // Wait for user to start break
       }));
-      // Play sound notification here if needed
+      
+      playBeep();
+      toast.success(
+        isLongBreak 
+          ? '¡Tiempo de enfoque terminado! Toma un descanso largo bien merecido.' 
+          : '¡Tiempo de enfoque terminado! Tómate un breve respiro.'
+      );
     } else {
       // Break is over, back to focus
       const duration = s.technique.focusMinutes * 60;
@@ -89,8 +97,11 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
         totalDuration: duration,
         isPlaying: false, // Wait for user to start next focus session
       }));
+      
+      playBeep();
+      toast.info('El descanso ha terminado. ¡Hora de volver al enfoque!');
     }
-  }, []);
+  }, [toast]);
 
   const startSession = useCallback((techniqueId: string, taskId?: string, taskTitle?: string) => {
     const tech = STUDY_TECHNIQUES.find((t) => t.id === techniqueId);
@@ -163,4 +174,33 @@ export function useFocusSession() {
     throw new Error('useFocusSession must be used within a FocusSessionProvider');
   }
   return context;
+}
+
+// Función auxiliar para emitir un sonido cuando se acaba el tiempo
+function playBeep() {
+  if (typeof window !== 'undefined') {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // Do (C5)
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1); // Sube a A5
+      
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+      // Browser might block audio context if not interacted, ignore
+    }
+  }
 }
