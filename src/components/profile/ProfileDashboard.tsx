@@ -486,7 +486,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </span>
                 </div>
 
-
                 {/* Descripción de perfil con límites de resize mínimo y máximo */}
                 <div>
                   <label
@@ -683,7 +682,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   <div className="grid grid-cols-1 gap-2 border-t border-outline-variant/40 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
                     <CompactDetail label="Usuario" value={`@${username}`} />
                     <CompactDetail label="Rol actual" value={answers.rol_condicion || unknown} />
-
                   </div>
                 </div>
 
@@ -1050,7 +1048,9 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   <ShieldCheck className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-on-surface">Información clara, siempre disponible</h3>
+                  <h3 className="text-sm font-bold text-on-surface">
+                    Información clara, siempre disponible
+                  </h3>
                   <p className="mt-1 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
                     Revisa los documentos vigentes cuando lo necesites. Te avisaremos si alguna
                     actualización requiere una nueva revisión.
@@ -1075,7 +1075,9 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
                   Conoce las reglas de uso, convivencia e integridad académica.
                 </p>
-                <span className="mt-3 inline-flex text-xs font-semibold text-primary">Ver términos →</span>
+                <span className="mt-3 inline-flex text-xs font-semibold text-primary">
+                  Ver términos →
+                </span>
               </Link>
 
               <Link
@@ -1090,7 +1092,9 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
                   Entiende qué información usamos y las decisiones que puedes tomar sobre ella.
                 </p>
-                <span className="mt-3 inline-flex text-xs font-semibold text-primary">Ver privacidad →</span>
+                <span className="mt-3 inline-flex text-xs font-semibold text-primary">
+                  Ver privacidad →
+                </span>
               </Link>
             </div>
           </div>

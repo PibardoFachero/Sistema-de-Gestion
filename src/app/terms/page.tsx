@@ -12,10 +12,26 @@ export const metadata: Metadata = {
 const sections: LegalSectionItem[] = termsDocument.sections.map(toSectionItem);
 
 const highlights = [
-  { icon: <GraduationCap className="h-5 w-5" />, title: 'Propósito académico', description: 'Komorebi es una entrega de aprendizaje y demostración.' },
-  { icon: <ShieldCheck className="h-5 w-5" />, title: 'Uso responsable', description: 'Protege tu cuenta y no compartas datos sensibles.' },
-  { icon: <Lightbulb className="h-5 w-5" />, title: 'Funciones en evolución', description: 'Las funciones pueden cambiar durante el desarrollo.' },
-  { icon: <AlertTriangle className="h-5 w-5" />, title: 'Sin decisiones críticas', description: 'No sustituye orientación profesional o institucional.' },
+  {
+    icon: <GraduationCap className="h-5 w-5" />,
+    title: 'Propósito académico',
+    description: 'Komorebi es una entrega de aprendizaje y demostración.',
+  },
+  {
+    icon: <ShieldCheck className="h-5 w-5" />,
+    title: 'Uso responsable',
+    description: 'Protege tu cuenta y no compartas datos sensibles.',
+  },
+  {
+    icon: <Lightbulb className="h-5 w-5" />,
+    title: 'Funciones en evolución',
+    description: 'Las funciones pueden cambiar durante el desarrollo.',
+  },
+  {
+    icon: <AlertTriangle className="h-5 w-5" />,
+    title: 'Sin decisiones críticas',
+    description: 'No sustituye orientación profesional o institucional.',
+  },
 ];
 
 export default function TermsPage() {

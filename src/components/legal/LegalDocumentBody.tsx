@@ -19,7 +19,11 @@ export function LegalDocumentBody({
   return (
     <div className={compact ? 'space-y-7' : 'space-y-12'}>
       {document.sections.map((section, index) => (
-        <section key={section.id} id={`${idPrefix}${section.id}`} className="scroll-mt-24 space-y-4">
+        <section
+          key={section.id}
+          id={`${idPrefix}${section.id}`}
+          className="scroll-mt-24 space-y-4"
+        >
           <div className="flex items-center gap-3 border-b border-outline-variant/30 pb-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-on-primary">
               {index + 1}

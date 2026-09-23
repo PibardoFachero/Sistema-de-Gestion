@@ -6,16 +6,33 @@ import { LegalPageLayout, type LegalSectionItem } from '@/components/legal/Legal
 
 export const metadata: Metadata = {
   title: 'Aviso de privacidad académico | Komorebi Study Studio',
-  description: 'Información sobre el tratamiento de datos en el prototipo académico Komorebi Study Studio.',
+  description:
+    'Información sobre el tratamiento de datos en el prototipo académico Komorebi Study Studio.',
 };
 
 const sections: LegalSectionItem[] = privacyDocument.sections.map(toSectionItem);
 
 const highlights = [
-  { icon: <UserCheck className="h-5 w-5" />, title: 'Datos para tu cuenta', description: 'Usamos información básica para permitir el acceso.' },
-  { icon: <FolderOpen className="h-5 w-5" />, title: 'Tu información de estudio', description: 'Las tareas y proyectos sirven para las funciones elegidas.' },
-  { icon: <ShieldCheck className="h-5 w-5" />, title: 'Sin venta de datos', description: 'No comercializamos la información registrada en el prototipo.' },
-  { icon: <SlidersHorizontal className="h-5 w-5" />, title: 'Control y cambios', description: 'Las prácticas pueden ajustarse durante el desarrollo académico.' },
+  {
+    icon: <UserCheck className="h-5 w-5" />,
+    title: 'Datos para tu cuenta',
+    description: 'Usamos información básica para permitir el acceso.',
+  },
+  {
+    icon: <FolderOpen className="h-5 w-5" />,
+    title: 'Tu información de estudio',
+    description: 'Las tareas y proyectos sirven para las funciones elegidas.',
+  },
+  {
+    icon: <ShieldCheck className="h-5 w-5" />,
+    title: 'Sin venta de datos',
+    description: 'No comercializamos la información registrada en el prototipo.',
+  },
+  {
+    icon: <SlidersHorizontal className="h-5 w-5" />,
+    title: 'Control y cambios',
+    description: 'Las prácticas pueden ajustarse durante el desarrollo académico.',
+  },
 ];
 
 export default function PrivacyPage() {

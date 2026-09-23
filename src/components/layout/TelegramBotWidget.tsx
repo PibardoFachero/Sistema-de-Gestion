@@ -21,10 +21,10 @@ export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) 
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       if (isOpen) {
         lastScrollY = currentScrollY;
-        return; 
+        return;
       }
 
       if (currentScrollY > lastScrollY && currentScrollY > 50) {
@@ -102,7 +102,7 @@ export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) 
       animate={{
         x: isVisible ? 0 : 100,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none'
+        pointerEvents: isVisible ? 'auto' : 'none',
       }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >

@@ -470,7 +470,6 @@ export function RegisterForm() {
             </>
           )}
         </Button>
-
       </form>
 
       {/* Enlace inferior */}

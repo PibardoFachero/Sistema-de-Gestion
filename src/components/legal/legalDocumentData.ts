@@ -98,7 +98,9 @@ export const privacyDocument: LegalDocument = {
     {
       id: 'finalidad',
       title: 'Para qué se usa la información',
-      paragraphs: ['La información se utiliza exclusivamente para el funcionamiento y la evaluación académica del prototipo.'],
+      paragraphs: [
+        'La información se utiliza exclusivamente para el funcionamiento y la evaluación académica del prototipo.',
+      ],
       bullets: [
         'Permitir el funcionamiento de la cuenta y de las funciones disponibles.',
         'Guardar y mostrar los proyectos, tareas y contenidos que crees.',

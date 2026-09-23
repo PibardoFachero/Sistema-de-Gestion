@@ -133,7 +133,7 @@ export function LegalPageLayout({
             }`}
           >
             <FileText className="size-3.5" />
-              <span>Uso académico</span>
+            <span>Uso académico</span>
           </Link>
         </div>
       </header>
@@ -259,7 +259,9 @@ export function LegalPageLayout({
                     <ShieldCheck className="size-6" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-primary mb-1">Uso académico y transparente</h3>
+                    <h3 className="text-base font-bold text-primary mb-1">
+                      Uso académico y transparente
+                    </h3>
                     <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
                       Komorebi Study Studio es un prototipo para pruebas y demostraciones. Utiliza
                       únicamente información necesaria para sus funciones y evita incluir datos
