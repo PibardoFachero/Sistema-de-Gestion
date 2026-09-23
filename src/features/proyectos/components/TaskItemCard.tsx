@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Clock, ExternalLink, Play, Check, Trash2, Calendar, Pencil } from 'lucide-react';
+import { TechniqueSelectionModal } from '@/components/study/TechniqueSelectionModal';
 
 export interface Task {
   id: string;
@@ -78,6 +79,7 @@ export function TaskItemCard({
   onEditTask,
 }: TaskItemCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showFocusModal, setShowFocusModal] = useState(false);
   const isCompleted = task.isCompleted;
 
   const handleToggle = async () => {
@@ -242,12 +244,24 @@ export function TaskItemCard({
         </div>
 
         <div className="flex justify-end w-full mt-auto pt-2">
-          <button className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-on-surface px-5 py-2.5 text-sm font-bold text-surface transition-transform hover:scale-105 hover:bg-[#333] active:scale-95 cursor-pointer shadow-xs">
+          <button 
+            onClick={() => {
+              if (!isCompleted) setShowFocusModal(true);
+            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-on-surface px-5 py-2.5 text-sm font-bold text-surface transition-transform hover:scale-105 hover:bg-[#333] active:scale-95 cursor-pointer shadow-xs"
+          >
             {isCompleted ? 'Ver más' : 'Iniciar tarea'}
             {!isCompleted && <Play className="size-4" fill="currentColor" />}
           </button>
         </div>
       </div>
+      
+      <TechniqueSelectionModal 
+        isOpen={showFocusModal}
+        onClose={() => setShowFocusModal(false)}
+        taskId={task.id}
+        taskTitle={task.title}
+      />
     </div>
   );
 }

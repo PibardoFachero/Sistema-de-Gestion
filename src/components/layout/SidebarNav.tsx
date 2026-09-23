@@ -17,7 +17,6 @@ export function SidebarNav() {
     { href: '/proyectos', icon: FolderKanban, label: 'Proyectos' },
     { href: '/temas', icon: LibraryBig, label: 'Temas' },
     { href: '/calendario', icon: Calendar, label: 'Calendario' },
-    { href: '/tecnicas', icon: Timer, label: 'Técnicas de Estudio' },
     { href: '/analitica', icon: BarChart2, label: 'Analítica' },
     { href: '/ia', icon: Sparkles, label: 'Asistente IA' },
   ];
