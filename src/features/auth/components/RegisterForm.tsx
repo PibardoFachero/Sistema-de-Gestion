@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { AuthMascotVideo } from '@/components/mascot/AuthMascotVideo';
+import { LegalReaderPanel } from '@/features/auth/components/LegalReaderPanel';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -32,6 +33,7 @@ export function RegisterForm() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -108,6 +110,11 @@ export function RegisterForm() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!hasAcceptedTerms) {
+      setGeneralError('Debes aceptar los Términos y condiciones para crear una cuenta.');
+      return;
+    }
+
     setGeneralError(null);
     setIsGoogleLoading(true);
 
@@ -356,12 +363,55 @@ export function RegisterForm() {
           )}
         </div>
 
+        <LegalReaderPanel />
+
+        {/* Aceptación de términos */}
+        <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] px-4 py-3.5">
+          <label htmlFor="accept-terms" className="flex cursor-pointer items-start gap-3">
+            <input
+              id="accept-terms"
+              name="acceptTerms"
+              type="checkbox"
+              checked={hasAcceptedTerms}
+              onChange={(event) => {
+                setHasAcceptedTerms(event.target.checked);
+                if (event.target.checked && generalError) setGeneralError(null);
+              }}
+              disabled={isLoading || isSuccess || isGoogleLoading}
+              className="mt-0.5 size-4 shrink-0 rounded border-outline-variant text-primary accent-primary focus:ring-2 focus:ring-primary/30"
+            />
+            <span className="text-xs leading-relaxed text-on-surface-variant">
+              He leído y acepto los{' '}
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="font-semibold text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:text-accent-amber"
+              >
+                Términos y condiciones
+              </Link>{' '}
+              y la{' '}
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="font-semibold text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:text-accent-amber"
+              >
+                Política de privacidad
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
         {/* Botón Principal */}
         <div className="pt-4">
           <Button
             type="submit"
             variant="primary"
-            disabled={isLoading || isSuccess}
+            disabled={isLoading || isSuccess || !hasAcceptedTerms}
             className="w-full h-11 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm flex items-center justify-center gap-2"
           >
             {isLoading ? (
@@ -387,7 +437,7 @@ export function RegisterForm() {
         <Button
           type="button"
           variant="secondary"
-          disabled={isLoading || isSuccess || isGoogleLoading}
+          disabled={isLoading || isSuccess || isGoogleLoading || !hasAcceptedTerms}
           onClick={handleGoogleSignIn}
           className="w-full h-11 flex items-center justify-center gap-2.5 rounded-xl bg-surface hover:bg-surface-dim border border-outline-variant/60 shadow-sm transition-all text-on-surface font-bold text-sm"
         >
@@ -421,23 +471,6 @@ export function RegisterForm() {
           )}
         </Button>
 
-        <p className="mt-4 text-center text-xs text-on-surface-variant">
-          Al registrarte, aceptas nuestros{' '}
-          <Link
-            href="/terms"
-            className="text-primary underline hover:text-accent-amber transition-colors"
-          >
-            Términos de Servicio
-          </Link>{' '}
-          y nuestra{' '}
-          <Link
-            href="/privacy"
-            className="text-primary underline hover:text-accent-amber transition-colors"
-          >
-            Política de Privacidad
-          </Link>
-          .
-        </p>
       </form>
 
       {/* Enlace inferior */}

@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { validatePhoneNumber } from '@/features/profile/utils/phoneValidation';
 import { validateContent } from '@/lib/moderation/contentFilter';
 
 export interface UpdateProfileIdentityInput {
@@ -14,8 +13,6 @@ export interface UpdateProfileIdentityInput {
   role?: string;
   age?: string;
   workSituation?: string;
-  phone?: string | null;
-  telefono?: string | null;
 }
 
 export interface UpdateProfileIdentityResponse {
@@ -107,17 +104,6 @@ export async function updateProfileIdentity(
     }
   }
 
-  // Validación de teléfono (opcional, debe incluir prefijo válido si se suministra)
-  const rawPhone = input.phone ?? input.telefono;
-  const phoneValidation = validatePhoneNumber(rawPhone);
-  if (!phoneValidation.isValid) {
-    return {
-      success: false,
-      error: phoneValidation.error || 'El número telefónico no es válido.',
-    };
-  }
-  const formattedPhone = phoneValidation.formattedPhone;
-
   try {
     const supabase = await createClient();
     const {
@@ -150,7 +136,6 @@ export async function updateProfileIdentity(
       nombre_completo: fullName,
       descripcion: normalizedDescription || null,
       avatar_url: input.avatarUrl || null,
-      telefono: formattedPhone,
       updated_at: new Date().toISOString(),
     };
 
@@ -171,7 +156,6 @@ export async function updateProfileIdentity(
       if (errorMsg.includes('avatares_subidos')) delete cleanPayload.avatares_subidos;
       if (errorMsg.includes('nombre_completo')) delete cleanPayload.nombre_completo;
       if (errorMsg.includes('descripcion')) delete cleanPayload.descripcion;
-      if (errorMsg.includes('telefono')) delete cleanPayload.telefono;
 
       updateResult = await supabase.from('profiles').update(cleanPayload).eq('id', user.id);
     }
@@ -192,8 +176,6 @@ export async function updateProfileIdentity(
         name: fullName,
         username: normalizedUsername,
         nombre_usuario: normalizedUsername,
-        phone: formattedPhone,
-        telefono: formattedPhone,
       };
 
       // CRÍTICO: Las cookies de sesión almacenan user_metadata dentro del JWT.
