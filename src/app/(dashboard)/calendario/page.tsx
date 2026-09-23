@@ -249,6 +249,66 @@ export default function CalendarioPage() {
     }
   }, []);
 
+  const loadGoogleCalendarEvents = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/calendar/events');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.events) || data.events.length === 0) return;
+
+      const googleEvents: Availability[] = [];
+      data.events.forEach(
+        (ev: { id: string; summary: string; start: string; end: string; isAllDay: boolean }) => {
+          if (ev.isAllDay) return; // skip all-day events (no time slot to paint)
+          const startD = new Date(ev.start);
+          const endD = new Date(ev.end);
+          if (isNaN(startD.getTime()) || isNaN(endD.getTime())) return;
+
+          const dateStr = format(startD, 'yyyy-MM-dd');
+          const dayOfWeekName = format(startD, 'EEEE', { locale: es });
+          const startSlot = format(startD, 'HH:mm');
+          const endSlot = format(endD, 'HH:mm');
+
+          const startIdx = TIME_SLOTS.indexOf(startSlot);
+          const endIdx = TIME_SLOTS.indexOf(endSlot);
+          const fromIdx = startIdx !== -1 ? startIdx : 0;
+          const toIdx =
+            endIdx !== -1 && endIdx > fromIdx
+              ? endIdx
+              : fromIdx +
+                Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)));
+
+          for (let i = fromIdx; i < toIdx; i++) {
+            const slot = TIME_SLOTS[i];
+            if (slot && slot !== '24:00') {
+              googleEvents.push({
+                date: dateStr,
+                dayOfWeek: dayOfWeekName,
+                startTime: slot,
+                endTime: TIME_SLOTS[i + 1] || '24:00',
+                label: ev.summary || '(Sin título)',
+                type: 'otra_actividad',
+                source: 'google',
+                eventId: ev.id,
+              });
+            }
+          }
+        },
+      );
+
+      if (googleEvents.length > 0) {
+        setAvailabilities((prev) => {
+          const nonGoogle = prev.filter((p) => p.source !== 'google');
+          const keys = new Set(googleEvents.map((g) => `${g.date}_${g.startTime}`));
+          const filtered = nonGoogle.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
+          return [...filtered, ...googleEvents];
+        });
+      }
+    } catch (err) {
+      console.warn('Error al cargar eventos de Google Calendar:', err);
+    }
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
@@ -272,6 +332,8 @@ export default function CalendarioPage() {
         .then((data) => {
           if (data.success && data.connected) {
             setIsGoogleConnected(true);
+            // Cargar eventos reales si ya hay una sesión activa
+            loadGoogleCalendarEvents();
           }
         })
         .catch(() => {});
@@ -285,30 +347,8 @@ export default function CalendarioPage() {
         setToastMessage({ type: 'success', text: 'Google Calendar sincronizado correctamente' });
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // Mock de evento de Google Calendar para previsualizar el estilo
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
-        const tomorrowDay = format(tomorrow, 'EEEE', { locale: es });
-
-        setAvailabilities((prev) => {
-          if (prev.some((a) => a.source === 'google')) return prev;
-          const mockEvents: Availability[] = [];
-          for (let m = 0; m < 60; m += 5) {
-            const mStr = m.toString().padStart(2, '0');
-            const nmStr = m + 5 === 60 ? '00' : (m + 5).toString().padStart(2, '0');
-            const h = 10 + (m + 5 === 60 ? 1 : 0);
-            mockEvents.push({
-              date: tomorrowStr,
-              dayOfWeek: tomorrowDay,
-              startTime: `10:${mStr}`,
-              endTime: `${h.toString().padStart(2, '0')}:${nmStr}`,
-              label: 'Reunión Sync',
-              source: 'google',
-            });
-          }
-          return [...prev, ...mockEvents];
-        });
+        // Cargar eventos reales desde Google Calendar
+        loadGoogleCalendarEvents();
       } else if (error === 'true') {
         const errorDetail = urlParams.get('calendar_error');
         const decodedDetail = errorDetail ? decodeURIComponent(errorDetail) : null;
@@ -322,7 +362,7 @@ export default function CalendarioPage() {
       // Cargar eventos del calendario y tareas programadas desde Supabase
       loadCalendarEventsFromSupabase();
     }
-  }, [loadCalendarEventsFromSupabase]);
+  }, [loadCalendarEventsFromSupabase, loadGoogleCalendarEvents]);
 
   useEffect(() => {
     if (toastMessage) {
@@ -336,10 +376,16 @@ export default function CalendarioPage() {
     window.location.href = '/api/auth/google';
   };
 
-  const handleDisconnectGoogle = () => {
+  const handleDisconnectGoogle = async () => {
     setIsGoogleConnected(false);
     setAvailabilities((prev) => prev.filter((a) => a.source !== 'google'));
     setToastMessage({ type: 'success', text: 'Google Calendar desconectado' });
+    // Limpiar la cookie segura del servidor para invalidar la sesión
+    try {
+      await fetch('/api/auth/google', { method: 'DELETE' });
+    } catch {
+      // Si falla, la cookie expirará sola; el estado local ya está limpio
+    }
   };
 
   const activeTimes = new Set(availabilities.map((a) => a.startTime));
