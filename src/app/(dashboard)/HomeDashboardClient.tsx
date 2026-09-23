@@ -118,7 +118,11 @@ export function HomeDashboardClient({
           <span className="capitalize">{currentDate}</span>
           {' · '}
           {totalPendingTasks === 0
+<<<<<<< HEAD
             ? 'No tienes tareas pendientes próximas. Disfruta tu tiempo o explora nuevos temas.'
+=======
+            ? 'No tienes tareas pendientes próximas. Disfruta tu tiempo libre o explora nuevos temas.'
+>>>>>>> origin/main
             : totalPendingTasks === 1
               ? 'Tienes 1 tarea pendiente en tu lista. Concéntrate y avanza a tu ritmo.'
               : `Tienes ${totalPendingTasks} tareas pendientes en tu lista. Respeta tus ritmos y tiempos de descanso.`}

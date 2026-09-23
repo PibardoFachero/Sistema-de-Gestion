@@ -67,6 +67,7 @@ export function getGeminiClient(): GoogleGenAI {
 <<<<<<< HEAD
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+<<<<<<< HEAD
     throw new Error(
       'La variable de entorno GEMINI_API_KEY no está configurada en .env.local',
     );
@@ -80,6 +81,9 @@ export function getGeminiClient(): GoogleGenAI {
       return keySlots[idx].client;
     }
 >>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
+=======
+    throw new Error('La variable de entorno GEMINI_API_KEY no está configurada en .env.local');
+>>>>>>> origin/main
   }
 
   // Si todas están temporalmente agotadas, devolver el slot activo pero advertir

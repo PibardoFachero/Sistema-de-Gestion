@@ -24,6 +24,29 @@ export interface GoogleCalendarTokens {
 export const GCAL_COOKIE_NAME = 'gcal_tokens';
 
 /**
+ * Obtiene la URL base de la aplicación (producción en Vercel o entorno local).
+ */
+export function getAppBaseUrl(requestOrigin?: string): string {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/$/, '');
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
+  }
+  if (
+    requestOrigin &&
+    !requestOrigin.includes('localhost') &&
+    !requestOrigin.includes('127.0.0.1')
+  ) {
+    return requestOrigin.replace(/\/$/, '');
+  }
+  return requestOrigin ? requestOrigin.replace(/\/$/, '') : 'http://localhost:3000';
+}
+
+/**
  * Obtiene la URL de redirección configurada para OAuth2.
  */
 export function getRedirectUri(customRedirectUri?: string): string {
@@ -33,8 +56,8 @@ export function getRedirectUri(customRedirectUri?: string): string {
   if (process.env.GOOGLE_REDIRECT_URI) {
     return process.env.GOOGLE_REDIRECT_URI;
   }
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  return `${appUrl.replace(/\/$/, '')}/api/calendar/callback`;
+  const appUrl = getAppBaseUrl();
+  return `${appUrl}/api/calendar/callback`;
 }
 
 /**

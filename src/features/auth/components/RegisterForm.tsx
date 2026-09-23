@@ -73,26 +73,6 @@ export function RegisterForm() {
     e.preventDefault();
     setGeneralError(null);
     setFieldErrors({});
-
-    // Validación de requisitos de seguridad de la contraseña
-    const isPasswordValid = passwordCriteria.every((criterion) => criterion.met);
-    if (!isPasswordValid) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        password: 'La contraseña debe cumplir con todos los requisitos de seguridad',
-      }));
-      return;
-    }
-
-    // Validación rápida en frontend de coincidencia de contraseñas
-    if (formData.password !== formData.confirmPassword) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        confirmPassword: 'Las contraseñas no coinciden',
-      }));
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -137,6 +117,11 @@ export function RegisterForm() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/api/auth/callback?next=/onboarding`,
+          scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 

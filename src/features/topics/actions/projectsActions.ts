@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { CreateProjectWithMilestonesInput, LinkedProject, ProjectOption } from '../types';
+import { validateContent, validateProjectContent } from '@/lib/moderation/contentFilter';
 
 interface ActionResponse<T = unknown> {
   success: boolean;
@@ -26,9 +27,10 @@ export async function getUserProjectsAction(
     // 1. Proyectos del usuario
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('*')
+      .select('id, titulo, objetivo, progreso, completado')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      // .order('created_at', { ascending: false }); // Real projects schema doesn't have created_at
+      .order('titulo', { ascending: true });
 
     if (projectsError) {
       return { success: false, error: projectsError.message };
@@ -40,49 +42,51 @@ export async function getUserProjectsAction(
 
     const projectIds = projects.map((p) => p.id);
 
-    // 2. Hitos para calcular progreso real
-    const { data: milestones } = await supabase
-      .from('project_milestones')
+    // 2. Tareas para calcular progreso real
+    const { data: tareasData } = await supabase
+      .from('tareas')
       .select('*')
-      .in('project_id', projectIds);
+      .in('id_proyecto', projectIds);
 
     const statsMap: Record<string, { total: number; completed: number }> = {};
-    (milestones || []).forEach((m) => {
-      if (!statsMap[m.project_id]) {
-        statsMap[m.project_id] = { total: 0, completed: 0 };
+    (tareasData || []).forEach((t) => {
+      if (!statsMap[t.id_proyecto]) {
+        statsMap[t.id_proyecto] = { total: 0, completed: 0 };
       }
-      statsMap[m.project_id].total += 1;
-      if (m.is_completed) {
-        statsMap[m.project_id].completed += 1;
+      statsMap[t.id_proyecto].total += 1;
+      if (t.completado) {
+        statsMap[t.id_proyecto].completed += 1;
       }
     });
 
     // 3. Proyectos ya vinculados al topicId (si se proporciona)
-    const linkedProjectIds = new Set<string>();
+    let linkedProjectId: string | undefined;
     if (topicId) {
-      const { data: linked } = await supabase
-        .from('topic_projects')
+      const { data: topic } = await supabase
+        .from('topics')
         .select('project_id')
-        .eq('topic_id', topicId)
-        .eq('user_id', user.id);
+        .eq('id', topicId)
+        .eq('user_id', user.id)
+        .single();
 
-      if (linked) {
-        linked.forEach((item) => linkedProjectIds.add(item.project_id));
+      if (topic?.project_id) {
+        linkedProjectId = topic.project_id;
       }
     }
 
     const result: ProjectOption[] = projects.map((p) => {
       const stats = statsMap[p.id] || { total: 0, completed: 0 };
-      const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+      const progress =
+        p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
       return {
         id: p.id,
-        name: p.name,
-        description: p.description || '',
-        status: p.status || 'active',
+        name: p.titulo,
+        description: p.objetivo || '',
+        status: p.completado ? 'completed' : 'active',
         progress,
         totalMilestones: stats.total,
         completedMilestones: stats.completed,
-        isLinked: linkedProjectIds.has(p.id),
+        isLinked: p.id === linkedProjectId,
       };
     });
 
@@ -110,21 +114,21 @@ export async function linkProjectAction(
       return { success: false, error: 'Usuario no autenticado' };
     }
 
-    // Vincular en topic_projects
-    const { error: insertError } = await supabase.from('topic_projects').insert({
-      topic_id: topicId,
-      project_id: projectId,
-      user_id: user.id,
-    });
+    // Vincular actualizando el topic
+    const { error: updateError } = await supabase
+      .from('topics')
+      .update({ project_id: projectId })
+      .eq('id', topicId)
+      .eq('user_id', user.id);
 
-    if (insertError) {
-      return { success: false, error: insertError.message };
+    if (updateError) {
+      return { success: false, error: updateError.message };
     }
 
-    // Obtener detalles del proyecto y sus hitos para calcular progreso
+    // Obtener detalles del proyecto y sus tareas para calcular progreso
     const { data: project, error: pError } = await supabase
       .from('projects')
-      .select('*')
+      .select('id, titulo, objetivo, progreso, completado')
       .eq('id', projectId)
       .single();
 
@@ -132,22 +136,23 @@ export async function linkProjectAction(
       return { success: false, error: 'Proyecto no encontrado' };
     }
 
-    const { data: milestones } = await supabase
-      .from('project_milestones')
-      .select('is_completed')
-      .eq('project_id', projectId);
+    const { data: tareasData } = await supabase
+      .from('tareas')
+      .select('completado')
+      .eq('id_proyecto', projectId);
 
-    const totalMilestones = milestones?.length || 0;
-    const completedMilestones = milestones?.filter((m) => m.is_completed).length || 0;
+    const totalMilestones = tareasData?.length || 0;
+    const completedMilestones = tareasData?.filter((t) => t.completado).length || 0;
     const progress =
-      totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+      project.progreso ||
+      (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0);
 
     const linkedProject: LinkedProject = {
       id: project.id,
-      name: project.name,
-      description: project.description || '',
-      detail: project.status === 'active' ? 'Proyecto activo' : 'Proyecto en planificación',
-      status: project.status,
+      name: project.titulo,
+      description: project.objetivo || '',
+      detail: project.completado ? 'Proyecto completado' : 'Proyecto activo',
+      status: project.completado ? 'completed' : 'active',
       progress,
       totalMilestones,
       completedMilestones,
@@ -164,8 +169,9 @@ export async function linkProjectAction(
 
 export async function unlinkProjectAction(
   topicId: string,
-  projectId: string,
+  _projectId?: string, // No longer strictly necessary but kept for signature compatibility
 ): Promise<ActionResponse<boolean>> {
+  void _projectId;
   try {
     const supabase = await createClient();
     const {
@@ -178,10 +184,9 @@ export async function unlinkProjectAction(
     }
 
     const { error } = await supabase
-      .from('topic_projects')
-      .delete()
-      .eq('topic_id', topicId)
-      .eq('project_id', projectId)
+      .from('topics')
+      .update({ project_id: null })
+      .eq('id', topicId)
       .eq('user_id', user.id);
 
     if (error) {
@@ -206,6 +211,28 @@ export async function createProjectWithMilestonesAction(
     return { success: false, error: 'El nombre del proyecto es obligatorio.' };
   }
 
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Nombre y descripción de proyecto
+  const projectValidation = validateProjectContent(name, input.description);
+  if (!projectValidation.isValid) {
+    return {
+      success: false,
+      error: projectValidation.error || 'El proyecto contiene términos no permitidos.',
+    };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Hitos/Tareas
+  const cleanMilestones = (input.milestones || []).map((m) => m.trim()).filter((m) => m.length > 0);
+
+  for (const milestone of cleanMilestones) {
+    const milestoneValidation = validateContent(milestone);
+    if (!milestoneValidation.isValid) {
+      return {
+        success: false,
+        error: milestoneValidation.error || 'Uno de los hitos contiene términos no permitidos.',
+      };
+    }
+  }
+
   try {
     const supabase = await createClient();
     const {
@@ -217,23 +244,30 @@ export async function createProjectWithMilestonesAction(
       return { success: false, error: 'Usuario no autenticado' };
     }
 
-    // 1. Crear proyecto
+    // 1. Crear proyecto (con el schema real)
+    const projectId = crypto.randomUUID();
     const { data: project, error: pError } = await supabase
       .from('projects')
       .insert({
+        id: projectId,
         user_id: user.id,
-        name,
-        description: input.description?.trim() || '',
-        status: 'active',
+        titulo: name,
+        objetivo: input.description?.trim() || '',
+        fecha_limite: new Date().toISOString(), // Necesita una fecha límite por el tipo
+        prioridad: 'Media',
+        nivel_conocimiento: 'Intermedio',
+        minutos_diarios: 30,
+        progreso: 0,
+        completado: false,
       })
-      .select()
+      .select('id, titulo, objetivo, progreso, completado')
       .single();
 
     if (pError || !project) {
       return { success: false, error: pError?.message || 'Error al crear proyecto' };
     }
 
-    // 2. Crear hitos si existen
+    // 2. Crear tareas si existen
     const cleanMilestones = (input.milestones || [])
       .map((m) => m.trim())
       .filter((m) => m.length > 0);
@@ -241,22 +275,24 @@ export async function createProjectWithMilestonesAction(
     const completedCount = 0;
     if (cleanMilestones.length > 0) {
       const milestoneRows = cleanMilestones.map((title) => ({
-        project_id: project.id,
+        id: crypto.randomUUID(),
+        id_proyecto: project.id,
         user_id: user.id,
-        title,
-        is_completed: false,
+        titulo: title,
+        completado: false,
+        duracion: 30,
       }));
 
-      await supabase.from('project_milestones').insert(milestoneRows);
+      await supabase.from('tareas').insert(milestoneRows);
     }
 
     // 3. Vincular al tema si se solicitó
     if (topicIdToLink) {
-      await supabase.from('topic_projects').insert({
-        topic_id: topicIdToLink,
-        project_id: project.id,
-        user_id: user.id,
-      });
+      await supabase
+        .from('topics')
+        .update({ project_id: project.id })
+        .eq('id', topicIdToLink)
+        .eq('user_id', user.id);
     }
 
     const totalMilestones = cleanMilestones.length;
@@ -264,8 +300,8 @@ export async function createProjectWithMilestonesAction(
 
     const linkedProject: LinkedProject = {
       id: project.id,
-      name: project.name,
-      description: project.description || '',
+      name: project.titulo,
+      description: project.objetivo || '',
       detail: 'Proyecto activo',
       status: 'active',
       progress,

@@ -50,8 +50,12 @@ export const generateScheduleRequestSchema = z.object({
   nombre_proyecto: z.string().optional(),
   objetivo_final: z.string().optional(),
   fecha_limite: z.string().optional(),
-  importancia: z.enum(['obligatorio', 'prioritario', 'hobby', 'Obligatorio', 'Prioritario', 'Hobby']).optional(),
-  nivel_conocimiento: z.enum(['ninguno', 'basico', 'intermedio', 'avanzado', 'Principiante', 'Intermedio', 'Avanzado']).optional(),
+  importancia: z
+    .enum(['obligatorio', 'prioritario', 'hobby', 'Obligatorio', 'Prioritario', 'Hobby'])
+    .optional(),
+  nivel_conocimiento: z
+    .enum(['ninguno', 'basico', 'intermedio', 'avanzado', 'Principiante', 'Intermedio', 'Avanzado'])
+    .optional(),
   archivos_adjuntos: z
     .array(
       z.object({
@@ -72,7 +76,11 @@ export type GenerateScheduleRequest = z.infer<typeof generateScheduleRequestSche
 // Esquema para la actualización de disponibilidad en PATCH /api/users/:id/availability
 export const availabilityChangeItemSchema = z.object({
   dia_semana: z.number().int().min(0).max(6).optional().nullable(),
-  fecha_especifica: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  fecha_especifica: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
   hora_inicio: z.string().regex(/^\d{2}:\d{2}$/),
   hora_fin: z.string().regex(/^\d{2}:\d{2}$/),
   tipo: z.enum(['ocupado', 'tareas', 'estudio', 'trabajo', 'otra_actividad']),

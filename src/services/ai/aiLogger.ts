@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 interface LogAiParams {
   usuarioId?: string | null;
   proyectoId?: string | null;
-  tipoOperacion: 'generacion_cronograma' | 'regeneracion_cronograma' | 'extraccion_horario';
+  tipoOperacion:
+    | 'generacion_cronograma'
+    | 'regeneracion_cronograma'
+    | 'extraccion_horario'
+    | 'evaluacion_viabilidad';
   modelo: string;
   promptEnviado: string;
   respuestaCruda: string;

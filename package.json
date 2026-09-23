@@ -25,6 +25,7 @@
     "date-fns": "3.6.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
+    "framer-motion": "^13.4.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "1.47.0",
@@ -53,6 +54,7 @@
     "unrs-resolver@1.12.2": true,
     "@google/genai@2.23.0": true,
 <<<<<<< HEAD
+<<<<<<< HEAD
     "protobufjs@7.6.6": true
 =======
     "protobufjs@7.6.6": true,
@@ -61,5 +63,9 @@
   "overrides": {
     "uuid": "^11.1.1"
 >>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
+=======
+    "protobufjs@7.6.6": true,
+    "core-js@3.50.0": true
+>>>>>>> origin/main
   }
 }

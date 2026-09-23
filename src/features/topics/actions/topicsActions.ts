@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { CreateTopicInput, Topic, TopicSource, LinkedProject, UpdateTopicInput } from '../types';
 import { formatFileSize, formatRelativeDate } from '../utils/formatters';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 interface ActionResponse<T = unknown> {
   success: boolean;
@@ -50,18 +51,8 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
       return { success: false, error: sourcesError.message };
     }
 
-    // 3. Obtener topic_projects vinculados
-    const { data: topicProjectsData, error: tpError } = await supabase
-      .from('topic_projects')
-      .select('topic_id, project_id')
-      .in('topic_id', topicIds);
-
-    if (tpError) {
-      return { success: false, error: tpError.message };
-    }
-
-    // 4. Obtener proyectos y sus hitos para calcular el progreso dinámico
-    const projectIds = Array.from(new Set((topicProjectsData || []).map((tp) => tp.project_id)));
+    // 3. Obtener proyectos (usando topicsData.project_id)
+    const projectIds = Array.from(new Set(topicsData.map((t) => t.project_id).filter(Boolean)));
 
     const projectsMap: Record<
       string,
@@ -78,32 +69,33 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
     if (projectIds.length > 0) {
       const { data: projectsData } = await supabase
         .from('projects')
-        .select('*')
+        .select('id, titulo, objetivo, progreso, completado')
         .in('id', projectIds);
 
-      const { data: milestonesData } = await supabase
-        .from('project_milestones')
+      const { data: tareasData } = await supabase
+        .from('tareas')
         .select('*')
-        .in('project_id', projectIds);
+        .in('id_proyecto', projectIds);
 
       const milestonesByProject: Record<string, { total: number; completed: number }> = {};
-      (milestonesData || []).forEach((m) => {
-        if (!milestonesByProject[m.project_id]) {
-          milestonesByProject[m.project_id] = { total: 0, completed: 0 };
+      (tareasData || []).forEach((t) => {
+        if (!milestonesByProject[t.id_proyecto]) {
+          milestonesByProject[t.id_proyecto] = { total: 0, completed: 0 };
         }
-        milestonesByProject[m.project_id].total += 1;
-        if (m.is_completed) {
-          milestonesByProject[m.project_id].completed += 1;
+        milestonesByProject[t.id_proyecto].total += 1;
+        if (t.completado) {
+          milestonesByProject[t.id_proyecto].completed += 1;
         }
       });
 
       (projectsData || []).forEach((p) => {
         const stats = milestonesByProject[p.id] || { total: 0, completed: 0 };
-        const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+        const progress =
+          p.progreso || (stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0);
         projectsMap[p.id] = {
-          name: p.name,
-          description: p.description || '',
-          status: p.status || 'active',
+          name: p.titulo,
+          description: p.objetivo || '',
+          status: p.completado ? 'completed' : 'active',
           progress,
           totalMilestones: stats.total,
           completedMilestones: stats.completed,
@@ -143,25 +135,20 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
           };
         });
 
-      const linkedProjectIds = (topicProjectsData || [])
-        .filter((tp) => tp.topic_id === t.id)
-        .map((tp) => tp.project_id);
-
-      const topicProjects: LinkedProject[] = linkedProjectIds
-        .filter((pid) => !!projectsMap[pid])
-        .map((pid) => {
-          const p = projectsMap[pid];
-          return {
-            id: pid,
-            name: p.name,
-            description: p.description,
-            detail: p.status === 'active' ? 'Proyecto activo' : 'Proyecto en planificación',
-            status: p.status,
-            progress: p.progress,
-            totalMilestones: p.totalMilestones,
-            completedMilestones: p.completedMilestones,
-          };
-        });
+      let linkedProject: LinkedProject | undefined;
+      if (t.project_id && projectsMap[t.project_id]) {
+        const p = projectsMap[t.project_id];
+        linkedProject = {
+          id: t.project_id,
+          name: p.name,
+          description: p.description,
+          detail: p.status === 'active' ? 'Proyecto activo' : 'Proyecto completado',
+          status: p.status,
+          progress: p.progress,
+          totalMilestones: p.totalMilestones,
+          completedMilestones: p.completedMilestones,
+        };
+      }
 
       return {
         id: t.id,
@@ -172,8 +159,9 @@ export async function getTopicsAction(): Promise<ActionResponse<Topic[]>> {
         lastEdited: formatRelativeDate(t.updated_at),
         createdAt: t.created_at,
         updatedAt: t.updated_at,
+        projectId: t.project_id,
         sources: topicSources,
-        projects: topicProjects,
+        project: linkedProject,
       };
     });
 
@@ -192,6 +180,15 @@ export async function createTopicAction(input: CreateTopicInput): Promise<Action
 
   if (!title) {
     return { success: false, error: 'El título del tema es requerido.' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos
+  const contentValidation = validateContent(`${title} ${description}`);
+  if (!contentValidation.isValid) {
+    return {
+      success: false,
+      error: contentValidation.error || 'El tema contiene términos no permitidos.',
+    };
   }
 
   try {
@@ -229,8 +226,8 @@ export async function createTopicAction(input: CreateTopicInput): Promise<Action
       lastEdited: 'Creado ahora',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      projectId: data.project_id || undefined,
       sources: [],
-      projects: [],
     };
 
     return { success: true, data: newTopic };
@@ -247,6 +244,18 @@ export async function updateTopicAction(
 ): Promise<ActionResponse<Partial<Topic>>> {
   if (!input.id) {
     return { success: false, error: 'ID de tema requerido' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos
+  const textToValidate = [input.title, input.description, input.mainNote].filter(Boolean).join(' ');
+  if (textToValidate) {
+    const updateValidation = validateContent(textToValidate);
+    if (!updateValidation.isValid) {
+      return {
+        success: false,
+        error: updateValidation.error || 'El contenido del tema contiene términos no permitidos.',
+      };
+    }
   }
 
   try {

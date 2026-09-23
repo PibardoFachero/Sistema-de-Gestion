@@ -14,11 +14,14 @@ import {
   Sparkles,
   Loader2,
   Paperclip,
+  Calendar,
+  Pencil,
 } from 'lucide-react';
 import { extractTextFromFile } from '@/features/ai-assistant/utils/fileTextExtractor';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard';
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
+import { EditProjectModal } from '@/features/proyectos/components/EditProjectModal';
 import {
   getProjectDetailAction,
   toggleTaskStatusAction,
@@ -130,9 +133,16 @@ export default function ProjectDetailPage({
   params: Promise<{ id: string }> | { id: string };
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [project, setProject] = useState<ProjectDetailState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeletingProject, setIsDeletingProject] = useState<boolean>(false);
+  const isAiOfflineParam = searchParams?.get('aiOffline') === 'true';
+  const [isAiOfflineDismissed, setIsAiOfflineDismissed] = useState<boolean>(false);
+  const isAiOfflineNotice = isAiOfflineParam && !isAiOfflineDismissed;
+
+  // Estados para modal de editar proyecto
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
 
   // Estados para modales de confirmación de eliminación
   const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
@@ -202,6 +212,19 @@ export default function ProjectDetailPage({
   const todayStr = new Date().toISOString().split('T')[0];
   const [taskStartDate, setTaskStartDate] = useState(todayStr);
   const [taskStartTime, setTaskStartTime] = useState('09:00');
+
+  // Comprobar si las tareas existentes ya cubren hasta la fecha límite del proyecto
+  const isTasksAtDeadline = Boolean(
+    project?.fecha_limite &&
+    project.tasks &&
+    project.tasks.length > 0 &&
+    project.tasks.some((t) => {
+      if (!t.startDate) return false;
+      const taskDay = t.startDate.split('T')[0];
+      const deadlineDay = project.fecha_limite!.split('T')[0];
+      return taskDay >= deadlineDay;
+    }),
+  );
 
   // Funciones para manipular URLs en la creación de tarea
   const handleAddTaskUrl = () => {
@@ -303,6 +326,14 @@ export default function ProjectDetailPage({
   const handleGenerateTasksWithAI = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!project || isGeneratingWithAI) return;
+
+    if (isTasksAtDeadline) {
+      setAiErrorMessage(
+        'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.',
+      );
+      return;
+    }
+
     setIsGeneratingWithAI(true);
     setAiErrorMessage(null);
     setAiSuccessMessage(null);
@@ -347,12 +378,12 @@ export default function ProjectDetailPage({
         setAiFileExtractionStatus(null);
         setIsAiModalOpen(false);
       } else {
-        setAiErrorMessage(res.error || 'No fue posible generar las tareas con n8n.');
+        setAiErrorMessage(res.error || 'No fue posible generar las tareas con IA.');
       }
     } catch (err: unknown) {
       console.error('Error generando tareas con IA:', err);
       const msg =
-        err instanceof Error ? err.message : 'Error de comunicación con el webhook de n8n.';
+        err instanceof Error ? err.message : 'Error de comunicación con el servicio de IA.';
       setAiErrorMessage(msg);
     } finally {
       setIsGeneratingWithAI(false);
@@ -549,28 +580,19 @@ export default function ProjectDetailPage({
     }
   };
 
-  // Manejador para guardar tarea manual
+  // Manejador para guardar tarea manual delegando la validación al backend
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!project || !newTaskTitle.trim() || isSubmittingTask) return;
+    if (!project || isSubmittingTask) return;
 
-    const maxProjectDate = project.fecha_limite ? project.fecha_limite.split('T')[0] : undefined;
-
-    // Validación de rango de fecha de inicio
-    if (taskStartDate) {
-      if (taskStartDate < todayStr) {
-        setTaskErrorMessage('El día de inicio no puede ser anterior a la fecha de hoy.');
-        return;
-      }
-      if (maxProjectDate && taskStartDate > maxProjectDate) {
+    if (project.fecha_limite) {
+      const deadlineDay = project.fecha_limite.split('T')[0];
+      if (taskStartDate > deadlineDay) {
         setTaskErrorMessage(
-          `El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`,
+          `El día de inicio no puede superar la fecha límite del proyecto (${deadlineDay}).`,
         );
         return;
       }
-    } else {
-      setTaskErrorMessage('Por favor selecciona el día de inicio de la tarea.');
-      return;
     }
 
     setIsSubmittingTask(true);
@@ -580,24 +602,15 @@ export default function ProjectDetailPage({
       const numericVal = Math.max(1, Math.round(Number(durationValue)) || 1);
       const calculatedDurationMinutes = durationUnit === 'horas' ? numericVal * 60 : numericVal;
 
-      // Validación de conflicto de horario en el cliente
-      const conflict = checkScheduleConflict(
-        taskStartDate,
-        taskStartTime,
-        calculatedDurationMinutes,
-        project.tasks || [],
-      );
-
-      if (conflict.hasConflict) {
-        setTaskErrorMessage(conflict.message);
-        setIsSubmittingTask(false);
-        return;
-      }
-
-      const localDate = new Date(`${taskStartDate}T${taskStartTime || '09:00'}:00`);
-      const fullStartDateTime = !isNaN(localDate.getTime())
-        ? localDate.toISOString()
-        : `${taskStartDate}T${taskStartTime || '09:00'}:00`;
+      const localDate = taskStartDate
+        ? new Date(`${taskStartDate}T${taskStartTime || '09:00'}:00`)
+        : null;
+      const fullStartDateTime =
+        localDate && !isNaN(localDate.getTime())
+          ? localDate.toISOString()
+          : taskStartDate
+            ? `${taskStartDate}T${taskStartTime || '09:00'}:00`
+            : null;
 
       const validUrls = newTaskUrls.map((u) => u.trim()).filter(Boolean);
       const combinedUrls = validUrls.join(', ');
@@ -658,58 +671,27 @@ export default function ProjectDetailPage({
     }
   };
 
-  // Manejador para guardar cambios de la tarea editada
+  // Manejador para guardar cambios de edición de tarea delegando la validación al backend
   const handleEditTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!project || !taskToEdit) return;
-
-    if (!editTaskTitle.trim()) {
-      setEditErrorMessage('Por favor ingresa un título para la tarea.');
-      return;
-    }
-
-    if (editTaskStartDate) {
-      if (editTaskStartDate < todayStr) {
-        setEditErrorMessage('El día de inicio no puede ser anterior a la fecha de hoy.');
-        return;
-      }
-      const maxProjectDate = project.fecha_limite ? project.fecha_limite.split('T')[0] : null;
-      if (maxProjectDate && editTaskStartDate > maxProjectDate) {
-        setEditErrorMessage(
-          `El día de inicio no puede superar la fecha límite del proyecto (${maxProjectDate}).`,
-        );
-        return;
-      }
-    } else {
-      setEditErrorMessage('Por favor selecciona el día de inicio de la tarea.');
-      return;
-    }
-
-    const numericVal = Math.max(1, Math.round(Number(editDurationValue)) || 1);
-    const calculatedDurationMinutes = editDurationUnit === 'horas' ? numericVal * 60 : numericVal;
-
-    // Validación de conflicto de horario (excluyendo la tarea en edición)
-    const conflict = checkScheduleConflict(
-      editTaskStartDate,
-      editTaskStartTime,
-      calculatedDurationMinutes,
-      project.tasks || [],
-      taskToEdit.id,
-    );
-
-    if (conflict.hasConflict) {
-      setEditErrorMessage(conflict.message);
-      return;
-    }
+    if (!project || !taskToEdit || isSubmittingEdit) return;
 
     setIsSubmittingEdit(true);
     setEditErrorMessage(null);
 
     try {
-      const localDate = new Date(`${editTaskStartDate}T${editTaskStartTime || '09:00'}:00`);
-      const fullStartDateTime = !isNaN(localDate.getTime())
-        ? localDate.toISOString()
-        : `${editTaskStartDate}T${editTaskStartTime || '09:00'}:00`;
+      const numericVal = Math.max(1, Math.round(Number(editDurationValue)) || 1);
+      const calculatedDurationMinutes = editDurationUnit === 'horas' ? numericVal * 60 : numericVal;
+
+      const localDate = editTaskStartDate
+        ? new Date(`${editTaskStartDate}T${editTaskStartTime || '09:00'}:00`)
+        : null;
+      const fullStartDateTime =
+        localDate && !isNaN(localDate.getTime())
+          ? localDate.toISOString()
+          : editTaskStartDate
+            ? `${editTaskStartDate}T${editTaskStartTime || '09:00'}:00`
+            : null;
 
       const validUrls = editTaskUrls.map((u) => u.trim()).filter(Boolean);
       const combinedUrls = validUrls.join(', ');
@@ -843,6 +825,74 @@ export default function ProjectDetailPage({
         </Link>
       </div>
 
+      {/* Alerta si la IA estuvo fuera de servicio al crear el proyecto */}
+      {isAiOfflineNotice && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <Sparkles className="size-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-sm text-amber-900">
+                Servicio de Inteligencia Artificial no disponible
+              </h4>
+              <p className="text-xs text-amber-800 mt-0.5">
+                El servicio de IA no pudo generar las tareas automáticas en este momento. Tu
+                proyecto fue creado exitosamente y puedes estructurarlo agregando tus tareas
+                manualmente.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              onClick={() => {
+                setIsAiOfflineDismissed(true);
+                setIsAddModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Crear tarea manual
+            </button>
+            <button
+              onClick={() => setIsAiOfflineDismissed(true)}
+              className="p-1.5 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-100/60 transition-colors cursor-pointer"
+              title="Cerrar aviso"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta si la IA falla durante la generación manual en el modal */}
+      {aiErrorMessage && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="size-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-sm text-amber-900">Aviso del servicio de IA</h4>
+              <p className="text-xs text-amber-800 mt-0.5">{aiErrorMessage}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              onClick={() => {
+                setAiErrorMessage(null);
+                setIsAddModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Nueva tarea manual
+            </button>
+            <button
+              onClick={() => setAiErrorMessage(null)}
+              className="p-1.5 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-100/60 transition-colors cursor-pointer"
+              title="Cerrar aviso"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. CABECERA Y MÉTRICAS DEL PROYECTO */}
       <div className="bg-white rounded-[24px] border border-[#E8DCD1] overflow-hidden shadow-sm mb-8 relative">
         {/* Banner Superior */}
@@ -882,9 +932,48 @@ export default function ProjectDetailPage({
 
         {/* Fila Informativa de Métricas */}
         <div className="p-6 sm:p-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-on-surface mb-2">{project.title}</h1>
-          {project.objective && (
-            <p className="text-sm text-on-surface-variant mb-6">{project.objective}</p>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-on-surface mb-2">
+                {project.title}
+              </h1>
+              {project.objective && (
+                <p className="text-sm text-on-surface-variant mb-3 max-w-3xl">
+                  {project.objective}
+                </p>
+              )}
+            </div>
+
+            {/* Botón Editar Proyecto */}
+            <button
+              type="button"
+              onClick={() => setIsEditProjectModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E8DCD1] bg-white hover:bg-[#FAF8F5] text-xs sm:text-sm font-bold text-[#845326] transition-all shadow-xs cursor-pointer shrink-0 self-start hover:-translate-y-0.5 active:scale-95"
+            >
+              <Pencil className="size-3.5" />
+              <span>Editar Proyecto</span>
+            </button>
+          </div>
+
+          {/* Fecha Límite destacada */}
+          {project.fecha_limite && (
+            <div className="mb-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#FAF8F5] border border-[#E8DCD1] text-xs sm:text-sm text-[#845326] font-semibold">
+              <Calendar className="size-4 text-[#845326]" />
+              <span>
+                Fecha límite:{' '}
+                <span className="font-bold text-[#2C1F14]">
+                  {(() => {
+                    try {
+                      const dPart = project.fecha_limite.split('T')[0];
+                      const [y, m, d] = dPart.split('-');
+                      return `${d}/${m}/${y}`;
+                    } catch {
+                      return project.fecha_limite.slice(0, 10);
+                    }
+                  })()}
+                </span>
+              </span>
+            </div>
           )}
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-3">
@@ -956,7 +1045,11 @@ export default function ProjectDetailPage({
             <button
               type="button"
               onClick={() => {
-                setAiErrorMessage(null);
+                setAiErrorMessage(
+                  isTasksAtDeadline
+                    ? 'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.'
+                    : null,
+                );
                 setIsAiModalOpen(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#2C1F14] hover:bg-[#433022] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-all hover:brightness-105 active:scale-95 cursor-pointer"
@@ -983,8 +1076,29 @@ export default function ProjectDetailPage({
             ))}
           </div>
 
+          {/* Aviso si las tareas ya cubren toda la duración del proyecto */}
+          {isTasksAtDeadline && (
+            <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 text-xs shadow-xs max-w-2xl mx-auto animate-in fade-in">
+              <div className="flex items-center gap-2 text-left">
+                <AlertCircle className="size-4 shrink-0 text-amber-600" />
+                <span>
+                  Las tareas están asignadas a toda la duración del proyecto (hasta el{' '}
+                  <span className="font-bold">{project.fecha_limite?.split('T')[0]}</span>). Si
+                  quieres agregar más, modifica la fecha límite.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditProjectModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-200/70 hover:bg-amber-200 text-amber-950 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Calendar className="size-3.5" /> Modificar fecha límite
+              </button>
+            </div>
+          )}
+
           {/* Botones de acción: Agregar Tarea y Generar Tarea con IA */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -999,7 +1113,11 @@ export default function ProjectDetailPage({
             <button
               type="button"
               onClick={() => {
-                setAiErrorMessage(null);
+                setAiErrorMessage(
+                  isTasksAtDeadline
+                    ? 'Las tareas ya están asignadas a toda la duración del proyecto. Si deseas agregar más tareas, por favor modifica la fecha límite del proyecto.'
+                    : null,
+                );
                 setIsAiModalOpen(true);
               }}
               className="inline-flex items-center gap-2 rounded-2xl bg-[#2C1F14] hover:bg-[#433022] text-white px-7 py-3 text-sm font-bold shadow-sm hover:shadow-md transition-all hover:brightness-105 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
@@ -1274,7 +1392,30 @@ export default function ProjectDetailPage({
               creará nuevas tareas de forma automática.
             </p>
 
-            {aiErrorMessage && (
+            {isTasksAtDeadline && (
+              <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-2xl flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                  <span>
+                    Las tareas ya están asignadas a toda la duración del proyecto (hasta el{' '}
+                    <span className="font-bold">{project?.fecha_limite?.split('T')[0]}</span>). Si
+                    deseas agregar más tareas, por favor modifica la fecha límite del proyecto.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAiModalOpen(false);
+                    setIsEditProjectModalOpen(true);
+                  }}
+                  className="self-start inline-flex items-center gap-1.5 px-3 py-1 bg-amber-200/70 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl transition-colors cursor-pointer mt-0.5"
+                >
+                  <Calendar className="size-3.5" /> Modificar fecha límite
+                </button>
+              </div>
+            )}
+
+            {aiErrorMessage && !isTasksAtDeadline && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0" />
                 <span>{aiErrorMessage}</span>
@@ -1381,7 +1522,7 @@ export default function ProjectDetailPage({
                 </button>
                 <button
                   type="submit"
-                  disabled={isGeneratingWithAI}
+                  disabled={isGeneratingWithAI || isTasksAtDeadline}
                   className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {isGeneratingWithAI ? (
@@ -1389,6 +1530,8 @@ export default function ProjectDetailPage({
                       <Loader2 className="size-4 animate-spin text-[#FEB800]" />
                       <span>Generando...</span>
                     </>
+                  ) : isTasksAtDeadline ? (
+                    <span>Fecha límite alcanzada</span>
                   ) : (
                     <>
                       <Sparkles className="size-4 text-[#FEB800]" />
@@ -1650,6 +1793,32 @@ export default function ProjectDetailPage({
         confirmText="Eliminar Tarea"
         isDeleting={isDeletingTask}
       />
+
+      {/* Modal para editar proyecto */}
+      {project && (
+        <EditProjectModal
+          isOpen={isEditProjectModalOpen}
+          onClose={() => setIsEditProjectModalOpen(false)}
+          project={{
+            id: project.id,
+            title: project.title,
+            objective: project.objective,
+            fecha_limite: project.fecha_limite,
+          }}
+          onSuccess={(updated) => {
+            setProject((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    title: updated.title,
+                    objective: updated.objective,
+                    fecha_limite: updated.fecha_limite,
+                  }
+                : null,
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -34,7 +34,9 @@ export function HomeActiveProjects({ projects }: HomeActiveProjectsProps) {
               <FolderKanban className="size-6" />
             </div>
             <div>
-              <h3 className="font-bold text-on-surface text-base">Aún no tienes proyectos creados</h3>
+              <h3 className="font-bold text-on-surface text-base">
+                Aún no tienes proyectos creados
+              </h3>
               <p className="text-xs text-on-surface-variant mt-0.5">
                 Crea tu primer proyecto para organizar tus materias o metas de estudio.
               </p>
@@ -90,18 +92,14 @@ export function HomeActiveProjects({ projects }: HomeActiveProjectsProps) {
           const deadlineFormatted = formatDeadline(project.fecha_limite);
           const priorityBadgeVariant =
             project.prioridad?.toLowerCase() === 'prioritario' ||
-              project.prioridad?.toLowerCase() === 'alta'
+            project.prioridad?.toLowerCase() === 'alta'
               ? 'priority'
               : project.prioridad?.toLowerCase() === 'urgente'
                 ? 'urgent'
                 : 'default';
 
           return (
-            <Link
-              key={project.id}
-              href={`/proyectos/${project.id}`}
-              className="block group"
-            >
+            <Link key={project.id} href={`/proyectos/${project.id}`} className="block group">
               <Card
                 hoverable
                 className="p-5 h-full flex flex-col justify-between group-hover:border-primary/40"

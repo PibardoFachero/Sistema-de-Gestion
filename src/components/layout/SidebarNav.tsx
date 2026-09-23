@@ -97,8 +97,12 @@ export function SidebarNav() {
                     return 0;
                   })
                   .slice(0, 3)
-                  .map((p) => (
-                    <SubItem key={p.id} label={p.name} href={`/proyectos/${p.id}`} />
+                  .map((p, pIdx) => (
+                    <SubItem
+                      key={`${p.id || 'project'}-${pIdx}`}
+                      label={p.name}
+                      href={`/proyectos/${p.id}`}
+                    />
                   ))}
               </div>
             )}

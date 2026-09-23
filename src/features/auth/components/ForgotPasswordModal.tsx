@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Mail, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { requestPasswordReset } from '@/features/auth/actions/requestPasswordResetAction';
-import { forgotPasswordSchema } from '@/features/auth/schemas/forgotPasswordSchema';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -62,14 +61,6 @@ export function ForgotPasswordModal({
     e.preventDefault();
     setFieldError(null);
     setGeneralError(null);
-
-    const validation = forgotPasswordSchema.safeParse({ email });
-    if (!validation.success) {
-      const errors = validation.error.flatten().fieldErrors;
-      setFieldError(errors.email?.[0] || 'Ingresa un correo válido');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -77,6 +68,9 @@ export function ForgotPasswordModal({
       const response = await requestPasswordReset({ email }, origin);
 
       if (!response.success) {
+        if (response.fieldErrors?.email?.[0]) {
+          setFieldError(response.fieldErrors.email[0]);
+        }
         setGeneralError(response.error || 'No se pudo enviar el correo.');
         setIsLoading(false);
         return;

@@ -47,7 +47,6 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/verificar-correo');
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
   const isApiRoute = pathname.startsWith('/api/');
-  const isCalendarApi = pathname.startsWith('/api/calendar');
   const isPasswordResetRoute = pathname.startsWith('/restablecer-contrasena');
 
   const isRegisteredRecently = Boolean(request.cookies.get('just_registered_email')?.value);

@@ -76,7 +76,12 @@ export async function getCalendarDataAction() {
     };
   } catch (error) {
     console.error('Error en getCalendarDataAction:', error);
-    return { success: false, error: 'Error al consultar calendario', events: [], availabilities: [] };
+    return {
+      success: false,
+      error: 'Error al consultar calendario',
+      events: [],
+      availabilities: [],
+    };
   }
 }
 
@@ -98,11 +103,7 @@ export async function deleteCalendarEventAction(eventId: string) {
     const adminDb = getAdminClient();
     const db = adminDb || supabase;
 
-    await db
-      .from('eventos_calendario')
-      .delete()
-      .eq('id', eventId)
-      .eq('usuario_id', user.id);
+    await db.from('eventos_calendario').delete().eq('id', eventId).eq('usuario_id', user.id);
 
     revalidatePath('/calendario');
     return { success: true };

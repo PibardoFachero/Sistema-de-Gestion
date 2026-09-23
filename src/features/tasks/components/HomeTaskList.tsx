@@ -53,9 +53,7 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
     setLoadingTaskId(task.id);
 
     // Actualización optimista local
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, completado: newStatus } : t)),
-    );
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completado: newStatus } : t)));
 
     startTransition(async () => {
       try {
@@ -93,7 +91,10 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
         minute: '2-digit',
         hour12: true,
       }).format(date);
-      return formatted.replace(/[\u202f\u00a0]/g, ' ').replace(/\s+/g, ' ').trim();
+      return formatted
+        .replace(/[\u202f\u00a0]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     } catch {
       return null;
     }
@@ -107,8 +108,8 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
         </div>
         <h3 className="text-lg font-bold text-on-surface">¡Todo listo y al día!</h3>
         <p className="mt-1.5 text-sm text-on-surface-variant max-w-md mx-auto">
-          No tienes tareas pendientes programadas para hoy. Puedes organizar nuevas actividades en tus
-          proyectos o descansar.
+          No tienes tareas pendientes programadas para hoy. Puedes organizar nuevas actividades en
+          tus proyectos o descansar.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link href="/proyectos">
@@ -156,7 +157,7 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
 
           const priorityBadgeVariant =
             task.prioridad?.toLowerCase() === 'prioritario' ||
-              task.prioridad?.toLowerCase() === 'alta'
+            task.prioridad?.toLowerCase() === 'alta'
               ? 'priority'
               : task.prioridad?.toLowerCase() === 'urgente'
                 ? 'urgent'
@@ -165,14 +166,15 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
           return (
             <Card
               key={task.id}
-              className={`p-0 overflow-hidden relative border-l-4 transition-all ${task.completado
+              className={`p-0 overflow-hidden relative border-l-4 transition-all ${
+                task.completado
                   ? 'border-l-status-success bg-surface-container-lowest/60 opacity-80'
                   : timeStatus === 'overdue'
                     ? 'border-l-status-urgent bg-status-urgent-bg/10'
                     : timeStatus === 'in_progress'
                       ? 'border-l-accent-amber'
                       : 'border-l-primary'
-                }`}
+              }`}
             >
               <div className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
@@ -220,23 +222,26 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
                         ? 'Marcar tarea como pendiente'
                         : 'Marcar tarea como completada'
                     }
-                    className={`mt-0.5 size-6 shrink-0 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${task.completado
+                    className={`mt-0.5 size-6 shrink-0 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+                      task.completado
                         ? 'bg-status-success border-status-success text-white shadow-xs'
                         : 'border-outline hover:border-primary hover:bg-primary/5 text-transparent'
-                      } ${isTaskLoading ? 'opacity-50 cursor-wait' : ''}`}
+                    } ${isTaskLoading ? 'opacity-50 cursor-wait' : ''}`}
                   >
                     <Check
-                      className={`size-4 stroke-[3] transition-transform ${task.completado ? 'scale-100' : 'scale-0'
-                        }`}
+                      className={`size-4 stroke-[3] transition-transform ${
+                        task.completado ? 'scale-100' : 'scale-0'
+                      }`}
                     />
                   </button>
 
                   <div className="flex-1 min-w-0">
                     <h3
-                      className={`text-base font-bold leading-snug transition-colors ${task.completado
+                      className={`text-base font-bold leading-snug transition-colors ${
+                        task.completado
                           ? 'line-through text-on-surface-variant/70'
                           : 'text-on-surface'
-                        }`}
+                      }`}
                     >
                       {task.titulo}
                     </h3>
@@ -264,9 +269,7 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
                       {resourceUrl && (
                         <a
                           href={
-                            resourceUrl.startsWith('http')
-                              ? resourceUrl
-                              : `https://${resourceUrl}`
+                            resourceUrl.startsWith('http') ? resourceUrl : `https://${resourceUrl}`
                           }
                           target="_blank"
                           rel="noopener noreferrer"

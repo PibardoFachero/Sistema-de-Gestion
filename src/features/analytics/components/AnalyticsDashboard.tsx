@@ -162,12 +162,17 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
           {availability.available ? (
             <>
               <p className="sr-only">Resumen accesible: {presentation.accessibleSummary}</p>
-              <div id="exportable-chart-area" className="overflow-x-auto bg-surface-container-lowest p-2 rounded-xl">
+              <div
+                id="exportable-chart-area"
+                className="overflow-x-auto bg-surface-container-lowest p-2 rounded-xl"
+              >
                 <MetricChart metric={activeMetric} data={data} />
               </div>
             </>
           ) : (
-            <EmptyMetric message={availability.message} />
+            <div id="exportable-chart-area">
+              <EmptyMetric message={availability.message} />
+            </div>
           )}
           {data.messages.length > 0 && (
             <ul className="mt-5 space-y-2 text-sm leading-relaxed text-on-surface-variant">

@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Calendar } from 'lucide-react';
 
 export interface Project {
   id: string;
@@ -10,6 +10,7 @@ export interface Project {
   tasksCount: number;
   progress: number;
   createdAt: string;
+  fechaLimite?: string | null;
 }
 
 interface ProjectCardProps {
@@ -107,6 +108,27 @@ export function ProjectCard({ project, index, onDelete }: ProjectCardProps) {
               </button>
             )}
           </div>
+
+          {/* Fecha Límite */}
+          {project.fechaLimite && (
+            <div className="flex items-center gap-1.5 text-xs text-[#845326] font-medium">
+              <Calendar className="size-3.5 text-[#845326]/70 shrink-0" />
+              <span>
+                Límite:{' '}
+                <span className="font-semibold text-[#2C1F14]">
+                  {(() => {
+                    try {
+                      const dPart = project.fechaLimite.split('T')[0];
+                      const [y, m, d] = dPart.split('-');
+                      return `${d}/${m}/${y}`;
+                    } catch {
+                      return project.fechaLimite.slice(0, 10);
+                    }
+                  })()}
+                </span>
+              </span>
+            </div>
+          )}
 
           {/* Fila inferior (Progreso) */}
           <div className="flex flex-col gap-1.5">

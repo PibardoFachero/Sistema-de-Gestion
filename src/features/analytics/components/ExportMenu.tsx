@@ -19,7 +19,7 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
     workload: 'Carga Planificada',
     progress: 'Progreso de Proyectos',
     priorities: 'Prioridades',
-    deadlines: 'Próximas Entregas'
+    deadlines: 'Próximas Entregas',
   };
 
   const handleExport = async (format: 'png' | 'pdf' | 'excel') => {
@@ -35,27 +35,36 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           metricTitle,
+          metricKey: activeMetric,
           summary: data.summary,
-          seriesData
-        })
+          seriesData,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Error obteniendo el reporte de la IA');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Error obteniendo el reporte de la IA');
       }
 
-      const { text: aiText } = await response.json();
+      const result = await response.json();
+      const aiText = result.text || 'Análisis no disponible en este momento.';
 
       if (format === 'png') {
         await exportAsImage('exportable-chart-area', aiText, metricTitle);
       } else if (format === 'pdf') {
         await exportAsPDF('exportable-chart-area', aiText, metricTitle);
       } else if (format === 'excel') {
-        await exportAsExcel('exportable-chart-area', aiText, metricTitle, seriesData as unknown as Record<string, unknown>[]);
+        await exportAsExcel(
+          'exportable-chart-area',
+          aiText,
+          metricTitle,
+          seriesData as unknown as Record<string, unknown>[],
+        );
       }
     } catch (error) {
       console.error('Error durante la exportación:', error);
-      alert('Hubo un error al generar el reporte. Revisa la consola o intenta de nuevo.');
+      const msg = error instanceof Error ? error.message : 'Error al generar el reporte';
+      alert(`Hubo un error al exportar el reporte: ${msg}`);
     } finally {
       setIsExporting(false);
     }
@@ -67,11 +76,15 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
         onClick={() => setIsOpen(!isOpen)}
         disabled={isExporting}
         className={cn(
-          "flex items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-          isExporting && "opacity-70 cursor-not-allowed"
+          'flex items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface px-4 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          isExporting && 'opacity-70 cursor-not-allowed',
         )}
       >
-        {isExporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        {isExporting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Download className="size-4" />
+        )}
         {isExporting ? 'Analizando con IA...' : 'Exportar Reporte'}
       </button>
 

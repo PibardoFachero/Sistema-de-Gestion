@@ -33,7 +33,10 @@ export async function PATCH(request: Request, context: Params) {
 
     if (user.id !== targetUserId) {
       return NextResponse.json(
-        { success: false, error: 'No tienes autorización para modificar la disponibilidad de este usuario.' },
+        {
+          success: false,
+          error: 'No tienes autorización para modificar la disponibilidad de este usuario.',
+        },
         { status: 403 },
       );
     }
@@ -134,7 +137,8 @@ export async function PATCH(request: Request, context: Params) {
             .single();
 
           const todayStr = new Date().toISOString().split('T')[0];
-          const currentBlocks = (currentCronData?.datos as { bloques?: ScheduleBlock[] })?.bloques || [];
+          const currentBlocks =
+            (currentCronData?.datos as { bloques?: ScheduleBlock[] })?.bloques || [];
           const bloquesFuturos = currentBlocks.filter((b) => b.fecha >= todayStr);
 
           // Obtener tareas ya completadas del proyecto
@@ -158,7 +162,9 @@ export async function PATCH(request: Request, context: Params) {
             .join('\n');
 
           const bloquesFuturosTexto = bloquesFuturos
-            .map((b) => `- ${b.fecha} ${b.hora_inicio}-${b.hora_fin}: ${b.tarea} (${b.descripcion})`)
+            .map(
+              (b) => `- ${b.fecha} ${b.hora_inicio}-${b.hora_fin}: ${b.tarea} (${b.descripcion})`,
+            )
             .join('\n');
 
           // Invocar a Gemini para regenerar
@@ -166,7 +172,9 @@ export async function PATCH(request: Request, context: Params) {
             usuarioId: user.id,
             proyectoId: targetProj.id,
             nombre: targetProj.titulo,
-            fechaLimite: fecha_limite_proyecto || (targetProj.fecha_limite ? targetProj.fecha_limite.split('T')[0] : undefined),
+            fechaLimite:
+              fecha_limite_proyecto ||
+              (targetProj.fecha_limite ? targetProj.fecha_limite.split('T')[0] : undefined),
             cambiosDisponibilidad: cambiosTexto,
             bloquesFuturosActuales: bloquesFuturosTexto,
             tareasCompletadas: completedText,
@@ -242,7 +250,8 @@ export async function PATCH(request: Request, context: Params) {
     });
   } catch (error) {
     console.error('Error en PATCH /api/users/:id/availability:', error);
-    const msg = error instanceof Error ? error.message : 'Error interno al actualizar disponibilidad';
+    const msg =
+      error instanceof Error ? error.message : 'Error interno al actualizar disponibilidad';
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

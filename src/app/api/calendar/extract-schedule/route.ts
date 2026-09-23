@@ -29,10 +29,7 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'No autorizado. Inicia sesión.' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'No autorizado. Inicia sesión.' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -41,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: 'Datos inválidos', detalles: parsed.error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,9 +63,7 @@ export async function POST(req: NextRequest) {
         origen: 'extraido_ia' as const,
       }));
 
-      const { error: insertErr } = await supabase
-        .from('bloques_disponibilidad')
-        .insert(inserts);
+      const { error: insertErr } = await supabase.from('bloques_disponibilidad').insert(inserts);
 
       if (insertErr) {
         console.warn('Advertencia guardando bloques en bloques_disponibilidad:', insertErr);
@@ -94,7 +89,7 @@ export async function POST(req: NextRequest) {
       {
         error: error instanceof Error ? error.message : 'Error procesando horario con IA',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

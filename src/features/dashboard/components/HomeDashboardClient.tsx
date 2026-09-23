@@ -9,7 +9,10 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Coffee, Calendar, ShieldCheck, Flame, TrendingUp } from 'lucide-react';
 import { formatMinutes } from '@/features/analytics/data/calculations';
 import { HomeTaskList, HomeTaskItem } from '@/features/tasks/components/HomeTaskList';
-import { HomeActiveProjects, HomeProjectItem } from '@/features/proyectos/components/HomeActiveProjects';
+import {
+  HomeActiveProjects,
+  HomeProjectItem,
+} from '@/features/proyectos/components/HomeActiveProjects';
 import { resetStreakOnOverdueAction } from '@/features/proyectos/actions/proyectoActions';
 import { isTaskOverdue } from '@/features/gamification/services/streakService';
 
@@ -112,7 +115,10 @@ export function HomeDashboardClient({
             : Math.max(0, prev.rachaActiva - 1);
 
       const nextMax = Math.max(prev.rachaMaxima, nextRacha);
-      const nextTodayCompleted = Math.max(0, Math.min(prev.todayTotal, prev.todayCompleted + delta));
+      const nextTodayCompleted = Math.max(
+        0,
+        Math.min(prev.todayTotal, prev.todayCompleted + delta),
+      );
       const nextCompletedTasks = Math.max(0, prev.completedTasksCount + delta);
       const nextGlobalProgress =
         prev.totalTasksCount > 0
@@ -130,9 +136,7 @@ export function HomeDashboardClient({
     });
 
     // 2. Actualizar la tarea dentro del listado
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completado: newCompleted } : t)),
-    );
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completado: newCompleted } : t)));
 
     // 3. Actualizar la barra de progreso del proyecto correspondiente
     const targetTask = tasks.find((t) => t.id === taskId);
