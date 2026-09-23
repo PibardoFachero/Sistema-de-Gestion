@@ -12,7 +12,33 @@ interface TelegramBotWidgetProps {
 
 export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Ocultar al hacer scroll hacia abajo, mostrar al hacer scroll hacia arriba
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (isOpen) {
+        lastScrollY = currentScrollY;
+        return; 
+      }
+
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setIsVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        setIsVisible(true);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
 
   const rawBotUrl =
     botUrl || process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || 'https://t.me/aulaverify_bot';
@@ -68,10 +94,17 @@ export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) 
   }, [isOpen]);
 
   return (
-    <aside
+    <motion.aside
       ref={widgetRef}
       aria-label="Asistente de Telegram"
-      className="fixed bottom-20 md:bottom-8 right-5 md:right-8 z-50 flex flex-col items-end pointer-events-auto"
+      className="fixed bottom-20 md:bottom-8 right-5 md:right-8 z-50 flex flex-col items-end"
+      initial={false}
+      animate={{
+        x: isVisible ? 0 : 100,
+        opacity: isVisible ? 1 : 0,
+        pointerEvents: isVisible ? 'auto' : 'none'
+      }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
       {/* Recuadro flotante con la información del bot adaptado a la paleta del sistema */}
       <AnimatePresence>
@@ -146,7 +179,7 @@ export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) 
           </span>
         )}
       </button>
-    </aside>
+    </motion.aside>
   );
 }
 
