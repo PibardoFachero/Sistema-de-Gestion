@@ -1,0 +1,69 @@
+{
+  "messages": {
+    "dangerous": "The content contains dangerous or prohibited terms related to violence or security.",
+    "obscene": "The content contains obscene, vulgar, or inappropriate language. Please maintain a professional tone."
+  },
+  "dangerous": {
+    "words": [
+      "bomb",
+      "bombs",
+      "attack",
+      "attacks",
+      "terrorism",
+      "terrorist",
+      "murder",
+      "homicide",
+      "suicide",
+      "kill",
+      "slaughter",
+      "shooting",
+      "shootings",
+      "kidnap",
+      "kidnapping",
+      "extortion",
+      "poison",
+      "explosive",
+      "explosives",
+      "cyanide",
+      "rifle",
+      "dynamite",
+      "trafficking",
+      "cocaine",
+      "heroin",
+      "fentanyl"
+    ],
+    "phrases": [
+      "firearm",
+      "fire arm",
+      "fire arms",
+      "hack bank",
+      "make a bomb",
+      "build a bomb",
+      "how to kill",
+      "how to commit suicide"
+    ]
+  },
+  "obscene": {
+    "words": [
+      "fuck",
+      "fucking",
+      "fucker",
+      "shit",
+      "bitch",
+      "bitches",
+      "asshole",
+      "assholes",
+      "cunt",
+      "dick",
+      "dicks",
+      "pussy",
+      "bastard",
+      "bastards",
+      "motherfucker"
+    ],
+    "phrases": [
+      "son of a bitch",
+      "piece of shit"
+    ]
+  }
+}
