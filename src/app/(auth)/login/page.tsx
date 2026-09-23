@@ -46,7 +46,7 @@ export default async function LoginPage() {
 
         {/* Contenido Central: Mascota y Features */}
         <div className="relative z-10 flex flex-col items-center text-center mt-8">
-          <AuthMascotVideo showControls className="mb-8 h-64 w-64" />
+          <AuthMascotVideo className="mb-8 h-64 w-64" />
 
           <h2 className="text-3xl font-bold mb-3 tracking-tight">Komorebi</h2>
           <p className="text-primary-container-lowest/80 text-on-primary/80 max-w-sm mb-8 leading-relaxed font-medium text-sm">
