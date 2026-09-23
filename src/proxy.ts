@@ -15,8 +15,8 @@ export const config = {
      * - _next/static (archivos estáticos compilados)
      * - _next/image (optimización de imágenes)
      * - favicon.ico (ícono de la aplicación)
-     * - extensiones de imágenes y fuentes públicas
+     * - extensiones de imágenes, fuentes y medios públicos
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mp3|wav|ogg|woff|woff2|ttf|otf)$).*)',
   ],
 };

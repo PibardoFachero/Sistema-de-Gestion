@@ -12,6 +12,7 @@ import {
   Check,
   ChevronDown,
   Edit3,
+  FileText,
   Flame,
   GraduationCap,
   ImagePlus,
@@ -20,7 +21,6 @@ import {
   Layers,
   Loader2,
   Mail,
-  Phone,
   PlusCircle,
   ShieldAlert,
   ShieldCheck,
@@ -38,8 +38,6 @@ import {
   DIFICULTADES_OPTIONS,
   AREAS_PRIORITARIAS_OPTIONS,
 } from '@/features/profile/data/learningOptions';
-import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from '@/features/profile/data/countryCodes';
-import { formatPhoneNumber, parsePhoneNumber } from '@/features/profile/utils/phoneValidation';
 import { updateProfileIdentity } from '@/features/profile/actions/updateProfileIdentityAction';
 import { updateLearningPreferences } from '@/features/profile/actions/updateLearningPreferencesAction';
 
@@ -62,9 +60,6 @@ export type ProfileDashboardData = {
   experience?: string | null;
   personalContext?: string | null;
   description?: string | null;
-  phone?: string | null;
-  telegramUsername?: string | null;
-  telegramVerifiedAt?: string | null;
   objective?: string | null;
   pace?: string | null;
   difficulties?: string[];
@@ -92,10 +87,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
   const [lastName, setLastName] = useState(profile.lastName || '');
   const [username, setUsername] = useState(profile.username);
   const [description, setDescription] = useState(profile.description || '');
-  const initialPhoneData = parsePhoneNumber(profile.phone);
-  const [phonePrefix, setPhonePrefix] = useState(initialPhoneData.prefix || DEFAULT_COUNTRY_CODE);
-  const [phoneNumber, setPhoneNumber] = useState(initialPhoneData.number);
-  const [phoneInputError, setPhoneInputError] = useState<string | null>(null);
+
   const [avatarPreview, setAvatarPreview] = useState(profile.avatarUrl || '');
   const [uploadedAvatars, setUploadedAvatars] = useState<string[]>(
     profile.uploadedAvatars && profile.uploadedAvatars.length > 0
@@ -139,7 +131,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
   function toggleEditing(section: Exclude<EditableSection, null>) {
     setIdentityMessage(null);
     setIdentityError(null);
-    setPhoneInputError(null);
     setLearningMessage(null);
     setLearningError(null);
     setEditingSection((current) => (current === section ? null : section));
@@ -197,10 +188,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
     event.preventDefault();
     setIdentityMessage(null);
     setIdentityError(null);
-    setPhoneInputError(null);
-
-    const trimmedNumber = phoneNumber.trim();
-    const fullPhone = trimmedNumber ? formatPhoneNumber(phonePrefix, trimmedNumber) : null;
     const displayName = `${firstName} ${lastName}`.trim() || username;
 
     startSavingIdentity(async () => {
@@ -214,7 +201,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
         role: answers.rol_condicion,
         age: answers.edad,
         workSituation: answers.situacion_laboral,
-        phone: fullPhone,
       });
 
       if (!res.success) {
@@ -500,77 +486,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   </span>
                 </div>
 
-                {/* Teléfono (opcional) con selector de prefijo internacional */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="telefono_numero_input"
-                      className="block text-xs font-semibold uppercase tracking-wide text-outline"
-                    >
-                      Número telefónico{' '}
-                      <span className="font-normal normal-case text-on-surface-variant">
-                        (opcional)
-                      </span>
-                    </label>
-                    {phoneInputError && (
-                      <span role="alert" className="text-xs font-medium text-status-error">
-                        {phoneInputError}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-2 flex flex-col sm:flex-row gap-2.5">
-                    {/* Selector de prefijo de país */}
-                    <div className="relative sm:w-56 shrink-0">
-                      <label htmlFor="telefono_prefijo_select" className="sr-only">
-                        Prefijo de país
-                      </label>
-                      <select
-                        id="telefono_prefijo_select"
-                        value={phonePrefix}
-                        onChange={(e) => {
-                          setPhonePrefix(e.target.value);
-                          setPhoneInputError(null);
-                        }}
-                        className="w-full appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pl-3 pr-8 text-sm text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                      >
-                        {COUNTRY_CODES.map((country) => (
-                          <option
-                            key={`${country.iso}-${country.code}`}
-                            value={country.code}
-                            className="bg-surface-container-lowest text-on-surface py-1"
-                          >
-                            {country.flag} {country.code} ({country.name})
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-outline" />
-                    </div>
-
-                    {/* Campo de número telefónico */}
-                    <div className="relative flex-1 min-w-0">
-                      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline">
-                        <Phone className="size-4" />
-                      </div>
-                      <input
-                        id="telefono_numero_input"
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => {
-                          setPhoneNumber(e.target.value);
-                          if (phoneInputError) setPhoneInputError(null);
-                        }}
-                        placeholder="Ej. 412 1234567"
-                        maxLength={20}
-                        className="block w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-3 py-2.5 text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  </div>
-                  <span className="mt-1 block text-xs text-on-surface-variant">
-                    Selecciona el prefijo de tu país e ingresa tu número (entre 6 y 15 dígitos).
-                  </span>
-                </div>
-
                 {/* Descripción de perfil con límites de resize mínimo y máximo */}
                 <div>
                   <label
@@ -767,20 +682,6 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
                   <div className="grid grid-cols-1 gap-2 border-t border-outline-variant/40 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
                     <CompactDetail label="Usuario" value={`@${username}`} />
                     <CompactDetail label="Rol actual" value={answers.rol_condicion || unknown} />
-                    <CompactDetail
-                      label="Teléfono"
-                      value={
-                        phoneNumber.trim()
-                          ? formatPhoneNumber(phonePrefix, phoneNumber)
-                          : profile.phone || 'No especificado'
-                      }
-                    />
-                    <CompactDetail
-                      label="Telegram"
-                      value={
-                        profile.telegramUsername ? `@${profile.telegramUsername}` : 'Bot disponible'
-                      }
-                    />
                   </div>
                 </div>
 
@@ -1134,7 +1035,72 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           </AnimatePresence>
         </WideSection>
 
-        {/* SECCIÓN 3: Mi espacio de aprendizaje y Rachas */}
+        {/* SECCIÓN 3: Términos y privacidad */}
+        <WideSection
+          title="Términos y privacidad"
+          description="Consulta las condiciones de uso de Komorebi y cómo cuidamos tu información."
+          icon={<FileText className="size-5" />}
+        >
+          <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 border-b border-outline-variant/40 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-lowest text-primary">
+                  <ShieldCheck className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-on-surface">
+                    Información clara, siempre disponible
+                  </h3>
+                  <p className="mt-1 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
+                    Revisa los documentos vigentes cuando lo necesites. Te avisaremos si alguna
+                    actualización requiere una nueva revisión.
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface-variant">
+                Versión vigente
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Link
+                href="/terms"
+                className="group rounded-xl border border-outline-variant/60 bg-surface-container-lowest/80 p-4 transition-colors hover:border-primary/35 hover:bg-surface-container-low"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <FileText className="size-5 text-primary" />
+                  <ArrowUpRight className="size-4 text-outline transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                </div>
+                <h4 className="mt-5 text-sm font-bold text-on-surface">Términos y condiciones</h4>
+                <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                  Conoce las reglas de uso, convivencia e integridad académica.
+                </p>
+                <span className="mt-3 inline-flex text-xs font-semibold text-primary">
+                  Ver términos →
+                </span>
+              </Link>
+
+              <Link
+                href="/privacy"
+                className="group rounded-xl border border-outline-variant/60 bg-surface-container-lowest/80 p-4 transition-colors hover:border-primary/35 hover:bg-surface-container-low"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <ShieldCheck className="size-5 text-primary" />
+                  <ArrowUpRight className="size-4 text-outline transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                </div>
+                <h4 className="mt-5 text-sm font-bold text-on-surface">Política de privacidad</h4>
+                <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                  Entiende qué información usamos y las decisiones que puedes tomar sobre ella.
+                </p>
+                <span className="mt-3 inline-flex text-xs font-semibold text-primary">
+                  Ver privacidad →
+                </span>
+              </Link>
+            </div>
+          </div>
+        </WideSection>
+
+        {/* SECCIÓN 4: Mi espacio de aprendizaje y Rachas */}
         <WideSection
           title="Mi espacio de aprendizaje"
           description="La conexión entre tu perfil, tus temas, proyectos y el contexto que autorizas para la IA."
