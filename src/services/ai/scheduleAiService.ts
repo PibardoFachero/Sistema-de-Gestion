@@ -383,10 +383,7 @@ export interface ProjectForGeminiTaskGeneration {
  * pero asegurando que si quedan pocos días (<= 3), se utilicen todos los días disponibles
  * para que el usuario cumpla sus tareas pendientes sin superar jamás el deadlineStr.
  */
-export function calculateAvailableStudyDates(
-  startDateStr: string,
-  deadlineStr: string,
-): string[] {
+export function calculateAvailableStudyDates(startDateStr: string, deadlineStr: string): string[] {
   if (!startDateStr || !deadlineStr || startDateStr > deadlineStr) {
     return [];
   }
@@ -756,8 +753,7 @@ DIRECTRICES ADICIONALES:
       const assignedDate = targetDates[index] || targetDates[targetDates.length - 1];
       const horaInicio =
         t.hora_inicio && /^\d{2}:\d{2}$/.test(t.hora_inicio) ? t.hora_inicio : '09:00';
-      const horaFin =
-        t.hora_fin && /^\d{2}:\d{2}$/.test(t.hora_fin) ? t.hora_fin : '10:00';
+      const horaFin = t.hora_fin && /^\d{2}:\d{2}$/.test(t.hora_fin) ? t.hora_fin : '10:00';
       const fechaInicioIso = new Date(`${assignedDate}T${horaInicio}:00`).toISOString();
 
       return {

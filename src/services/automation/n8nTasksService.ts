@@ -362,35 +362,6 @@ function parseTasksFromN8nResponse(rawResponse: unknown): GeneratedTaskCandidate
 }
 
 /**
- * Genera fechas de inicio por defecto para una lista de tareas candidatas,
- * excluyendo fines de semana (Sábados y Domingos) para otorgar días de descanso
- * y evitar colisiones de horario entre tareas generadas automáticamente.
- * Si se pasa startDate, comienza a partir del día siguiente a esa fecha.
- */
-function calculateDefaultStartDates(count: number, startDate?: string | Date): string[] {
-  const dates: string[] = [];
-  const current = startDate ? new Date(startDate) : new Date();
-  current.setDate(current.getDate() + 1); // Comenzar a partir del día siguiente
-
-  while (dates.length < count) {
-    // Si cae en fin de semana (0 = domingo, 6 = sábado), avanzar al día hábil siguiente
-    if (current.getDay() === 0) {
-      current.setDate(current.getDate() + 1); // Domingo -> Lunes
-    } else if (current.getDay() === 6) {
-      current.setDate(current.getDate() + 2); // Sábado -> Lunes
-    }
-
-    const d = new Date(current);
-    d.setHours(9, 0, 0, 0); // 09:00 AM
-    dates.push(d.toISOString());
-
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
-}
-
-/**
  * Genera tareas para un proyecto llamando al webhook configurado en n8n
  * e insertándolas en la tabla 'tareas' de Supabase.
  */

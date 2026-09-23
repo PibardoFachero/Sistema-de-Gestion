@@ -216,14 +216,14 @@ export default function ProjectDetailPage({
   // Comprobar si las tareas existentes ya cubren hasta la fecha límite del proyecto
   const isTasksAtDeadline = Boolean(
     project?.fecha_limite &&
-      project.tasks &&
-      project.tasks.length > 0 &&
-      project.tasks.some((t) => {
-        if (!t.startDate) return false;
-        const taskDay = t.startDate.split('T')[0];
-        const deadlineDay = project.fecha_limite!.split('T')[0];
-        return taskDay >= deadlineDay;
-      }),
+    project.tasks &&
+    project.tasks.length > 0 &&
+    project.tasks.some((t) => {
+      if (!t.startDate) return false;
+      const taskDay = t.startDate.split('T')[0];
+      const deadlineDay = project.fecha_limite!.split('T')[0];
+      return taskDay >= deadlineDay;
+    }),
   );
 
   // Funciones para manipular URLs en la creación de tarea
@@ -1083,8 +1083,8 @@ export default function ProjectDetailPage({
                 <AlertCircle className="size-4 shrink-0 text-amber-600" />
                 <span>
                   Las tareas están asignadas a toda la duración del proyecto (hasta el{' '}
-                  <span className="font-bold">{project.fecha_limite?.split('T')[0]}</span>). Si quieres
-                  agregar más, modifica la fecha límite.
+                  <span className="font-bold">{project.fecha_limite?.split('T')[0]}</span>). Si
+                  quieres agregar más, modifica la fecha límite.
                 </span>
               </div>
               <button
@@ -1350,9 +1350,7 @@ export default function ProjectDetailPage({
                 <button
                   type="submit"
                   disabled={
-                    !newTaskTitle.trim() ||
-                    isSubmittingTask ||
-                    liveScheduleConflict.hasConflict
+                    !newTaskTitle.trim() || isSubmittingTask || liveScheduleConflict.hasConflict
                   }
                   className="flex-1 rounded-xl bg-[#2C1F14] hover:bg-[#433022] px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm active:scale-98"
                 >
@@ -1400,8 +1398,8 @@ export default function ProjectDetailPage({
                   <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
                   <span>
                     Las tareas ya están asignadas a toda la duración del proyecto (hasta el{' '}
-                    <span className="font-bold">{project?.fecha_limite?.split('T')[0]}</span>). Si deseas
-                    agregar más tareas, por favor modifica la fecha límite del proyecto.
+                    <span className="font-bold">{project?.fecha_limite?.split('T')[0]}</span>). Si
+                    deseas agregar más tareas, por favor modifica la fecha límite del proyecto.
                   </span>
                 </div>
                 <button
