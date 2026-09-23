@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { AuthMascotVideo } from '@/components/mascot/AuthMascotVideo';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -134,15 +134,7 @@ export function RegisterForm() {
     <Card className="w-full p-8 sm:p-10 bg-surface-container-lowest border-outline-variant/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       {/* Encabezado e Ícono */}
       <div className="flex flex-col items-center text-center mb-8">
-        <div className="lg:hidden mb-4 relative h-16 w-16">
-          <Image
-            src="/images/mascot/chigui-focus.png"
-            alt="Chigüi Focus"
-            fill
-            sizes="64px"
-            className="object-contain drop-shadow-sm"
-          />
-        </div>
+        <AuthMascotVideo framed={false} objectFit="contain" className="mb-4 h-40 w-40 lg:hidden" />
         <h1 className="text-2xl font-bold text-primary mb-1 tracking-tight">Crear una cuenta</h1>
         <p className="text-sm text-on-surface-variant font-medium max-w-sm">
           Completa tus datos para registrarte en Komorebi Study Studio

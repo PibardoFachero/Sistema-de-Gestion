@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
+import { AuthMascotVideo } from '@/components/mascot/AuthMascotVideo';
 import { loginUser } from '@/features/auth/actions/loginAction';
 import { createClient } from '@/lib/supabase/client';
 import { ForgotPasswordModal } from '@/features/auth/components/ForgotPasswordModal';
@@ -132,10 +132,7 @@ export function LoginForm() {
   return (
     <Card className="w-full p-8 sm:p-10 bg-surface-container-lowest border-outline-variant/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
       <div className="flex flex-col items-center text-center mb-8">
-        <ChiguiGreeting
-          priority
-          className="mb-4 h-24 w-24 object-contain motion-safe:animate-[chigui-float_4s_ease-in-out_infinite] lg:hidden"
-        />
+        <AuthMascotVideo framed={false} objectFit="contain" className="mb-4 h-40 w-40 lg:hidden" />
         <h1 className="text-2xl font-bold text-primary mb-1.5 tracking-tight">
           Bienvenido de vuelta
         </h1>

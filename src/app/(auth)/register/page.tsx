@@ -1,5 +1,5 @@
 import { RegisterForm } from '@/features/auth/components/RegisterForm';
-import { ChiguiGreeting } from '@/components/mascot/ChiguiGreeting';
+import { AuthMascotVideo } from '@/components/mascot/AuthMascotVideo';
 import { Rocket, Timer, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
 import { Metadata } from 'next';
@@ -46,12 +46,7 @@ export default async function RegisterPage() {
 
         {/* Contenido Central: Mascota y Features */}
         <div className="relative z-10 flex flex-col items-center text-center mt-8">
-          <div className="relative mb-8 h-64 w-full max-w-xs">
-            <ChiguiGreeting
-              priority
-              className="h-full w-full origin-bottom object-contain transition-transform duration-500 hover:scale-[1.05] motion-safe:animate-[chigui-float_4s_ease-in-out_infinite]"
-            />
-          </div>
+          <AuthMascotVideo className="mb-8 h-64 w-64" />
 
           <h2 className="text-3xl font-bold mb-4 tracking-tight">
             Transforma tu forma de estudiar.
