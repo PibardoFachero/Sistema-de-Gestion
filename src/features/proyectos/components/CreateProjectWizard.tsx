@@ -545,8 +545,8 @@ export function CreateProjectWizard() {
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-xl sm:text-2xl font-bold text-[#2C1F14] leading-snug tracking-tight mb-5">
               En la encuesta indicaste que tienes{' '}
-              <span className="text-[#845326]">{onboardingTime}</span> para tareas al día. ¿Cuánto de ese
-              tiempo puedes dedicarle a este proyecto?
+              <span className="text-[#845326]">{onboardingTime}</span> para tareas al día. ¿Cuánto
+              de ese tiempo puedes dedicarle a este proyecto?
             </h2>
             <div className="space-y-3 mb-6">
               {mainOptions.map((opt) => {

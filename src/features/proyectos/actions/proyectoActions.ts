@@ -270,12 +270,6 @@ export async function createProjectAction(input: CreateProjectInput) {
           error: 'La fecha límite no puede ser anterior al día de creación.',
         };
       }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> origin/main
-
       const maxYear = today.getFullYear() + 10;
       const maxDate = new Date(`${maxYear}-12-31T23:59:59`);
       if (selected > maxDate) {
@@ -286,7 +280,6 @@ export async function createProjectAction(input: CreateProjectInput) {
       }
     }
 
-<<<<<<< HEAD
     // [VALIDACIÓN PREVIA HEURÍSTICA DE VIABILIDAD]:
     // Detección inmediata sin consumo de tokens de casos manifiestamente imposibles
     if (input.fecha_limite) {
@@ -294,7 +287,10 @@ export async function createProjectAction(input: CreateProjectInput) {
       todayZero.setHours(0, 0, 0, 0);
       const deadlineZero = new Date(input.fecha_limite);
       deadlineZero.setHours(0, 0, 0, 0);
-      const diffDays = Math.max(1, Math.ceil((deadlineZero.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)));
+      const diffDays = Math.max(
+        1,
+        Math.ceil((deadlineZero.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)),
+      );
       const minDiarios = Math.round(Number(input.minutos_diarios)) || 30;
       const horasTotales = Math.round((diffDays * minDiarios) / 60);
 
@@ -311,12 +307,13 @@ export async function createProjectAction(input: CreateProjectInput) {
           success: false,
           error: `Es imposible realizar el proyecto en solo ${diffDays} día(s). Se necesita más tiempo para alcanzar este objetivo.`,
           es_imposible: true,
-          motivo: 'El plazo asignado es insuficiente para abarcar la complejidad y alcance del objetivo declarado.',
+          motivo:
+            'El plazo asignado es insuficiente para abarcar la complejidad y alcance del objetivo declarado.',
           tiempo_minimo_recomendado: 'Al menos 1 a 3 meses',
         };
       }
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
+    }
+
     // [VALIDACIÓN BACKEND DE VIABILIDAD IA]:
     // Evaluar si es pedagógicamente posible realizar el proyecto en el tiempo asignado
     const feasibility = await checkProjectFeasibilityWithGemini({
@@ -338,7 +335,6 @@ export async function createProjectAction(input: CreateProjectInput) {
         motivo: feasibility.motivo,
         tiempo_minimo_recomendado: feasibility.tiempo_minimo_recomendado,
       };
->>>>>>> origin/main
     }
 
     const projectId = crypto.randomUUID();
@@ -388,7 +384,7 @@ export async function createProjectAction(input: CreateProjectInput) {
         });
 
         // Si la IA dictaminó que el proyecto es pedagógicamente inviable
-        if ((geminiResult as any).es_imposible) {
+        if ('es_imposible' in geminiResult && geminiResult.es_imposible) {
           // Revertir inserción de proyecto limpio
           await supabase.from('projects').delete().eq('id', project.id);
           return {
@@ -397,7 +393,10 @@ export async function createProjectAction(input: CreateProjectInput) {
               geminiResult.error ||
               'Es imposible realizar el proyecto en el tiempo límite indicado, se necesita más tiempo.',
             es_imposible: true,
-            motivo: (geminiResult as any).motivo,
+            motivo:
+              'motivo' in geminiResult && typeof geminiResult.motivo === 'string'
+                ? geminiResult.motivo
+                : undefined,
           };
         }
 

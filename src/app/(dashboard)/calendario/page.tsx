@@ -48,28 +48,24 @@ interface Availability {
   startTime: string;
   endTime: string;
   label: string;
-  type?: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' | 'estudio' | 'ocupado';
+  type?:
+    'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' | 'estudio' | 'ocupado';
   source?: 'google' | 'local' | 'supabase';
   eventId?: string;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-const COLOR_MAP: Record<string, { bg: string; hover: string; text: string; border: string; bgPale: string }> = {
-=======
 const COLOR_MAP: Record<
   string,
   { bg: string; hover: string; text: string; border: string; bgPale: string }
 > = {
->>>>>>> origin/main
   libre: {
-=======
-const COLOR_MAP: Record<
-  string,
-  { bg: string; hover: string; text: string; border: string; bgPale: string }
-> = {
+    bg: 'bg-[#C8D6AF]',
+    hover: 'hover:bg-[#B5C59A]',
+    text: 'text-[#3A4A28]',
+    border: 'border-[#3A4A28]/20',
+    bgPale: 'bg-[#C8D6AF]/30',
+  },
   tareas: {
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
     bg: 'bg-[#C8D6AF]',
     hover: 'hover:bg-[#B5C59A]',
     text: 'text-[#3A4A28]',
@@ -139,14 +135,6 @@ export default function CalendarioPage() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-            return parsed.map((a: any) => {
-              let t = a.type || 'libre';
-              if (t === 'estudio') t = 'estudiando';
-              if (t === 'ocupado') t = 'trabajo';
-              return { ...a, type: t };
-=======
             return parsed.map((a: Partial<Availability>) => {
               let t = a.type || 'tareas';
               if (t === 'estudio') t = 'estudiando';
@@ -156,14 +144,6 @@ export default function CalendarioPage() {
                 t = 'tareas';
               }
               return { ...a, type: t } as Availability;
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-            return parsed.map((a: Partial<Availability>) => {
-              let t = a.type || 'libre';
-              if (t === 'estudio') t = 'estudiando';
-              if (t === 'ocupado') t = 'trabajo';
-              return { ...a, type: t } as Availability;
->>>>>>> origin/main
             });
           }
         }
@@ -257,7 +237,9 @@ export default function CalendarioPage() {
           setAvailabilities((prev) => {
             const nonSupabase = prev.filter((p) => p.source !== 'supabase' && !p.eventId);
             const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
-            const filteredNonSupabase = nonSupabase.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
+            const filteredNonSupabase = nonSupabase.filter(
+              (p) => !keys.has(`${p.date}_${p.startTime}`),
+            );
             return [...filteredNonSupabase, ...dbEvents];
           });
         }
@@ -338,60 +320,7 @@ export default function CalendarioPage() {
       }
 
       // Cargar eventos del calendario y tareas programadas desde Supabase
-<<<<<<< HEAD
-      getCalendarDataAction()
-        .then((res) => {
-          if (res.success && res.events && res.events.length > 0) {
-            const dbEvents: Availability[] = [];
-            res.events.forEach((ev) => {
-              const startD = new Date(ev.inicio);
-              const endD = new Date(ev.fin);
-              if (isNaN(startD.getTime()) || isNaN(endD.getTime())) return;
-
-              const dateStr = format(startD, 'yyyy-MM-dd');
-              const dayOfWeekName = format(startD, 'EEEE', { locale: es });
-              const startSlot = format(startD, 'HH:mm');
-              const endSlot = format(endD, 'HH:mm');
-
-              const startIdx = TIME_SLOTS.indexOf(startSlot);
-              const endIdx = TIME_SLOTS.indexOf(endSlot);
-              const fromIdx = startIdx !== -1 ? startIdx : 0;
-              const toIdx =
-                endIdx !== -1 && endIdx > fromIdx
-                  ? endIdx
-                  : fromIdx +
-                    Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (5 * 60 * 1000)));
-
-              for (let i = fromIdx; i < toIdx; i++) {
-                const slot = TIME_SLOTS[i];
-                if (slot && slot !== '24:00') {
-                  dbEvents.push({
-                    date: dateStr,
-                    dayOfWeek: dayOfWeekName,
-                    startTime: slot,
-                    endTime: TIME_SLOTS[i + 1] || '24:00',
-                    label: `📌 ${ev.titulo}`,
-                    type: 'estudiando',
-                    source: 'supabase',
-                    eventId: ev.id,
-                  });
-                }
-              }
-            });
-
-            if (dbEvents.length > 0) {
-              setAvailabilities((prev) => {
-                const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
-                const filtered = prev.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
-                return [...filtered, ...dbEvents];
-              });
-            }
-          }
-        })
-        .catch((err) => console.warn('Aviso cargando eventos de calendario:', err));
-=======
       loadCalendarEventsFromSupabase();
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
     }
   }, [loadCalendarEventsFromSupabase]);
 
@@ -706,38 +635,7 @@ export default function CalendarioPage() {
             const fromIdx = startIdx !== -1 ? startIdx : 0;
             const toIdx = endIdx !== -1 && endIdx > fromIdx ? endIdx : fromIdx + 12;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-          let mappedType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'estudiando';
-          const rawTipo = String(b.tipo || '').toLowerCase();
-          if (rawTipo.includes('estudio') || rawTipo.includes('estudiando') || rawTipo.includes('clase')) {
-            mappedType = 'estudiando';
-          } else if (rawTipo.includes('trabajo') || rawTipo.includes('ocupado') || rawTipo.includes('laboral')) {
-            mappedType = 'trabajo';
-          } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
-            mappedType = 'descanso';
-          } else if (rawTipo.includes('libre')) {
-            mappedType = 'libre';
-          } else {
-            mappedType = 'otra_actividad';
-          }
-
-          for (let i = fromIdx; i < toIdx; i++) {
-            const slot = TIME_SLOTS[i];
-            if (slot && slot !== '24:00') {
-              mappedAvails.push({
-                date: dateStr,
-                dayOfWeek: dayOfWeekName,
-                startTime: slot,
-                endTime: TIME_SLOTS[i + 1] || '24:00',
-                label: b.etiqueta || 'Clase/Actividad',
-                type: mappedType,
-              });
-=======
             let mappedType: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
-=======
-            let mappedType: 'libre' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
->>>>>>> origin/main
               'estudiando';
             const rawTipo = String(b.tipo || '').toLowerCase();
             if (
@@ -754,18 +652,10 @@ export default function CalendarioPage() {
               mappedType = 'trabajo';
             } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
               mappedType = 'descanso';
-<<<<<<< HEAD
             } else if (rawTipo.includes('libre') || rawTipo.includes('tareas')) {
               mappedType = 'tareas';
             } else {
               mappedType = 'otra_actividad';
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-            } else if (rawTipo.includes('libre')) {
-              mappedType = 'libre';
-            } else {
-              mappedType = 'otra_actividad';
->>>>>>> origin/main
             }
 
             for (let i = fromIdx; i < toIdx; i++) {
@@ -792,10 +682,6 @@ export default function CalendarioPage() {
           });
         }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-        setUploadSuccessMsg(`¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`);
-=======
         // Recargar eventos de Supabase para reflejar de inmediato tareas reagendadas por IA
         await loadCalendarEventsFromSupabase();
 
@@ -809,13 +695,6 @@ export default function CalendarioPage() {
             `¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`,
           );
         }
-
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-        setUploadSuccessMsg(
-          `¡Se detectaron y agregaron ${data.bloques.length} bloques a tu calendario con éxito!`,
-        );
->>>>>>> origin/main
         setTimeout(() => {
           setShowUploadModal(false);
           setUploadFile(null);
@@ -1618,16 +1497,7 @@ export default function CalendarioPage() {
 
                       const effectiveAvail = isCollapsedHour ? macroFirstAvail : avail;
                       const isGoogleEvent = effectiveAvail?.source === 'google';
-<<<<<<< HEAD
-                      const currentType = effectiveAvail?.type || 'libre';
-<<<<<<< HEAD
-                      const colorTheme = isGoogleEvent 
-                        ? { bg: 'bg-[#F1F3F4]', hover: 'hover:bg-[#E8EAED]', text: 'text-[#5F6368]', border: 'border-[#DADCE0]', bgPale: 'bg-[#F1F3F4]/50' } 
-                        : (COLOR_MAP[currentType] || COLOR_MAP.estudiando || COLOR_MAP.libre);
-=======
                       const currentType = effectiveAvail?.type || 'tareas';
-=======
->>>>>>> origin/main
                       const colorTheme = isGoogleEvent
                         ? {
                             bg: 'bg-[#F1F3F4]',
@@ -1636,40 +1506,18 @@ export default function CalendarioPage() {
                             border: 'border-[#DADCE0]',
                             bgPale: 'bg-[#F1F3F4]/50',
                           }
-<<<<<<< HEAD
-                        : COLOR_MAP[currentType] || COLOR_MAP.tareas;
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-                        : COLOR_MAP[currentType] || COLOR_MAP.estudiando || COLOR_MAP.libre;
->>>>>>> origin/main
-
+                        : COLOR_MAP[currentType] || COLOR_MAP.tareas || COLOR_MAP.estudiando;
                       const isMacroPartiallyOccupied =
                         isCollapsedHour && macroAvailCount > 0 && macroAvailCount < 12;
-                      const isOccupied = avail || (isCollapsedHour && macroAvailCount === 12);
-<<<<<<< HEAD
-<<<<<<< HEAD
-                      const displayLabel = effectiveAvail?.label && effectiveAvail.label !== 'Libre' ? effectiveAvail.label : (isGoogleEvent ? 'Ocupado' : '');
-                      
-=======
-                      const displayLabel =
-                        effectiveAvail?.label
-                          ? effectiveAvail.label
-                          : isGoogleEvent
-                            ? 'Ocupado'
-                            : effectiveAvail?.type === 'tareas'
-                              ? 'Tareas'
-                              : '';
+                      const isOccupied = !!avail || (isCollapsedHour && macroAvailCount === 12);
 
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-                      const displayLabel =
-                        effectiveAvail?.label && effectiveAvail.label !== 'Libre'
-                          ? effectiveAvail.label
-                          : isGoogleEvent
-                            ? 'Ocupado'
+                      const displayLabel = effectiveAvail?.label
+                        ? effectiveAvail.label
+                        : isGoogleEvent
+                          ? 'Ocupado'
+                          : effectiveAvail?.type === 'tareas'
+                            ? 'Tareas'
                             : '';
-
->>>>>>> origin/main
                       return (
                         <div
                           key={`cell-${dateStr}-${timeStr}`}
@@ -1687,26 +1535,13 @@ export default function CalendarioPage() {
                           onClick={() => handleCellClick(dateStr, dayOfWeek, timeStr, isPast)}
                         >
                           {isSelectedAsStart && (
-                            <div
-                              className="absolute inset-0 z-20 border-2 border-black bg-transparent pointer-events-none shadow-sm"
-                            ></div>
+                            <div className="absolute inset-0 z-20 border-2 border-black bg-transparent pointer-events-none shadow-sm"></div>
                           )}
 
                           {(isOccupied || isMacroPartiallyOccupied) && !isEditing && (
                             <div className="absolute inset-0 flex items-center justify-between px-1 overflow-hidden pointer-events-none z-10">
                               <div className="flex items-center gap-1 overflow-hidden">
                                 {isGoogleEvent && (
-<<<<<<< HEAD
-<<<<<<< HEAD
-                                  <svg className="w-3 h-3 shrink-0 text-[#5F6368] opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24">
-                                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                                  </svg>
-                                )}
-                                <span className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}>
-=======
                                   <svg
                                     className="w-3 h-3 shrink-0 text-[#5F6368]"
                                     viewBox="0 0 24 24"
@@ -1732,34 +1567,6 @@ export default function CalendarioPage() {
                                 <span
                                   className={`text-[10px] font-bold truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}
                                 >
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-                                  <svg
-                                    className="w-3 h-3 shrink-0 text-[#5F6368] opacity-0 group-hover:opacity-100 transition-opacity"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      fill="currentColor"
-                                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                                    />
-                                    <path
-                                      fill="currentColor"
-                                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                                    />
-                                    <path
-                                      fill="currentColor"
-                                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                                    />
-                                    <path
-                                      fill="currentColor"
-                                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                                    />
-                                  </svg>
-                                )}
-                                <span
-                                  className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 truncate leading-none pt-[1px] ${isMacroPartiallyOccupied ? colorTheme.text + '/60' : colorTheme.text}`}
-                                >
->>>>>>> origin/main
                                   {displayLabel}
                                 </span>
                               </div>

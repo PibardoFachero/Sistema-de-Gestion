@@ -17,11 +17,7 @@ export interface GeminiRetryOptions {
 }
 
 /**
-<<<<<<< HEAD
-<<<<<<< HEAD
- * Determina si un error de Gemini es recuperable con reintento (rate limit, sobrecarga, 503, 429, etc.)
-=======
- * Detecta si el error corresponde a agotamiento de cuota diaria o límite duro (429 RESOURCE_EXHAUSTED).
+ * Detecta si el error es de cuota diaria o por proyecto agotada (RESOURCE_EXHAUSTED).
  */
 export function isQuotaExhaustedError(error: unknown): boolean {
   if (!error) return false;
@@ -30,43 +26,23 @@ export function isQuotaExhaustedError(error: unknown): boolean {
   return (
     lower.includes('quota exceeded') ||
     lower.includes('generaterequestsperday') ||
-    (lower.includes('resource_exhausted') && lower.includes('quota')) ||
-    (lower.includes('429') && lower.includes('free_tier'))
+    (lower.includes('resource_exhausted') && (lower.includes('quota') || lower.includes('limit')))
   );
 }
 
 /**
- * Determina si un error de Gemini es recuperable con reintento (rate limit temporal, sobrecarga, 503, 500, etc.)
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
- * Determina si un error de Gemini es recuperable con reintento (rate limit temporal, sobrecarga, 503, 500, etc.)
->>>>>>> origin/main
+ * Detecta si el error de Gemini es transitorio y vale la pena reintentar.
  */
 export function isRetryableGeminiError(error: unknown): boolean {
   if (!error) return false;
   const msg = error instanceof Error ? error.message : String(error);
   const lower = msg.toLowerCase();
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-  // Si la cuota diaria gratuita está agotada para la clave actual, no reintentar en la misma clave
+  // Si la cuota diaria gratuita o por proyecto está agotada para la clave actual, no reintentar en la misma clave
   if (isQuotaExhaustedError(error)) {
     return false;
   }
 
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-  // Si la cuota diaria gratuita o por proyecto está agotada, no reintentar para evitar esperas inútiles
-  if (
-    lower.includes('quota exceeded') ||
-    lower.includes('generaterequestsperday') ||
-    (lower.includes('resource_exhausted') && lower.includes('quota'))
-  ) {
-    return false;
-  }
-
->>>>>>> origin/main
   return (
     lower.includes('429') ||
     lower.includes('rate limit') ||
@@ -107,30 +83,13 @@ export function delay(ms: number): Promise<void> {
 }
 
 /**
-<<<<<<< HEAD
-<<<<<<< HEAD
- * Ejecuta una llamada a Gemini con reintentos automáticos, backoff exponencial y fallback de modelo si la IA se satura.
-=======
  * Ejecuta una llamada a Gemini con timeout por intento, reintentos automáticos acotados,
  * rotación inteligente de API Keys (ante cuota agotada) y fallback de modelo.
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
- * Ejecuta una llamada a Gemini con timeout por intento, reintentos automáticos acotados y fallback de modelo.
->>>>>>> origin/main
  */
 export async function callGeminiWithRetry<T>(
   operation: (ai: GoogleGenAI, model: string) => Promise<T>,
   options: GeminiRetryOptions = {},
 ): Promise<T> {
-<<<<<<< HEAD
-<<<<<<< HEAD
-  const maxRetries = options.maxRetries ?? 3;
-  const initialDelayMs = options.initialDelayMs ?? 2000;
-  const maxDelayMs = options.maxDelayMs ?? 10000;
-  const models = options.models && options.models.length > 0
-    ? options.models
-    : [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL];
-=======
   const maxRetries = options.maxRetries ?? 1;
   const initialDelayMs = options.initialDelayMs ?? 1000;
   const maxDelayMs = options.maxDelayMs ?? 4000;
@@ -139,17 +98,6 @@ export async function callGeminiWithRetry<T>(
     options.models && options.models.length > 0
       ? options.models
       : [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_LITE_MODEL];
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-  const maxRetries = options.maxRetries ?? 1;
-  const initialDelayMs = options.initialDelayMs ?? 1000;
-  const maxDelayMs = options.maxDelayMs ?? 4000;
-  const timeoutMs = options.timeoutMs ?? 15000;
-  const models =
-    options.models && options.models.length > 0
-      ? options.models
-      : [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL];
->>>>>>> origin/main
 
   let lastError: unknown = null;
   let currentDelay = initialDelayMs;
@@ -182,7 +130,9 @@ export async function callGeminiWithRetry<T>(
         const rotated = markActiveKeyExhaustedAndRotate();
         if (rotated) {
           keyRotationsDone++;
-          console.info(`[Gemini Retry] Clave rotada con éxito. Reintentando de inmediato con la nueva clave...`);
+          console.info(
+            `[Gemini Retry] Clave rotada con éxito. Reintentando de inmediato con la nueva clave...`,
+          );
           // Reintentar sin gastar el contador de attempts normales
           attempt--;
           continue;

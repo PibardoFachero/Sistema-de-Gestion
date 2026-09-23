@@ -10,11 +10,8 @@ import {
   extractedScheduleResponseSchema,
 } from '@/features/schedule/types/scheduleSchemas';
 import { logAiInteraction } from './aiLogger';
-<<<<<<< HEAD
 import { extractScheduleFromN8n } from '@/services/automation/n8nTasksService';
-=======
 import { getUserAiContext } from './contextBuilderService';
->>>>>>> origin/main
 
 export interface GenerateScheduleParams {
   usuarioId?: string;
@@ -148,15 +145,7 @@ REGLAS:
             },
           },
         }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-      { maxRetries: 3, initialDelayMs: 2000 },
-=======
       { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
->>>>>>> origin/main
     );
 
     const rawText = response.text || '{}';
@@ -239,15 +228,7 @@ REGLAS:
             },
           },
         }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-      { maxRetries: 3, initialDelayMs: 2000 },
-=======
       { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
->>>>>>> origin/main
     );
 
     const rawText = response.text || '{}';
@@ -360,17 +341,8 @@ Devuelve la lista de bloques en formato JSON.`;
             },
           },
         }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-      { maxRetries: 3, initialDelayMs: 2000 },
-=======
       { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 30000 },
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
->>>>>>> origin/main
     );
-
 
     const rawText = response.text || '{}';
     const parsed = JSON.parse(rawText);
@@ -723,26 +695,22 @@ DIRECTRICES ADICIONALES:
 3. ASIGNACIÓN AL CALENDARIO COHERENTE Y SIN COLISIONES:
    - Para cada tarea debes proponer la fecha ("fecha": YYYY-MM-DD seleccionada de las autorizadas), una hora de inicio ("hora_inicio": HH:MM militar) y hora de fin ("hora_fin": HH:MM militar).
    - Las horas deben ser diurnas y lógicas (entre las 08:00 y las 21:00).
-<<<<<<< HEAD
    - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario tenga bloques de tareas.
-5. EVALUACIÓN DE VIABILIDAD: Determina si el objetivo es humanamente posible en el plazo disponible. Si es manifiestamente imposible (ej. aprender medicina o una carrera entera en 3 días), marca es_posible: false y detalla motivo_imposible. Si es viable, marca es_posible: true y genera las tareas.
-6. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).`;
-=======
-   - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario esté libre.
 4. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).
-5. ADAPTACIÓN AL PERFIL DEL USUARIO:
+5. EVALUACIÓN DE VIABILIDAD: Determina si el objetivo es humanamente posible en el plazo disponible. Si es manifiestamente imposible (ej. aprender medicina o una carrera entera en 3 días), marca es_posible: false y detalla motivo_imposible. Si es viable, marca es_posible: true y genera las tareas.
+6. ADAPTACIÓN AL PERFIL DEL USUARIO:
    - Si el perfil define una metodología de aprendizaje preferida (ej. Pomodoro, práctica intensiva, proyectos paso a paso), adapta la secuencia y dinámica de las sesiones a esa metodología.
    - Toma en cuenta su situación laboral y retos o dificultades declaradas para que el plan sea alcanzable.
-6. INCORPORACIÓN DE TEMAS, NOTAS PRINCIPALES Y FUENTES AUTORIZADAS:
+7. INCORPORACIÓN DE TEMAS, NOTAS PRINCIPALES Y FUENTES AUTORIZADAS:
    - Si el usuario tiene temas vinculados a este proyecto o fuentes autorizadas en su biblioteca de Temas, úsalas como guía temática y documental central para estructurar las tareas.`;
->>>>>>> origin/main
 
     const projectTasksSchema = {
       type: Type.OBJECT,
       properties: {
         es_posible: {
           type: Type.BOOLEAN,
-          description: 'true si el objetivo es factible en el tiempo y plazo; false si es imposible.',
+          description:
+            'true si el objetivo es factible en el tiempo y plazo; false si es imposible.',
         },
         motivo_imposible: {
           type: Type.STRING,
@@ -813,17 +781,8 @@ DIRECTRICES ADICIONALES:
             },
           },
         }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-      { maxRetries: 3, initialDelayMs: 2000 },
-=======
       { maxRetries: 1, initialDelayMs: 1500, timeoutMs: 25000 },
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-      { maxRetries: 1, initialDelayMs: 1000, timeoutMs: 15000 },
->>>>>>> origin/main
     );
-
 
     const rawText = response.text || '{}';
     const parsed = JSON.parse(rawText) as {
@@ -842,7 +801,6 @@ DIRECTRICES ADICIONALES:
       }>;
     };
 
-<<<<<<< HEAD
     // Si la IA dictaminó que el proyecto es pedagógicamente imposible
     if (parsed.es_posible === false) {
       return {
@@ -853,10 +811,7 @@ DIRECTRICES ADICIONALES:
       };
     }
 
-    const tasksList = parsed.tareas || [];
-=======
     let tasksList = parsed.tareas || [];
->>>>>>> origin/main
     if (tasksList.length === 0) {
       return {
         success: false,
@@ -1001,7 +956,8 @@ DIRECTRICES ADICIONALES:
 
     if (process.env.N8N_WEBHOOK_URL) {
       try {
-        const { generateProjectTasksFromN8n } = await import('@/services/automation/n8nTasksService');
+        const { generateProjectTasksFromN8n } =
+          await import('@/services/automation/n8nTasksService');
         const n8nResult = await generateProjectTasksFromN8n({
           id: project.id,
           user_id: project.user_id,
@@ -1043,12 +999,6 @@ DIRECTRICES ADICIONALES:
     };
   }
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> origin/main
-
 export interface CheckProjectFeasibilityParams {
   titulo: string;
   objetivo?: string | null;
@@ -1122,8 +1072,6 @@ export async function checkProjectFeasibilityWithGemini(
     required: ['es_posible', 'motivo'],
   };
 
-<<<<<<< HEAD
-=======
   let userProfileContext = '';
   if (params.usuario_id) {
     try {
@@ -1135,8 +1083,6 @@ export async function checkProjectFeasibilityWithGemini(
       // Omitir si no se puede cargar el contexto
     }
   }
-
->>>>>>> origin/main
   const prompt = `Eres un evaluador académico, pedagógico y de viabilidad de proyectos de estudio.
 Tu labor es determinar con rigurosidad y honestidad pedagógica si el siguiente proyecto es FACTIBLE o IMPOSIBLE de realizar en el plazo y tiempo diario asignado por el estudiante.
 
@@ -1147,11 +1093,7 @@ DATOS DEL PROYECTO:
 - Plazo límite: ${params.fecha_limite || 'No especificado'} (${diffDays} días restantes)
 - Dedicación diaria: ${minutosDiarios} minutos al día.
 - Tiempo total disponible de trabajo: ~${horasTotales} horas de dedicación en todo el proyecto.
-<<<<<<< HEAD
-
-=======
 ${userProfileContext}
->>>>>>> origin/main
 CRITERIOS ESTRICTOS DE EVALUACIÓN:
 1. IMPOSIBLE (es_posible = false):
    - Metas de aprendizaje o desarrollo que objetivamente requieren cientos o miles de horas de estudio/práctica (por ejemplo: dominar una carrera profesional completa, medicina, ingeniería de software desde cero, dominar múltiples idiomas extranjeros, construir un sistema operativo o cohete) pero el usuario tiene pocos días o semanas, o una cantidad ínfima de horas totales (~menos de 20-50 horas cuando se requieren cientos o miles).
@@ -1229,7 +1171,6 @@ Responde ÚNICAMENTE un objeto JSON que siga el esquema especificado.`;
     return { es_posible: true };
   }
 }
-<<<<<<< HEAD
 
 export interface RescheduledTaskItem {
   eventoId: string;
@@ -1437,7 +1378,6 @@ export async function rescheduleConflictingCalendarTasksWithGemini(
       `[Reagendamiento Local] Reorganizando ${conflictingEvents.length} tareas en conflicto de forma determinista y sin solapamientos...`,
     );
 
-
     // Helper de fallback determinista para encontrar el primer slot libre
     const findDeterministicSlot = (
       dateStr: string,
@@ -1464,7 +1404,8 @@ export async function rescheduleConflictingCalendarTasksWithGemini(
           const collidesBusy = busyBlocks.some((b) => {
             let mDay = false;
             if (b.fecha_especifica) mDay = b.fecha_especifica === curDateStr;
-            else if (b.dia_semana !== null && b.dia_semana !== undefined) mDay = b.dia_semana === curDayOfWeek;
+            else if (b.dia_semana !== null && b.dia_semana !== undefined)
+              mDay = b.dia_semana === curDayOfWeek;
 
             if (mDay) {
               const bStart = timeStrToMinutes(b.hora_inicio);
@@ -1478,7 +1419,9 @@ export async function rescheduleConflictingCalendarTasksWithGemini(
 
           // Verificar si solapa con alreadyBooked
           const collidesBooked = alreadyBooked.some(
-            (b) => b.date === curDateStr && intervalsOverlap(candidateStart, candidateEnd, b.startMin, b.endMin),
+            (b) =>
+              b.date === curDateStr &&
+              intervalsOverlap(candidateStart, candidateEnd, b.startMin, b.endMin),
           );
 
           if (collidesBooked) continue;
@@ -1549,12 +1492,13 @@ export async function rescheduleConflictingCalendarTasksWithGemini(
           .maybeSingle();
 
         if (activeCron && activeCron.datos) {
-          const rawDatos = activeCron.datos as { bloques?: any[] };
+          const rawDatos = activeCron.datos as { bloques?: Array<Record<string, unknown>> };
           const bloques = rawDatos.bloques || [];
           let updatedCron = false;
 
-          const updatedBloques = bloques.map((b: any) => {
-            if (b.tarea === conf.ev.titulo || conf.ev.titulo.includes(b.tarea)) {
+          const updatedBloques = bloques.map((b) => {
+            const bTarea = typeof b.tarea === 'string' ? b.tarea : '';
+            if (bTarea && (bTarea === conf.ev.titulo || conf.ev.titulo.includes(bTarea))) {
               updatedCron = true;
               return {
                 ...b,
@@ -1618,6 +1562,3 @@ export async function rescheduleConflictingCalendarTasksWithGemini(
     };
   }
 }
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
->>>>>>> origin/main

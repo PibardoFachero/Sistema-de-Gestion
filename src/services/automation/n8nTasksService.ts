@@ -1,14 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-<<<<<<< HEAD
 import {
   ExtractedScheduleBlock,
   ExtractedScheduleResponse,
 } from '@/features/schedule/types/scheduleSchemas';
-=======
 import { calculateAvailableStudyDates } from '@/services/ai/scheduleAiService';
 import { getUserAiContext } from '@/services/ai/contextBuilderService';
->>>>>>> origin/main
 
 export interface ProjectForTaskGeneration {
   id: string;
@@ -561,7 +558,6 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       ].filter(Boolean) as string[],
     };
 
-
     // 2. Llamada HTTP al Webhook de n8n con timeout de 60 segundos (permite procesar videos y temarios extensos)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -822,7 +818,9 @@ function normalizeDayOfWeek(dia: unknown): number {
   if (typeof dia === 'number' && Number.isInteger(dia) && dia >= 0 && dia <= 6) {
     return dia;
   }
-  const str = String(dia || '').toLowerCase().trim();
+  const str = String(dia || '')
+    .toLowerCase()
+    .trim();
   if (str.includes('dom') || str === '0') return 0;
   if (str.includes('lun') || str === '1') return 1;
   if (str.includes('mar') || str === '2') return 2;
@@ -847,7 +845,9 @@ function normalizeTimeSlot(time: unknown): string {
 function normalizeType(
   tipo: unknown,
 ): 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' {
-  const str = String(tipo || '').toLowerCase().trim();
+  const str = String(tipo || '')
+    .toLowerCase()
+    .trim();
   if (
     str.includes('estud') ||
     str.includes('clase') ||
@@ -1046,7 +1046,6 @@ Devuelve un JSON con la estructura:
       process.env.GEMINI_API_KEY_3,
     ].filter(Boolean) as string[],
   };
-
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000);

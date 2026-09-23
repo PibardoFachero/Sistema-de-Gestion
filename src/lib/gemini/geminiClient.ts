@@ -36,7 +36,9 @@ function initializeKeyPool(): void {
   const uniqueKeys = Array.from(new Set(rawKeys.filter(Boolean)));
 
   if (uniqueKeys.length === 0) {
-    throw new Error('No hay ninguna GEMINI_API_KEY configurada en las variables de entorno (.env.local).');
+    throw new Error(
+      'No hay ninguna GEMINI_API_KEY configurada en las variables de entorno (.env.local).',
+    );
   }
 
   // Si las keys cambiaron o se inicializa por primera vez
@@ -64,14 +66,6 @@ export function getGeminiClient(): GoogleGenAI {
     initializeKeyPool();
   }
 
-<<<<<<< HEAD
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-<<<<<<< HEAD
-    throw new Error(
-      'La variable de entorno GEMINI_API_KEY no está configurada en .env.local',
-    );
-=======
   const now = Date.now();
   // Buscar el primer slot disponible a partir del índice activo
   for (let i = 0; i < keySlots.length; i++) {
@@ -80,14 +74,12 @@ export function getGeminiClient(): GoogleGenAI {
       activeSlotIndex = idx;
       return keySlots[idx].client;
     }
->>>>>>> 497c7ac (Cambios visuales y reagenda de tareas en calendario y optimizacion de la IA)
-=======
-    throw new Error('La variable de entorno GEMINI_API_KEY no está configurada en .env.local');
->>>>>>> origin/main
   }
 
   // Si todas están temporalmente agotadas, devolver el slot activo pero advertir
-  console.warn('[Gemini Pool] Todas las claves configuradas han alcanzado límite de cuota recientemente.');
+  console.warn(
+    '[Gemini Pool] Todas las claves configuradas han alcanzado límite de cuota recientemente.',
+  );
   return keySlots[activeSlotIndex].client;
 }
 
@@ -117,8 +109,11 @@ export function markActiveKeyExhaustedAndRotate(cooldownMs = 60 * 60 * 1000): bo
     const nextIdx = (activeSlotIndex + i) % keySlots.length;
     if (keySlots[nextIdx].exhaustedUntil <= now) {
       activeSlotIndex = nextIdx;
-      const nextMasked = keySlots[nextIdx].key.slice(0, 6) + '...' + keySlots[nextIdx].key.slice(-4);
-      console.info(`[Gemini Pool] Cambiado exitosamente a Clave ${nextIdx + 1}/${keySlots.length} (${nextMasked})`);
+      const nextMasked =
+        keySlots[nextIdx].key.slice(0, 6) + '...' + keySlots[nextIdx].key.slice(-4);
+      console.info(
+        `[Gemini Pool] Cambiado exitosamente a Clave ${nextIdx + 1}/${keySlots.length} (${nextMasked})`,
+      );
       return true;
     }
   }
@@ -144,4 +139,3 @@ export function getGeminiKeyCount(): number {
 export const GEMINI_DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 export const GEMINI_FALLBACK_MODEL = 'gemini-3.6-flash';
 export const GEMINI_LITE_MODEL = 'gemini-3.5-flash-lite';
-
