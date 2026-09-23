@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { AssistantMessage, FileAttachment, GeneratedTaskItem } from '@/components/ia/types';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 export interface ConversationSummary {
   id: string;
@@ -320,6 +321,14 @@ export async function createProjectFromAITasksAction(params: {
     }
 
     const projectTitle = (params.title || 'Plan de estudio sugerido').trim().slice(0, 100);
+
+    const titleValidation = validateContent(projectTitle);
+    if (!titleValidation.isValid) {
+      return {
+        success: false,
+        error: titleValidation.error || 'El título del proyecto contiene términos no permitidos.',
+      };
+    }
 
     const { data: project, error: projErr } = await supabase
       .from('projects')

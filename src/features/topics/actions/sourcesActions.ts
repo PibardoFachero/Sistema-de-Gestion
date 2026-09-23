@@ -8,6 +8,7 @@ import {
   TopicSource,
 } from '../types';
 import { formatFileSize, formatRelativeDate } from '../utils/formatters';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 interface ActionResponse<T = unknown> {
   success: boolean;
@@ -23,6 +24,15 @@ export async function createNoteSourceAction(
 
   if (!title) {
     return { success: false, error: 'El título de la nota es obligatorio.' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos
+  const noteValidation = validateContent(`${title} ${content}`);
+  if (!noteValidation.isValid) {
+    return {
+      success: false,
+      error: noteValidation.error || 'La nota contiene términos no permitidos.',
+    };
   }
 
   try {
@@ -106,6 +116,17 @@ export async function createLinkSourceAction(
     return { success: false, error: 'La dirección URL introducida no es válida.' };
   }
 
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos en el título del enlace
+  if (title) {
+    const linkValidation = validateContent(title);
+    if (!linkValidation.isValid) {
+      return {
+        success: false,
+        error: linkValidation.error || 'El título del enlace contiene términos no permitidos.',
+      };
+    }
+  }
+
   try {
     const supabase = await createClient();
     const {
@@ -174,6 +195,15 @@ export async function createFileSourceAction(
 
   if (!title) {
     return { success: false, error: 'Nombre del archivo obligatorio.' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos en el nombre de archivo
+  const fileValidation = validateContent(title);
+  if (!fileValidation.isValid) {
+    return {
+      success: false,
+      error: fileValidation.error || 'El nombre del archivo contiene términos no permitidos.',
+    };
   }
 
   try {

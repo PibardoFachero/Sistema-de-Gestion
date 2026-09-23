@@ -10,6 +10,7 @@ import {
   extractedScheduleResponseSchema,
 } from '@/features/schedule/types/scheduleSchemas';
 import { logAiInteraction } from './aiLogger';
+import { getUserAiContext } from './contextBuilderService';
 
 export interface GenerateScheduleParams {
   usuarioId?: string;
@@ -85,6 +86,21 @@ export async function generateScheduleWithGemini(
 ): Promise<GeneratedSchedule> {
   const startTime = Date.now();
 
+  let contextPart = '';
+  if (params.usuarioId) {
+    try {
+      const userContext = await getUserAiContext({
+        userId: params.usuarioId,
+        projectId: params.proyectoId,
+      });
+      if (userContext.promptContextoCompleto) {
+        contextPart = `\n\n${userContext.promptContextoCompleto}`;
+      }
+    } catch (cErr) {
+      console.warn('Error al cargar contexto de usuario para cronograma:', cErr);
+    }
+  }
+
   const prompt = `Eres un planificador académico/laboral. Genera un cronograma realista para el siguiente proyecto.
 
 DATOS DEL PROYECTO:
@@ -100,17 +116,18 @@ ${params.bloquesLibresPorDia || 'Disponibilidad general según el tiempo diario 
 
 MATERIAL DE REFERENCIA:
 ${params.textoExtraidoArchivos ? `Texto extraído de documentos:\n${params.textoExtraidoArchivos}` : 'Sin archivos adjuntos adicionales.'}
-${params.enlaces && params.enlaces.length > 0 ? `Enlaces de referencia:\n${params.enlaces.join('\n')}` : ''}
+${params.enlaces && params.enlaces.length > 0 ? `Enlaces de referencia:\n${params.enlaces.join('\n')}` : ''}${contextPart}
 
 REGLAS:
 1. Respeta estrictamente los bloques ocupados del usuario.
 2. Distribuye las tareas según la importancia y el tiempo diario disponible.
 3. No asignes más horas de las disponibles por día.
 4. Considera el nivel de conocimiento: si es "ninguno" o "principiante", añade tareas de fundamentos; si es "intermedio" o "avanzado", omite lo básico y profundiza.
-5. Deja margen de holgura (buffer) para imprevistos.
-6. El campo "proyecto_id" de cada bloque debe ser exactamente: "${params.proyectoId}".
-7. Genera bloques concretos con fechas (YYYY-MM-DD) y horas (HH:MM).
-8. DÍAS LIBRES: Evita programar bloques todos los días seguidos. Deja libres los fines de semana (Sábados y Domingos) e intercala días de descanso si el plazo disponible lo permite.`;
+5. Considera las preferencias de aprendizaje y contexto de temas si fueron provistos.
+6. Deja margen de holgura (buffer) para imprevistos.
+7. El campo "proyecto_id" de cada bloque debe ser exactamente: "${params.proyectoId}".
+8. Genera bloques concretos con fechas (YYYY-MM-DD) y horas (HH:MM).
+9. DÍAS LIBRES: Evita programar bloques todos los días seguidos. Deja libres los fines de semana (Sábados y Domingos) e intercala días de descanso si el plazo disponible lo permite.`;
 
   try {
     const response = await callGeminiWithRetry(
@@ -607,6 +624,12 @@ export async function generateProjectTasksAndScheduleWithGemini(
       ? `\n- Documento de referencia adjunto ("${project.file_name || 'archivo'}"):\n--- INICIO DEL DOCUMENTO ---\n${project.file_content.slice(0, 12000)}\n--- FIN DEL DOCUMENTO ---\nPor favor toma en cuenta este documento para extraer o estructurar las tareas del proyecto.`
       : '';
 
+    // 3.5. Obtener contexto del perfil del usuario y biblioteca de temas/fuentes autorizadas
+    const userAiContext = await getUserAiContext({
+      userId: project.user_id,
+      projectId: project.id,
+    });
+
     // 4. Prompt pedagógico para Gemini
     const prompt = `Eres un mentor y planificador académico/profesional de alto nivel.
 Genera un plan de tareas detallado y progresivo para el siguiente proyecto estudiantil/laboral, y organízalas en un cronograma diario sin colisiones.
@@ -620,7 +643,8 @@ DATOS DEL PROYECTO:
 - Fecha límite final: ${effectiveDeadlineStr} (Ranuras disponibles: ${maxTasks})
 - Tiempo disponible diario del usuario: ${minutosDiarios} minutos por día.
 ${project.material_url ? `- Material o recurso suministrado: ${project.material_url}` : ''}${filePart}${existingTasksPrompt}
-
+${userAiContext.perfilTexto ? `\n${userAiContext.perfilTexto}` : ''}
+${userAiContext.temasTexto ? `\n${userAiContext.temasTexto}` : ''}
 HORARIOS OCUPADOS DEL USUARIO (¡PROHIBIDO ASIGNAR TAREAS EN ESTAS FRANJAS!):
 ${disponibilidadDesc}
 
@@ -643,7 +667,12 @@ DIRECTRICES ADICIONALES:
    - Para cada tarea debes proponer la fecha ("fecha": YYYY-MM-DD seleccionada de las autorizadas), una hora de inicio ("hora_inicio": HH:MM militar) y hora de fin ("hora_fin": HH:MM militar).
    - Las horas deben ser diurnas y lógicas (entre las 08:00 y las 21:00).
    - ¡NO DEBE COINCIDIR ni solaparse con ningún bloque ocupado de clases, trabajo o eventos existentes! Elige momentos en que el usuario esté libre.
-4. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).`;
+4. Para cada tarea, incluye una breve descripción y una URL de recurso o búsqueda sugerida (documentación, guía o tutorial).
+5. ADAPTACIÓN AL PERFIL DEL USUARIO:
+   - Si el perfil define una metodología de aprendizaje preferida (ej. Pomodoro, práctica intensiva, proyectos paso a paso), adapta la secuencia y dinámica de las sesiones a esa metodología.
+   - Toma en cuenta su situación laboral y retos o dificultades declaradas para que el plan sea alcanzable.
+6. INCORPORACIÓN DE TEMAS, NOTAS PRINCIPALES Y FUENTES AUTORIZADAS:
+   - Si el usuario tiene temas vinculados a este proyecto o fuentes autorizadas en su biblioteca de Temas, úsalas como guía temática y documental central para estructurar las tareas.`;
 
     const projectTasksSchema = {
       type: Type.OBJECT,
@@ -951,6 +980,18 @@ export async function checkProjectFeasibilityWithGemini(
     required: ['es_posible', 'motivo'],
   };
 
+  let userProfileContext = '';
+  if (params.usuario_id) {
+    try {
+      const userContext = await getUserAiContext({ userId: params.usuario_id });
+      if (userContext.perfilTexto) {
+        userProfileContext = `\n${userContext.perfilTexto}`;
+      }
+    } catch {
+      // Omitir si no se puede cargar el contexto
+    }
+  }
+
   const prompt = `Eres un evaluador académico, pedagógico y de viabilidad de proyectos de estudio.
 Tu labor es determinar con rigurosidad y honestidad pedagógica si el siguiente proyecto es FACTIBLE o IMPOSIBLE de realizar en el plazo y tiempo diario asignado por el estudiante.
 
@@ -961,7 +1002,7 @@ DATOS DEL PROYECTO:
 - Plazo límite: ${params.fecha_limite || 'No especificado'} (${diffDays} días restantes)
 - Dedicación diaria: ${minutosDiarios} minutos al día.
 - Tiempo total disponible de trabajo: ~${horasTotales} horas de dedicación en todo el proyecto.
-
+${userProfileContext}
 CRITERIOS ESTRICTOS DE EVALUACIÓN:
 1. IMPOSIBLE (es_posible = false):
    - Metas de aprendizaje o desarrollo que objetivamente requieren cientos o miles de horas de estudio/práctica (por ejemplo: dominar una carrera profesional completa, medicina, ingeniería de software desde cero, dominar múltiples idiomas extranjeros, construir un sistema operativo o cohete) pero el usuario tiene pocos días o semanas, o una cantidad ínfima de horas totales (~menos de 20-50 horas cuando se requieren cientos o miles).

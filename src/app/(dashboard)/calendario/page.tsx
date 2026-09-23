@@ -197,6 +197,16 @@ export default function CalendarioPage() {
         console.error(e);
       }
 
+      // Sincronizar estado real con la sesión / cookie segura de Google Calendar
+      fetch('/api/auth/google?action=status')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.connected) {
+            setIsGoogleConnected(true);
+          }
+        })
+        .catch(() => {});
+
       const urlParams = new URLSearchParams(window.location.search);
       const success = urlParams.get('gcal_success');
       const error = urlParams.get('gcal_error');

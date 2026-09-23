@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { CreateProjectWithMilestonesInput, LinkedProject, ProjectOption } from '../types';
+import { validateContent, validateProjectContent } from '@/lib/moderation/contentFilter';
 
 interface ActionResponse<T = unknown> {
   success: boolean;
@@ -208,6 +209,28 @@ export async function createProjectWithMilestonesAction(
   const name = input.name.trim();
   if (!name) {
     return { success: false, error: 'El nombre del proyecto es obligatorio.' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Nombre y descripción de proyecto
+  const projectValidation = validateProjectContent(name, input.description);
+  if (!projectValidation.isValid) {
+    return {
+      success: false,
+      error: projectValidation.error || 'El proyecto contiene términos no permitidos.',
+    };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Hitos/Tareas
+  const cleanMilestones = (input.milestones || []).map((m) => m.trim()).filter((m) => m.length > 0);
+
+  for (const milestone of cleanMilestones) {
+    const milestoneValidation = validateContent(milestone);
+    if (!milestoneValidation.isValid) {
+      return {
+        success: false,
+        error: milestoneValidation.error || 'Uno de los hitos contiene términos no permitidos.',
+      };
+    }
   }
 
   try {

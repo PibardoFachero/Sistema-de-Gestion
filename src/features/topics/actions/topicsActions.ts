@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { CreateTopicInput, Topic, TopicSource, LinkedProject, UpdateTopicInput } from '../types';
 import { formatFileSize, formatRelativeDate } from '../utils/formatters';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 interface ActionResponse<T = unknown> {
   success: boolean;
@@ -181,6 +182,15 @@ export async function createTopicAction(input: CreateTopicInput): Promise<Action
     return { success: false, error: 'El título del tema es requerido.' };
   }
 
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos
+  const contentValidation = validateContent(`${title} ${description}`);
+  if (!contentValidation.isValid) {
+    return {
+      success: false,
+      error: contentValidation.error || 'El tema contiene términos no permitidos.',
+    };
+  }
+
   try {
     const supabase = await createClient();
     const {
@@ -234,6 +244,18 @@ export async function updateTopicAction(
 ): Promise<ActionResponse<Partial<Topic>>> {
   if (!input.id) {
     return { success: false, error: 'ID de tema requerido' };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Términos obscenos o peligrosos
+  const textToValidate = [input.title, input.description, input.mainNote].filter(Boolean).join(' ');
+  if (textToValidate) {
+    const updateValidation = validateContent(textToValidate);
+    if (!updateValidation.isValid) {
+      return {
+        success: false,
+        error: updateValidation.error || 'El contenido del tema contiene términos no permitidos.',
+      };
+    }
   }
 
   try {
