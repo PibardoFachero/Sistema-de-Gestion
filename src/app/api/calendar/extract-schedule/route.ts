@@ -10,6 +10,7 @@ const extractScheduleBodySchema = z.object({
   base64Data: z.string().min(1, 'El contenido base64 es requerido'),
   mimeType: z.string().min(1, 'El mimeType es requerido'),
   guardarEnDisponibilidad: z.boolean().optional().default(true),
+  categoria: z.enum(['trabajo', 'estudio']).optional(),
 });
 
 /**
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { base64Data, mimeType, guardarEnDisponibilidad } = parsed.data;
+    const { base64Data, mimeType, guardarEnDisponibilidad, categoria } = parsed.data;
 
     // Ejecutar extracción con visión multimodal de Gemini
     const resultado = await extractScheduleFromImageWithGemini({
@@ -51,10 +52,16 @@ export async function POST(req: NextRequest) {
       usuarioId: user.id,
     });
 
+    // Si el usuario especificó categoría explícita ("trabajo" o "estudio"), asignarla a todos los bloques
+    const bloquesConCategoria = resultado.bloques.map((b) => ({
+      ...b,
+      tipo: categoria || b.tipo,
+    }));
+
     let reagendamientoResult = null;
 
-    if (guardarEnDisponibilidad && resultado.bloques.length > 0) {
-      const inserts = resultado.bloques.map((b) => ({
+    if (guardarEnDisponibilidad && bloquesConCategoria.length > 0) {
+      const inserts = bloquesConCategoria.map((b) => ({
         usuario_id: user.id,
         dia_semana: b.dia_semana,
         hora_inicio: b.hora_inicio,
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      bloques: resultado.bloques,
+      bloques: bloquesConCategoria,
       observaciones: resultado.observaciones || null,
       reagendamiento: reagendamientoResult,
     });

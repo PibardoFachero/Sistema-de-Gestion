@@ -37,12 +37,15 @@ import {
   AlertCircle,
   FileText,
   GripVertical,
+  Briefcase,
+  GraduationCap,
 } from 'lucide-react';
 import {
   getCalendarDataAction,
   deleteCalendarEventAction,
   updateCalendarEventScheduleAction,
   syncAvailabilityBlocksAction,
+  updateCalendarEventDetailsAction,
 } from '@/features/schedule/actions/calendarActions';
 import { createClient } from '@/lib/supabase/client';
 
@@ -137,6 +140,96 @@ const parseISODate = (dateStr: string) => {
 
 const endOfMonthFn = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
+function consolidateAvailabilitySlots(slots: Availability[]) {
+  const nonTasks = slots.filter((a) => !a.eventId && a.source !== 'google');
+  if (nonTasks.length === 0) return [];
+
+  const byDate: Record<string, Availability[]> = {};
+  nonTasks.forEach((s) => {
+    if (!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+
+  const consolidated: Array<{
+    fecha_especifica: string;
+    hora_inicio: string;
+    hora_fin: string;
+    tipo: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad';
+    label: string;
+    color?: string | null;
+    origen: string;
+  }> = [];
+
+  for (const date in byDate) {
+    const sorted = [...byDate[date]].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    let current: {
+      date: string;
+      start: string;
+      end: string;
+      type: string;
+      label: string;
+    } | null = null;
+
+    for (const slot of sorted) {
+      if (
+        current &&
+        current.end === slot.startTime &&
+        current.type === slot.type &&
+        current.label === (slot.label || '')
+      ) {
+        current.end = slot.endTime;
+      } else {
+        if (current) {
+          let normalizedType: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' =
+            'tareas';
+          if (current.type === 'estudio' || current.type === 'estudiando') normalizedType = 'estudio';
+          else if (current.type === 'trabajo' || current.type === 'ocupado') normalizedType = 'trabajo';
+          else if (current.type === 'otra_actividad' || current.type === 'descanso')
+            normalizedType = 'otra_actividad';
+          else normalizedType = 'tareas';
+
+          consolidated.push({
+            fecha_especifica: current.date,
+            hora_inicio: current.start,
+            hora_fin: current.end,
+            tipo: normalizedType,
+            label: current.label,
+            origen: 'manual',
+          });
+        }
+        current = {
+          date: slot.date,
+          start: slot.startTime,
+          end: slot.endTime,
+          type: slot.type || 'tareas',
+          label: slot.label || '',
+        };
+      }
+    }
+
+    if (current) {
+      let normalizedType: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' =
+        'tareas';
+      if (current.type === 'estudio' || current.type === 'estudiando') normalizedType = 'estudio';
+      else if (current.type === 'trabajo' || current.type === 'ocupado') normalizedType = 'trabajo';
+      else if (current.type === 'otra_actividad' || current.type === 'descanso')
+        normalizedType = 'otra_actividad';
+      else normalizedType = 'tareas';
+
+      consolidated.push({
+        fecha_especifica: current.date,
+        hora_inicio: current.start,
+        hora_fin: current.end,
+        tipo: normalizedType,
+        label: current.label,
+        origen: 'manual',
+      });
+    }
+  }
+
+  return consolidated;
+}
+
 export default function CalendarioPage() {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -207,6 +300,7 @@ export default function CalendarioPage() {
 
   // Estado para la subida y procesamiento de horario con IA
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [scheduleCategory, setScheduleCategory] = useState<'estudio' | 'trabajo'>('estudio');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadStatusText, setUploadStatusText] = useState<string>('Analizando con Gemini...');
@@ -264,7 +358,48 @@ export default function CalendarioPage() {
         }
 
         // Cargar bloques de disponibilidad guardados en Supabase
-        if (res.availabilities && res.availabilities.length > 0) {
+        if (res.customBlocks && res.customBlocks.length > 0) {
+          res.customBlocks.forEach((b) => {
+            if (b.type === 'tareas') return;
+            if (!b.date) return;
+
+            const startSlot = b.startTime.slice(0, 5);
+            const endSlot = b.endTime.slice(0, 5);
+            const startIdx = TIME_SLOTS.indexOf(startSlot);
+            const endIdx = TIME_SLOTS.indexOf(endSlot);
+            if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return;
+
+            let normalizedType:
+              | 'tareas'
+              | 'descanso'
+              | 'trabajo'
+              | 'estudiando'
+              | 'otra_actividad' = 'trabajo';
+            if (b.type === 'estudio' || b.type === 'estudiando') normalizedType = 'estudiando';
+            else if (b.type === 'trabajo' || b.type === 'ocupado') normalizedType = 'trabajo';
+            else if (b.type === 'descanso') normalizedType = 'descanso';
+            else if (b.type === 'otra_actividad') normalizedType = 'otra_actividad';
+
+            const dayOfWeekName = format(parseISODate(b.date), 'EEEE', { locale: es });
+            const blockId = `block_${b.date}_${startIdx}_${endIdx}`;
+
+            for (let i = startIdx; i < endIdx; i++) {
+              const slot = TIME_SLOTS[i];
+              if (slot && slot !== '24:00') {
+                dbEvents.push({
+                  date: b.date,
+                  dayOfWeek: dayOfWeekName,
+                  startTime: slot,
+                  endTime: TIME_SLOTS[i + 1] || '24:00',
+                  label: b.label || (normalizedType === 'estudiando' ? 'Estudio' : 'Trabajo'),
+                  type: normalizedType,
+                  source: 'supabase',
+                  blockId,
+                });
+              }
+            }
+          });
+        } else if (res.availabilities && res.availabilities.length > 0) {
           res.availabilities.forEach((b) => {
             if (b.tipo === 'tareas') return; // 'tareas' representan slots libres
             if (!b.fecha_especifica) return;
@@ -304,16 +439,10 @@ export default function CalendarioPage() {
           });
         }
 
-        if (dbEvents.length > 0) {
-          setAvailabilities((prev) => {
-            const nonSupabase = prev.filter((p) => p.source !== 'supabase' && !p.eventId);
-            const keys = new Set(dbEvents.map((m) => `${m.date}_${m.startTime}`));
-            const filteredNonSupabase = nonSupabase.filter(
-              (p) => !keys.has(`${p.date}_${p.startTime}`),
-            );
-            return [...filteredNonSupabase, ...dbEvents];
-          });
-        }
+        setAvailabilities((prev) => {
+          const googleEvents = prev.filter((p) => p.source === 'google');
+          return [...googleEvents, ...dbEvents];
+        });
       }
     } catch (err) {
       console.warn('Aviso cargando eventos de calendario:', err);
@@ -471,34 +600,13 @@ export default function CalendarioPage() {
   useEffect(() => {
     localStorage.setItem('komorebi_availabilities', JSON.stringify(availabilities));
 
-    // Sincronizar bloques de disponibilidad manuales con Supabase
+    // Sincronizar bloques de disponibilidad con Supabase (consolidando franjas en bloques limpios)
     const timer = setTimeout(() => {
-      const localBlocks = availabilities
-        .filter((a) => a.source !== 'supabase' && !a.eventId && a.source !== 'google')
-        .map((a) => {
-          let normalizedType: 'ocupado' | 'tareas' | 'estudio' | 'trabajo' | 'otra_actividad' =
-            'tareas';
-          if (a.type === 'estudio' || a.type === 'estudiando') normalizedType = 'estudio';
-          else if (a.type === 'trabajo' || a.type === 'ocupado') normalizedType = 'trabajo';
-          else if (a.type === 'otra_actividad' || a.type === 'descanso')
-            normalizedType = 'otra_actividad';
-          else normalizedType = 'tareas';
-
-          return {
-            fecha_especifica: a.date,
-            hora_inicio: a.startTime,
-            hora_fin: a.endTime,
-            tipo: normalizedType,
-            origen: 'manual',
-          };
-        });
-
-      if (localBlocks.length > 0) {
-        syncAvailabilityBlocksAction(localBlocks).catch((err) =>
-          console.warn('Aviso sincronizando bloques en Supabase:', err),
-        );
-      }
-    }, 1200);
+      const consolidated = consolidateAvailabilitySlots(availabilities);
+      syncAvailabilityBlocksAction(consolidated).catch((err) =>
+        console.warn('Aviso sincronizando bloques en Supabase:', err),
+      );
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [availabilities]);
@@ -749,6 +857,7 @@ export default function CalendarioPage() {
           base64Data,
           mimeType,
           guardarEnDisponibilidad: true,
+          categoria: scheduleCategory,
         }),
       });
 
@@ -794,28 +903,10 @@ export default function CalendarioPage() {
             const fromIdx = startIdx !== -1 ? startIdx : 0;
             const toIdx = endIdx !== -1 && endIdx > fromIdx ? endIdx : fromIdx + 12;
 
-            let mappedType: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
-              'estudiando';
-            const rawTipo = String(b.tipo || '').toLowerCase();
-            if (
-              rawTipo.includes('estudio') ||
-              rawTipo.includes('estudiando') ||
-              rawTipo.includes('clase')
-            ) {
-              mappedType = 'estudiando';
-            } else if (
-              rawTipo.includes('trabajo') ||
-              rawTipo.includes('ocupado') ||
-              rawTipo.includes('laboral')
-            ) {
-              mappedType = 'trabajo';
-            } else if (rawTipo.includes('descanso') || rawTipo.includes('receso')) {
-              mappedType = 'descanso';
-            } else if (rawTipo.includes('libre') || rawTipo.includes('tareas')) {
-              mappedType = 'tareas';
-            } else {
-              mappedType = 'otra_actividad';
-            }
+            const mappedType: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
+              scheduleCategory === 'trabajo' ? 'trabajo' : 'estudiando';
+            const defaultLabel = scheduleCategory === 'trabajo' ? 'Trabajo' : 'Estudio';
+            const blockLabel = b.etiqueta && b.etiqueta.trim() !== '' ? b.etiqueta : defaultLabel;
 
             for (let i = fromIdx; i < toIdx; i++) {
               const slot = TIME_SLOTS[i];
@@ -825,8 +916,9 @@ export default function CalendarioPage() {
                   dayOfWeek: dayOfWeekName,
                   startTime: slot,
                   endTime: TIME_SLOTS[i + 1] || '24:00',
-                  label: b.etiqueta || 'Clase/Actividad',
+                  label: blockLabel,
                   type: mappedType,
+                  source: 'local',
                 });
               }
             }
@@ -834,10 +926,15 @@ export default function CalendarioPage() {
         );
 
         if (mappedAvails.length > 0) {
+          const keys = new Set(mappedAvails.map((m) => `${m.date}_${m.startTime}`));
           setAvailabilities((prev) => {
-            const keys = new Set(mappedAvails.map((m) => `${m.date}_${m.startTime}`));
             const filtered = prev.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
-            return [...filtered, ...mappedAvails];
+            const merged = [...filtered, ...mappedAvails];
+            const consolidated = consolidateAvailabilitySlots(merged);
+            syncAvailabilityBlocksAction(consolidated).catch((err) =>
+              console.warn('Error sincronizando bloques tras extracción:', err),
+            );
+            return merged;
           });
         }
 
@@ -1024,11 +1121,14 @@ export default function CalendarioPage() {
           blockId: block.blockId,
         });
 
-        // Si es un bloque editable (manual/disponibilidad), abrir edición
-        if (!block.eventId && block.source !== 'google') {
+        // Si no es de google, abrir edición (permite editar bloques y también tareas)
+        if (block.source !== 'google') {
           setEditingCell({ date: dateStr, time: timeStr });
+          const rawLabel = block.label || '';
           setEditLabel(
-            block.label === 'Tareas' || block.label === 'Libre' ? '' : block.label || '',
+            rawLabel === 'Tareas' || rawLabel === 'Libre'
+              ? ''
+              : rawLabel.replace(/^📌\s*/, ''),
           );
           let normalized: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' =
             'tareas';
@@ -1329,9 +1429,10 @@ export default function CalendarioPage() {
       (a) => a.date === dateStr && timesToRemove.has(a.startTime) && a.eventId,
     );
 
-    setAvailabilities((prev) =>
-      prev.filter((a) => !(a.date === dateStr && timesToRemove.has(a.startTime))),
+    const updatedAvails = availabilities.filter(
+      (a) => !(a.date === dateStr && timesToRemove.has(a.startTime)),
     );
+    setAvailabilities(updatedAvails);
 
     if (removedEvents.length > 0) {
       for (const ev of removedEvents) {
@@ -1341,6 +1442,12 @@ export default function CalendarioPage() {
           );
         }
       }
+    } else {
+      // Si fue un bloque de disponibilidad, sincronizar inmediatamente para eliminarlo de Supabase
+      const consolidated = consolidateAvailabilitySlots(updatedAvails);
+      syncAvailabilityBlocksAction(consolidated).catch((err) =>
+        console.warn('Error sincronizando eliminación en Supabase:', err),
+      );
     }
 
     setToastMessage({ type: 'success', text: 'Bloque y categoría eliminados del calendario' });
@@ -1355,7 +1462,8 @@ export default function CalendarioPage() {
   ) => {
     e.stopPropagation();
     setEditingCell({ date: dateStr, time: timeStr });
-    setEditLabel(currentLabel === 'Tareas' || currentLabel === 'Libre' ? '' : currentLabel);
+    const cleanLabel = currentLabel.replace(/^📌\s*/, '');
+    setEditLabel(cleanLabel === 'Tareas' || cleanLabel === 'Libre' ? '' : cleanLabel);
     let normalized: 'tareas' | 'descanso' | 'trabajo' | 'estudiando' | 'otra_actividad' = 'tareas';
     if (currentType === 'estudio' || currentType === 'estudiando') normalized = 'estudiando';
     else if (currentType === 'trabajo' || currentType === 'ocupado') normalized = 'trabajo';
@@ -1380,22 +1488,47 @@ export default function CalendarioPage() {
       }
     }
     const targetSet = new Set(targetSlots);
-    const existingCount = availabilities.filter(
-      (a) => a.date === editingCell.date && targetSet.has(a.startTime),
-    ).length;
 
     const labelClean = editLabel.trim().substring(0, 15);
     const displayLabel = labelClean || (editType === 'tareas' ? 'Tareas' : '');
     const newBlockId = `block_${editingCell.date}_${startIdx}_${endIdx}`;
 
-    if (existingCount > 0) {
-      // Ya existían slots: actualizarlos
+    // Verificar si el slot seleccionado pertenece a una tarea o evento de calendario
+    const matchingEvent = availabilities.find(
+      (a) => a.date === editingCell.date && targetSet.has(a.startTime) && a.eventId,
+    );
+
+    if (matchingEvent?.eventId) {
+      const cleanTitle = labelClean.replace(/^📌\s*/, '') || 'Tarea';
+      updateCalendarEventDetailsAction({
+        eventId: matchingEvent.eventId,
+        titulo: cleanTitle,
+      }).catch((err) => console.warn('Error actualizando evento:', err));
+
       setAvailabilities((prev) =>
         prev.map((a) =>
-          a.date === editingCell.date && targetSet.has(a.startTime)
-            ? { ...a, label: displayLabel, type: editType }
+          a.eventId === matchingEvent.eventId
+            ? { ...a, label: `📌 ${cleanTitle}` }
             : a,
         ),
+      );
+      setToastMessage({ type: 'success', text: 'Tarea actualizada en la base de datos' });
+      setEditingCell(null);
+      return;
+    }
+
+    const existingCount = availabilities.filter(
+      (a) => a.date === editingCell.date && targetSet.has(a.startTime),
+    ).length;
+
+    let updatedList: Availability[] = [];
+
+    if (existingCount > 0) {
+      // Ya existían slots: actualizarlos
+      updatedList = availabilities.map((a) =>
+        a.date === editingCell.date && targetSet.has(a.startTime)
+          ? { ...a, label: displayLabel, type: editType, source: 'local' as const }
+          : a,
       );
     } else {
       // Bloque nuevo desde celda en blanco
@@ -1409,13 +1542,21 @@ export default function CalendarioPage() {
           endTime: nextSlot,
           label: displayLabel,
           type: editType,
-          source: 'local',
+          source: 'local' as const,
           blockId: newBlockId,
         };
       });
 
-      setAvailabilities((prev) => [...prev, ...newItems]);
+      updatedList = [...availabilities, ...newItems];
     }
+
+    setAvailabilities(updatedList);
+
+    // Sincronizar inmediatamente con Supabase para persistir categorías, colores y nombres
+    const consolidated = consolidateAvailabilitySlots(updatedList);
+    syncAvailabilityBlocksAction(consolidated).catch((err) =>
+      console.warn('Error sincronizando cambios en Supabase:', err),
+    );
 
     // Mantener la selección en el bloque guardado
     setSelectedBlock({
@@ -1425,6 +1566,7 @@ export default function CalendarioPage() {
       blockId: newBlockId,
     });
 
+    setToastMessage({ type: 'success', text: 'Cambios guardados en la base de datos' });
     setEditingCell(null);
   };
 
@@ -1800,6 +1942,66 @@ export default function CalendarioPage() {
                     bloques horarios para que queden reflejados en tu calendario.
                   </p>
 
+                  {/* Selector de opciones: De trabajo vs De estudio */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#845326] block">
+                      ¿Qué tipo de horario deseas agregar?
+                    </label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setScheduleCategory('trabajo')}
+                        className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          scheduleCategory === 'trabajo'
+                            ? 'border-[#845326] bg-[#F4C2BA]/25 ring-2 ring-[#F4C2BA]'
+                            : 'border-[#EAE3DC] bg-[#FDFBF9] hover:bg-[#F7EFE9] text-gray-700'
+                        }`}
+                      >
+                        <div
+                          className={`p-2 rounded-lg shrink-0 ${
+                            scheduleCategory === 'trabajo'
+                              ? 'bg-[#F4C2BA] text-[#6B3229]'
+                              : 'bg-[#EAE3DC]/60 text-gray-600'
+                          }`}
+                        >
+                          <Briefcase className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#2C1F14]">De trabajo</p>
+                          <p className="text-[10px] text-on-surface-variant font-medium">
+                            Categoría: Trabajo
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setScheduleCategory('estudio')}
+                        className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          scheduleCategory === 'estudio'
+                            ? 'border-[#845326] bg-[#BBD0F4]/25 ring-2 ring-[#BBD0F4]'
+                            : 'border-[#EAE3DC] bg-[#FDFBF9] hover:bg-[#F7EFE9] text-gray-700'
+                        }`}
+                      >
+                        <div
+                          className={`p-2 rounded-lg shrink-0 ${
+                            scheduleCategory === 'estudio'
+                              ? 'bg-[#BBD0F4] text-[#203D6B]'
+                              : 'bg-[#EAE3DC]/60 text-gray-600'
+                          }`}
+                        >
+                          <GraduationCap className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#2C1F14]">De estudio</p>
+                          <p className="text-[10px] text-on-surface-variant font-medium">
+                            Categoría: Estudio
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="border-2 border-dashed border-[#E2D9D0] rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-[#FDFBF9] hover:bg-[#F5EFE9] transition-colors relative cursor-pointer">
                     <input
                       type="file"
@@ -2105,23 +2307,21 @@ export default function CalendarioPage() {
                                       >
                                         <Trash2 className="size-3" />
                                       </button>
-                                      {!isTask && (
-                                        <button
-                                          onClick={(e) =>
-                                            handleEditLabel(
-                                              dateStr,
-                                              timeStr,
-                                              effectiveAvail!.label,
-                                              currentType,
-                                              e,
-                                            )
-                                          }
-                                          className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
-                                          title="Editar"
-                                        >
-                                          <Edit2 className="size-3" />
-                                        </button>
-                                      )}
+                                      <button
+                                        onClick={(e) =>
+                                          handleEditLabel(
+                                            dateStr,
+                                            timeStr,
+                                            effectiveAvail!.label,
+                                            currentType,
+                                            e,
+                                          )
+                                        }
+                                        className={`p-0.5 bg-white/70 rounded hover:bg-white ${colorTheme.text} transition-colors`}
+                                        title={isTask ? 'Editar nombre de tarea' : 'Editar'}
+                                      >
+                                        <Edit2 className="size-3" />
+                                      </button>
                                     </>
                                   )}
                                 </div>
@@ -2145,7 +2345,11 @@ export default function CalendarioPage() {
                               >
                                 <div className="flex items-center justify-between pb-1 border-b border-[#EAE3DC]/60">
                                   <span className="text-[11px] font-bold text-[#845326]">
-                                    {effectiveAvail ? 'Editar bloque' : 'Nuevo bloque'}
+                                    {effectiveAvail
+                                      ? effectiveAvail.eventId
+                                        ? 'Editar tarea'
+                                        : 'Editar bloque'
+                                      : 'Nuevo bloque'}
                                   </span>
                                   <button
                                     type="button"
@@ -2172,7 +2376,9 @@ export default function CalendarioPage() {
                                   }}
                                   maxLength={15}
                                   className="w-full text-xs font-bold text-on-surface bg-[#FDFBF9] border border-[#EAE3DC] rounded-md p-1.5 focus:outline-none focus:border-[#845326]"
-                                  placeholder="Nombre / Nota..."
+                                  placeholder={
+                                    effectiveAvail?.eventId ? 'Nombre de tarea...' : 'Nombre / Nota...'
+                                  }
                                 />
                                 <div className="flex gap-2 justify-center flex-wrap px-1">
                                   <button
