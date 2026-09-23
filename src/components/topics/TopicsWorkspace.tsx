@@ -19,6 +19,7 @@ import {
   Edit2,
   Trash2,
   ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -56,6 +57,7 @@ export function TopicsWorkspace() {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [note, setNote] = useState('');
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingNote, setSavingNote] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -111,6 +113,7 @@ export function TopicsWorkspace() {
   function selectTopic(topic: Topic) {
     setSelectedTopicId(topic.id);
     setNote(topic.mainNote);
+    setNoteError(null);
     setIsAddingLink(false);
     setOpenSourceMenuId(null);
   }
@@ -123,6 +126,7 @@ export function TopicsWorkspace() {
       setTopics((prev) => [created, ...prev]);
       setSelectedTopicId(created.id);
       setNote(created.mainNote);
+      setNoteError(null);
       toast.success('Tema creado con éxito');
     } else {
       throw new Error(res.error || 'No se pudo crear el tema');
@@ -162,6 +166,7 @@ export function TopicsWorkspace() {
           const next = remaining[0] ?? null;
           setSelectedTopicId(next?.id ?? null);
           setNote(next?.mainNote ?? '');
+          setNoteError(null);
         }
         return remaining;
       });
@@ -175,6 +180,7 @@ export function TopicsWorkspace() {
   async function saveNote() {
     if (!selectedTopic) return;
     setSavingNote(true);
+    setNoteError(null);
     try {
       const res = await updateTopicAction({
         id: selectedTopic.id,
@@ -186,12 +192,15 @@ export function TopicsWorkspace() {
             t.id === selectedTopic.id ? { ...t, mainNote: note, lastEdited: 'Editado ahora' } : t,
           ),
         );
+        setNoteError(null);
         toast.success('Nota principal guardada');
       } else {
-        toast.error(res.error || 'Error al guardar la nota');
+        const errMsg = res.error || 'Error al guardar la nota';
+        setNoteError(errMsg);
       }
-    } catch {
-      toast.error('Ocurrió un error al guardar la nota');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Ocurrió un error al guardar la nota';
+      setNoteError(errMsg);
     } finally {
       setSavingNote(false);
     }
@@ -585,12 +594,30 @@ export function TopicsWorkspace() {
                       </div>
                       <FileText className="size-5 text-outline" />
                     </div>
+
+                    {noteError && (
+                      <div
+                        role="alert"
+                        className="mb-3 flex items-start gap-2.5 rounded-xl border border-error/30 bg-error/10 p-3 text-xs text-error font-medium animate-in fade-in"
+                      >
+                        <AlertCircle className="size-4 shrink-0 mt-0.5 text-error" />
+                        <div className="flex-1">{noteError}</div>
+                      </div>
+                    )}
+
                     <textarea
                       value={note}
-                      onChange={(event) => setNote(event.target.value)}
+                      onChange={(event) => {
+                        setNote(event.target.value);
+                        if (noteError) setNoteError(null);
+                      }}
                       placeholder="Escribe una nota para este tema..."
                       rows={7}
-                      className="block w-full max-w-full resize-y rounded-xl border border-outline-variant/70 bg-surface p-4 text-sm leading-relaxed shadow-inner outline-none transition-colors placeholder:text-outline focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      className={`block w-full max-w-full resize-y rounded-xl border bg-surface p-4 text-sm leading-relaxed shadow-inner outline-none transition-colors placeholder:text-outline ${
+                        noteError
+                          ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
+                          : 'border-outline-variant/70 focus:border-primary focus:ring-2 focus:ring-primary/15'
+                      }`}
                     />
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-xs text-outline">

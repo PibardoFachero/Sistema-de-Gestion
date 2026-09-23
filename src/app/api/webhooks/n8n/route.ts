@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getUserAiContext } from '@/services/ai/contextBuilderService';
 
 const requestSchema = z.object({
   mensaje: z.string().trim().min(1).max(20000),
@@ -84,6 +85,21 @@ export async function POST(request: Request) {
     console.warn('Error al cargar proyectos para contexto de Komo:', err);
   }
 
+  // Consultar perfil de aprendizaje y temas/fuentes autorizadas del usuario
+  let userAiContextText = '';
+  let perfilUsuarioData: unknown = null;
+  let temasContextData: unknown = [];
+  try {
+    const userAiContext = await getUserAiContext({ userId: auth.user.id });
+    userAiContextText = [userAiContext.perfilTexto, userAiContext.temasTexto]
+      .filter(Boolean)
+      .join('\n\n');
+    perfilUsuarioData = userAiContext.perfilRaw;
+    temasContextData = userAiContext.temasRaw;
+  } catch (err) {
+    console.warn('Error al cargar perfil y temas para contexto de Komo:', err);
+  }
+
   const systemRulesText =
     `[REGLAS DE CONDUCTA DE KOMO IA]:\n` +
     `1. SI EL USUARIO PIDE CREAR UN PROYECTO (ej. "crear proyecto", "crea un proyecto", "iniciar proyecto"):\n` +
@@ -98,7 +114,9 @@ export async function POST(request: Request) {
     `   - Explica que para ahorrarle tiempo se han obviado las 2 primeras preguntas (nombre y objetivo) en el formulario.\n` +
     `   - Proporciona el enlace al formulario con los datos acordados en la URL: [Completar configuración en el formulario](/proyectos/nuevo?step=2&titulo=TITULO_AQUI&objetivo=OBJETIVO_AQUI)\n\n`;
 
-  const promptConContexto = `${systemRulesText}${proyectosContextText}Instrucción o consulta del usuario:\n${parsed.data.mensaje}`;
+  const promptConContexto = `${systemRulesText}${proyectosContextText}${
+    userAiContextText ? `${userAiContextText}\n\n` : ''
+  }Instrucción o consulta del usuario:\n${parsed.data.mensaje}`;
 
   try {
     const response = await fetch(webhookUrl, {
@@ -114,6 +132,8 @@ export async function POST(request: Request) {
         input: promptConContexto,
         tipo_evento: 'chat',
         proyectos: userProjects,
+        perfil_usuario: perfilUsuarioData,
+        temas_y_fuentes: temasContextData,
         archivo: parsed.data.archivo,
         contexto: parsed.data.contexto,
       }),

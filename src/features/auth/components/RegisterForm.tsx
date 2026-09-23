@@ -117,6 +117,11 @@ export function RegisterForm() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/api/auth/callback?next=/onboarding`,
+          scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 

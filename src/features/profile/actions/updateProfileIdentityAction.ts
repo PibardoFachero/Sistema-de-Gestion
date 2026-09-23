@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { validatePhoneNumber } from '@/features/profile/utils/phoneValidation';
+import { validateContent } from '@/lib/moderation/contentFilter';
 
 export interface UpdateProfileIdentityInput {
   firstName: string;
@@ -55,6 +56,15 @@ export async function updateProfileIdentity(
     return { success: false, error: 'El apellido solo puede contener letras y espacios.' };
   }
 
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Nombre y Apellido
+  const nameValidation = validateContent(`${normalizedFirstName} ${normalizedLastName}`);
+  if (!nameValidation.isValid) {
+    return {
+      success: false,
+      error: nameValidation.error || 'El nombre o apellido contiene términos no permitidos.',
+    };
+  }
+
   if (!normalizedUsername || normalizedUsername.length < 3) {
     return { success: false, error: 'El nombre de usuario debe tener al menos 3 caracteres.' };
   }
@@ -70,11 +80,31 @@ export async function updateProfileIdentity(
     };
   }
 
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Nombre de usuario
+  const usernameValidation = validateContent(normalizedUsername);
+  if (!usernameValidation.isValid) {
+    return {
+      success: false,
+      error: usernameValidation.error || 'El nombre de usuario contiene términos no permitidos.',
+    };
+  }
+
   if (normalizedDescription.length > 1000) {
     return {
       success: false,
       error: 'La descripción del perfil debe tener como máximo 1000 caracteres.',
     };
+  }
+
+  // [VALIDACIÓN BACKEND DE CONTENIDO]: Descripción de perfil
+  if (normalizedDescription) {
+    const descValidation = validateContent(normalizedDescription);
+    if (!descValidation.isValid) {
+      return {
+        success: false,
+        error: descValidation.error || 'La descripción del perfil contiene términos no permitidos.',
+      };
+    }
   }
 
   // Validación de teléfono (opcional, debe incluir prefijo válido si se suministra)
