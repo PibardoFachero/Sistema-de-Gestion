@@ -1,5 +1,4 @@
 import React from 'react';
-import { PanelLeftClose } from 'lucide-react';
 import Image from 'next/image';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
@@ -43,12 +42,6 @@ export async function Sidebar({ initialUser }: SidebarProps) {
             </p>
           </div>
         </div>
-        <button
-          className="text-outline hover:text-primary transition-colors cursor-pointer"
-          aria-label="Colapsar menú"
-        >
-          <PanelLeftClose className="size-5" />
-        </button>
       </div>
 
       <SidebarNav />
