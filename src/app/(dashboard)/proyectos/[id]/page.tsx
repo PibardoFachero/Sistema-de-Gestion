@@ -144,7 +144,7 @@ export default function ProjectDetailPage({
 
   // Certifications
   const [certStatus, setCertStatus] = useState<{ issued: boolean; hash?: string; hasFullName?: boolean }>({ issued: false });
-  const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+  const [quizModalTaskId, setQuizModalTaskId] = useState<string | null>(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   // Registrar el tour contextual
@@ -431,6 +431,7 @@ export default function ProjectDetailPage({
               startDate: t.fecha_inicio || null,
               resourceUrl: t.resources || t.recurso_url || t.material_url || null,
               isCompleted: Boolean(t.completado),
+              quizAprobado: Boolean(t.quiz_aprobado),
             }));
 
             const charCodeSum = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -1032,15 +1033,17 @@ export default function ProjectDetailPage({
             <div>
               <p className="text-sm font-bold text-on-surface-variant">Progreso de Certificación</p>
               <div className="text-xs text-on-surface-variant mt-1 max-w-xs">
-                {certStatus.issued ? '¡Certificado emitido!' : 'Completa todas las tareas y aprueba el quiz.'}
+                {certStatus.issued ? '¡Certificado emitido!' : 'Aprueba los micro-quizzes de cada tarea para certificarte.'}
               </div>
             </div>
-            <div className="text-2xl font-black text-status-success">{certStatus.issued ? '100' : '0'}%</div>
+            <div className="text-2xl font-black text-status-success">
+              {certStatus.issued ? '100' : (project?.tasks.length ? Math.round((project.tasks.filter(t => t.quizAprobado).length / project.tasks.length) * 100) : 0)}%
+            </div>
           </div>
           <div className="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden mb-2">
             <div
-              className={`h-full rounded-full transition-all duration-1000 ease-out ${certStatus.issued ? 'bg-status-success' : 'bg-status-success/20'}`}
-              style={{ width: certStatus.issued ? '100%' : '0%' }}
+              className={`h-full rounded-full transition-all duration-1000 ease-out ${certStatus.issued ? 'bg-status-success' : 'bg-status-success/60'}`}
+              style={{ width: certStatus.issued ? '100%' : `${project?.tasks.length ? Math.round((project.tasks.filter(t => t.quizAprobado).length / project.tasks.length) * 100) : 0}%` }}
             />
           </div>
         </div>
@@ -1127,20 +1130,9 @@ export default function ProjectDetailPage({
                 onToggleComplete={handleToggleTask}
                 onDeleteTask={handleDeleteTaskClick}
                 onEditTask={handleOpenEditModal}
+                onOpenQuiz={(taskId) => setQuizModalTaskId(taskId)}
               />
             ))}
-
-            {/* Botón de Quiz visible para intentar el examen en cualquier momento */}
-            {!certStatus.issued && (
-              <button
-                type="button"
-                onClick={() => setIsQuizModalOpen(true)}
-                className="mt-4 w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#FBE6DD]/40 border-2 border-[#FBE6DD] text-[#845326] rounded-2xl font-bold text-sm hover:bg-[#FBE6DD] transition-all cursor-pointer shadow-sm"
-              >
-                <Sparkles className="size-5" />
-                Realizar Quiz para optar por la certificacion
-              </button>
-            )}
           </div>
 
           {/* Aviso si las tareas ya cubren toda la duración del proyecto */}
@@ -1889,14 +1881,35 @@ export default function ProjectDetailPage({
 
       {project && (
         <QuizModal
-          projectId={project.id}
-          isOpen={isQuizModalOpen}
-          onClose={() => setIsQuizModalOpen(false)}
+          taskId={quizModalTaskId}
+          isOpen={!!quizModalTaskId}
+          onClose={() => setQuizModalTaskId(null)}
           hasFullName={!!certStatus.hasFullName}
-          onSuccess={(hash) => {
-            setIsQuizModalOpen(false);
-            setCertStatus(prev => ({ ...prev, issued: true, hash }));
-            setIsCertModalOpen(true);
+          onSuccess={(taskId) => {
+            setQuizModalTaskId(null);
+            
+            // Update local state and check if 100%
+            setProject(prev => {
+              if (!prev) return prev;
+              const newTasks = prev.tasks.map(t => t.id === taskId ? { ...t, quizAprobado: true } : t);
+              
+              const total = newTasks.length;
+              const approved = newTasks.filter(t => t.quizAprobado).length;
+              
+              if (total > 0 && approved === total) {
+                // Auto trigger issue certificate
+                import('@/features/certifications/actions/issueCertificateAction').then(({ issueCertificateAction }) => {
+                  issueCertificateAction({ projectId: project.id }).then(res => {
+                    if (res.success && res.hash) {
+                      setCertStatus(c => ({ ...c, issued: true, hash: res.hash }));
+                      setIsCertModalOpen(true);
+                    }
+                  });
+                });
+              }
+              
+              return { ...prev, tasks: newTasks };
+            });
           }}
         />
       )}

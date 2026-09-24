@@ -11,7 +11,7 @@ export interface QuizQuestion {
 }
 
 export interface GenerateQuizInput {
-  projectId: string;
+  taskId: string;
 }
 
 export interface GenerateQuizResponse {
@@ -27,7 +27,7 @@ const quizSchema = z.object({
       options: z.array(z.string()).length(4),
       correctAnswerIndex: z.number().min(0).max(3),
     })
-  ).length(5),
+  ).length(10),
 });
 
 export async function generateQuizAction(
@@ -41,30 +41,27 @@ export async function generateQuizAction(
       return { success: false, error: 'No autorizado.' };
     }
 
-    // Obtener las tareas del proyecto
-    const { data: tasks, error: tasksError } = await supabase
+    // Obtener la tarea específica
+    const { data: task, error: taskError } = await supabase
       .from('tareas')
       .select('titulo, descripcion, completado')
-      .eq('project_id', input.projectId)
-      .eq('completado', true);
+      .eq('id', input.taskId)
+      .single();
 
-    if (tasksError) {
-      return { success: false, error: 'Error al obtener las tareas del proyecto.' };
+    if (taskError || !task) {
+      return { success: false, error: 'Error al obtener la tarea o no existe.' };
     }
 
-    if (!tasks || tasks.length === 0) {
-      return { success: false, error: 'El proyecto no tiene tareas completadas para evaluar.' };
-    }
-
-    const taskContext = tasks.map(t => `- ${t.titulo}: ${t.descripcion || 'Sin descripción'}`).join('\n');
+    const taskContext = `Título: ${task.titulo}\nDescripción: ${task.descripcion || 'Sin descripción'}`;
 
     const prompt = `
-      Actúa como un profesor experto. Eres el encargado de evaluar el conocimiento adquirido por un estudiante.
-      El estudiante acaba de finalizar un proyecto autodidacta con las siguientes tareas completadas:
+      Actúa como un profesor y experto riguroso en la materia. Eres el encargado de evaluar el conocimiento profundo adquirido por un estudiante sobre un tema muy específico.
+      El estudiante ha estado estudiando el siguiente tema/tarea:
       
       ${taskContext}
       
-      Por favor, genera un cuestionario de opción múltiple con exactamente 5 preguntas basadas en este contenido.
+      Por favor, genera un cuestionario de opción múltiple con EXACTAMENTE 10 PREGUNTAS basadas y estrictamente relacionadas con el tema central de esta tarea.
+      Las preguntas deben evaluar la comprensión real, conceptos teóricos y posibles aplicaciones prácticas de este tema. No hagas preguntas triviales.
       Cada pregunta debe tener 4 opciones, y solo una de ellas debe ser la correcta.
       Devuelve la respuesta en formato JSON estrictamente siguiendo esta estructura:
       {
@@ -123,5 +120,30 @@ export async function generateQuizAction(
   } catch (error) {
     console.error('Error in generateQuizAction:', error);
     return { success: false, error: 'Hubo un error al generar el cuestionario con IA.' };
+  }
+}
+
+export async function markTaskQuizPassedAction(taskId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'No autorizado.' };
+    }
+
+    const { error } = await supabase
+      .from('tareas')
+      .update({ quiz_aprobado: true })
+      .eq('id', taskId);
+
+    if (error) {
+      return { success: false, error: 'No se pudo actualizar el estado de la tarea en la base de datos.' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error marking quiz as passed:', error);
+    return { success: false, error: 'Error interno del servidor.' };
   }
 }

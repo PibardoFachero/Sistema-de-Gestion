@@ -37,17 +37,17 @@ export async function issueCertificateAction(
 
     const { data: tasks, error: tasksError } = await supabase
       .from('tareas')
-      .select('completado, horas')
+      .select('quiz_aprobado, horas')
       .eq('project_id', input.projectId);
 
     if (tasksError) {
       return { success: false, error: 'Error al verificar las tareas.' };
     }
 
-    // 2. Validar que todas las tareas estén completadas (o al menos que el progreso sea 100%)
-    const completedTasks = tasks.filter(t => t.completado);
+    // 2. Validar que todas las tareas tengan quiz_aprobado
+    const completedTasks = tasks.filter(t => t.quiz_aprobado);
     if (tasks.length === 0 || completedTasks.length < tasks.length) {
-      return { success: false, error: 'Debes completar todas las tareas del proyecto antes de certificarte.' };
+      return { success: false, error: 'Debes aprobar los micro-quizzes de todas las tareas del proyecto antes de certificarte.' };
     }
 
     // 3. Calcular horas invertidas

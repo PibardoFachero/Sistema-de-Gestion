@@ -31,6 +31,7 @@ export interface TaskRecord {
   fecha_inicio?: string | null;
   resources?: string | null;
   url_recomendada?: string | null;
+  quiz_aprobado?: boolean;
 }
 
 export interface ProjectRecord {

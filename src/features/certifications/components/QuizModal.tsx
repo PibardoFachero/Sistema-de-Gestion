@@ -3,19 +3,18 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Loader2, Brain, CheckCircle, AlertCircle, Award } from 'lucide-react';
-import { generateQuizAction, QuizQuestion } from '@/features/certifications/actions/generateQuizAction';
-import { issueCertificateAction } from '@/features/certifications/actions/issueCertificateAction';
+import { generateQuizAction, QuizQuestion, markTaskQuizPassedAction } from '@/features/certifications/actions/generateQuizAction';
 import { cn } from '@/lib/utils';
 
 interface QuizModalProps {
-  projectId: string;
+  taskId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (hash: string) => void;
+  onSuccess: (taskId: string) => void;
   hasFullName: boolean;
 }
 
-export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }: QuizModalProps) {
+export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: QuizModalProps) {
   const supabase = createClient();
   const [isPending, startTransition] = useTransition();
   const [step, setStep] = useState<'name' | 'loading' | 'quiz' | 'evaluating'>('loading');
@@ -27,7 +26,7 @@ export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && taskId) {
       setStep(hasFullName ? 'loading' : 'name');
       setQuestions([]);
       setCurrentQuestionIndex(0);
@@ -37,7 +36,7 @@ export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }
         fetchQuiz();
       }
     }
-  }, [isOpen, hasFullName]);
+  }, [isOpen, hasFullName, taskId]);
 
   const handleSaveName = async () => {
     if (fullNameInput.trim().length < 3) {
@@ -56,8 +55,9 @@ export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }
   };
 
   const fetchQuiz = () => {
+    if (!taskId) return;
     startTransition(async () => {
-      const res = await generateQuizAction({ projectId });
+      const res = await generateQuizAction({ taskId });
       if (res.success && res.questions) {
         setQuestions(res.questions);
         setStep('quiz');
@@ -82,6 +82,7 @@ export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }
   };
 
   const evaluateQuiz = () => {
+    if (!taskId) return;
     setStep('evaluating');
     startTransition(async () => {
       let score = 0;
@@ -89,17 +90,18 @@ export function QuizModal({ projectId, isOpen, onClose, onSuccess, hasFullName }
         if (selectedAnswers[i] === q.correctAnswerIndex) score++;
       });
 
-      // 4/5 para aprobar (80%)
-      if (score >= 4) {
-        const issueRes = await issueCertificateAction({ projectId });
-        if (issueRes.success && issueRes.hash) {
-          onSuccess(issueRes.hash);
+      // 8/10 para aprobar (80%)
+      const passingScore = Math.ceil(questions.length * 0.8);
+      if (score >= passingScore) {
+        const res = await markTaskQuizPassedAction(taskId);
+        if (res.success) {
+          onSuccess(taskId);
         } else {
-          setError(issueRes.error || 'Aprobaste, pero no se pudo emitir el certificado.');
-          setStep('quiz'); // volver al quiz para que vea el error
+          setError(res.error || 'Aprobaste, pero no se pudo guardar tu progreso.');
+          setStep('quiz');
         }
       } else {
-        setError(`Obtuviste ${score} de ${questions.length}. Necesitas al menos 4 correctas para certificarte. Vuelve a intentarlo luego.`);
+        setError(`Obtuviste ${score} de ${questions.length}. Necesitas al menos ${passingScore} correctas para aprobar. Vuelve a estudiar el tema e inténtalo luego.`);
         setStep('quiz');
       }
     });
