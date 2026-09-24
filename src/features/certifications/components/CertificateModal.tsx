@@ -13,7 +13,7 @@ interface CertData {
   temas_aprobados: number;
   proyectos: { titulo: string };
   profiles: { nombre_completo: string };
-  tareas?: { titulo: string }[];
+  tareas?: { titulo?: string; title?: string; id?: string }[];
 }
 
 export interface CertificateModalProps {
@@ -169,7 +169,7 @@ export function CertificateModal({ hash, isOpen, onClose, isPreview = false, pre
       </div>
 
       {/* Scrollable Document Area */}
-      <div className="flex-1 w-full overflow-y-auto p-4 sm:p-8 flex justify-center items-start">
+      <div className="flex-1 w-full overflow-y-auto p-4 sm:p-8 pb-28 sm:pb-32 flex justify-center items-start">
         {loading || !data ? (
           <div className="flex flex-col items-center justify-center py-20 text-white/70">
             <Loader2 className="size-8 animate-spin mb-4" />
@@ -205,71 +205,82 @@ export function CertificateModal({ hash, isOpen, onClose, isPreview = false, pre
                   </div>
                 )}
 
-                <div className="relative z-10 flex flex-col h-full items-center text-center">
+                <div className="relative z-10 flex flex-col h-full items-center text-center justify-between">
+                  <div className="flex flex-col items-center w-full">
                   
                   {/* Top Badge */}
-                  <div className="mt-4 flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-bold text-[#845326] uppercase tracking-[0.2em] bg-[#F2EFE8] px-4 py-1.5 rounded-full mb-8 border border-[#E8DCD1]">
+                  <div className="mt-2 flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-bold text-[#845326] uppercase tracking-[0.2em] bg-[#F2EFE8] px-4 py-1.5 rounded-full mb-4 border border-[#E8DCD1]">
                     <Award className="size-3.5" />
                     <span>Komorebi Study Studio • Acreditación Académica</span>
                   </div>
 
                   {/* Main Title */}
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#2C1F14] tracking-widest mb-2 whitespace-nowrap">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#2C1F14] tracking-widest mb-1 whitespace-nowrap">
                     CERTIFICADO DE INVERSIÓN DE TIEMPO
                   </h1>
-                  <h2 className="text-[9px] sm:text-[11px] text-[#845326] uppercase tracking-[0.3em] mb-8">
+                  <h2 className="text-[9px] sm:text-[11px] text-[#845326] uppercase tracking-[0.3em] mb-4">
                     Constancia Oficial de Dedicación y Cumplimiento de Metas
                   </h2>
 
                   {/* Presentación */}
-                  <p className="italic font-serif text-[#845326] mb-3 text-xs sm:text-sm">
+                  <p className="italic font-serif text-[#845326] mb-1 text-xs sm:text-sm">
                     Por cuanto se hace constar oficialmente que el/la estudiante
                   </p>
 
                   {/* Nombre */}
-                  <div className="w-full max-w-2xl border-b border-[#E8DCD1] pb-2 mb-6">
+                  <div className="w-full max-w-2xl border-b border-[#E8DCD1] pb-1 mb-3">
                     <p className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#2C1F14] capitalize">
                       {data.profiles.nombre_completo || 'Nombre no definido'}
                     </p>
                   </div>
 
                   {/* Descripción */}
-                  <p className="text-[#2C1F14] text-xs sm:text-sm mb-6 max-w-2xl mx-auto leading-relaxed">
+                  <p className="text-[#2C1F14] text-xs sm:text-sm mb-3 max-w-2xl mx-auto leading-relaxed">
                     Ha dedicado y completado con disciplina un tiempo efectivo de foco y estudio de:
                   </p>
 
-                  {/* Stats Pill */}
-                  <div className="flex items-center gap-4 bg-[#F2EFE8] px-6 py-3 rounded-2xl border border-[#E8DCD1] mb-6">
-                    <div className="flex items-center gap-2 text-[#845326] font-bold text-lg sm:text-xl border-r border-[#DCCBBD] pr-4">
-                      <Clock className="size-5" />
-                      <span>{data.horas_invertidas} horas</span>
+                  {/* Renderizado Seguro de Estadísticas */}
+                  <div className="flex items-center justify-center gap-4 mb-3">
+                    <div className="font-bold text-lg text-gray-800">
+                      <span className="mr-2">🕒</span>{data.horas_invertidas} horas
                     </div>
-                    <div className="text-[10px] sm:text-xs font-bold text-[#845326]/70 uppercase tracking-widest pl-2">
-                      {data.temas_aprobados} Tareas Realizadas
-                    </div>
+                    <div className="text-gray-500 text-sm uppercase tracking-wide">{data.temas_aprobados} TAREAS REALIZADAS</div>
                   </div>
 
-                  <p className="text-[#2C1F14] text-xs sm:text-sm mb-6 max-w-xl mx-auto">
+                  <p className="text-[#2C1F14] text-xs sm:text-sm mb-2 max-w-xl mx-auto">
                     Aplicadas con éxito en el desarrollo del proyecto académico: <span className="font-bold">&quot;{data.proyectos.titulo}&quot;</span>
                   </p>
 
-                  {/* Grid de tareas */}
-                  <div className="w-full max-w-3xl grid grid-cols-2 gap-4 mt-6 mb-auto relative z-10">
-                    {data.tareas?.slice(0, 8).map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg text-left shadow-sm">
-                        <span className="text-[#845326] font-bold text-xs shrink-0">✓</span>
-                        <span className="text-sm text-[#2C1F14] truncate font-medium">{t.titulo}</span>
-                      </div>
-                    ))}
-                    {(data.tareas?.length || 0) > 8 && (
-                      <div className="flex items-center gap-2 px-4 py-2 col-span-2 justify-center">
-                        <span className="text-sm text-[#845326] font-bold italic">+ {(data.tareas?.length || 0) - 8} tareas adicionales...</span>
-                      </div>
-                    )}
+                  {/* Renderizado Seguro de la Cuadrícula */}
+                  {(data.tareas?.length || 0) > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mt-3 w-full max-w-3xl mb-auto relative z-10">
+                      {(data.tareas?.length || 0) > 8 ? (
+                        <>
+                          {data.tareas!.slice(0, 7).map((tarea, index) => (
+                            <div key={tarea.id || index} className="border border-gray-200 rounded-md px-2 py-1 text-xs flex items-center bg-white shadow-sm">
+                              <span className="text-green-600 mr-2 font-bold">✓</span>
+                              <span className="truncate text-gray-700">{tarea.titulo || tarea.title}</span>
+                            </div>
+                          ))}
+                          <div className="border border-gray-200 rounded-md px-2 py-1 text-xs flex items-center justify-center bg-gray-50 shadow-sm">
+                            <span className="text-gray-600 font-bold italic">+ {data.tareas!.length - 7} tareas adicionales</span>
+                          </div>
+                        </>
+                      ) : (
+                        data.tareas!.map((tarea, index) => (
+                          <div key={tarea.id || index} className="border border-gray-200 rounded-md px-2 py-1 text-xs flex items-center bg-white shadow-sm">
+                            <span className="text-green-600 mr-2 font-bold">✓</span>
+                            <span className="truncate text-gray-700">{tarea.titulo || tarea.title}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
                   </div>
 
                   {/* Footer Area */}
-                  <div className="w-full flex justify-between items-end mt-12 pt-6 border-t border-[#E8DCD1]/50">
+                  <div className="w-full flex justify-between items-end pt-6 mt-auto border-t border-[#E8DCD1]/50">
                     
                     {/* Left: Validation */}
                     <div className="flex flex-col gap-2 text-left w-1/3">
@@ -310,7 +321,7 @@ export function CertificateModal({ hash, isOpen, onClose, isPreview = false, pre
             </div>
 
             {/* Bottom Sticky Action Bar */}
-            <div className="w-full sticky bottom-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] border border-[#E8DCD1] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 z-20 mt-4 mx-auto max-w-[1000px]">
+            <div className="w-full sticky bottom-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] border border-[#E8DCD1] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 z-40 mt-4 mx-auto max-w-[1000px]">
               {/* Left Action Area */}
               <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
                 <ShieldCheck className="size-5 text-emerald-600 hidden sm:block shrink-0" />

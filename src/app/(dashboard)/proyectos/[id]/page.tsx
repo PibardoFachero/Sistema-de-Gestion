@@ -1931,12 +1931,12 @@ export default function ProjectDetailPage({
           isPreview={!certStatus.issued}
           previewData={!certStatus.issued && project ? {
             tituloProyecto: project.title,
-            horasInvertidas: Math.round(project.tasks.filter(t => t.quizAprobado).reduce((acc, t) => {
+            horasInvertidas: Math.round(project.tasks.reduce((acc, t) => {
               if (typeof t.duration === 'number') return acc + t.duration / 60;
               const mins = parseInt(t.duration as string);
               return acc + (!isNaN(mins) ? mins / 60 : 1);
             }, 0)),
-            tareasAprobadas: project.tasks.filter(t => t.quizAprobado).map(t => ({ titulo: t.title })),
+            tareasAprobadas: project.tasks.map(t => ({ titulo: t.title, id: t.id })),
             nombreCompleto: certStatus.fullName || 'Estudiante Pendiente'
           } : undefined}
         />
