@@ -104,6 +104,7 @@ export function AssistantChat({
         sendMessage(initialDraft);
       }, 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDraft, isConnected]);
 
   // Sincronizar estado cuando cambian las props desde el padre
