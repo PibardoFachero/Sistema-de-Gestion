@@ -90,8 +90,8 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
         if (selectedAnswers[i] === q.correctAnswerIndex) score++;
       });
 
-      // 8/10 para aprobar (80%)
-      const passingScore = Math.ceil(questions.length * 0.8);
+      // 75% para aprobar (ej: 3 de 4)
+      const passingScore = Math.ceil(questions.length * 0.75);
       if (score >= passingScore) {
         const res = await markTaskQuizPassedAction(taskId);
         if (res.success) {

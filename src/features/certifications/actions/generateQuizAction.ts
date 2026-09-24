@@ -27,7 +27,7 @@ const quizSchema = z.object({
       options: z.array(z.string()).length(4),
       correctAnswerIndex: z.number().min(0).max(3),
     })
-  ).length(10),
+  ).length(4),
 });
 
 export async function generateQuizAction(
@@ -60,7 +60,7 @@ export async function generateQuizAction(
       
       ${taskContext}
       
-      Por favor, genera un cuestionario de opción múltiple con EXACTAMENTE 10 PREGUNTAS basadas y estrictamente relacionadas con el tema central de esta tarea.
+      Por favor, genera un cuestionario de opción múltiple con EXACTAMENTE 4 PREGUNTAS basadas y estrictamente relacionadas con el tema central de esta tarea.
       Las preguntas deben evaluar la comprensión real, conceptos teóricos y posibles aplicaciones prácticas de este tema. No hagas preguntas triviales.
       Cada pregunta debe tener 4 opciones, y solo una de ellas debe ser la correcta.
       Devuelve la respuesta en formato JSON estrictamente siguiendo esta estructura:
