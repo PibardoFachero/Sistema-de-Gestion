@@ -111,10 +111,10 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest">
+        <div className="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest shrink-0">
           <div className="flex items-center gap-2 text-primary font-bold">
             <Brain className="size-5" />
             Evaluación de Certificación
@@ -125,7 +125,7 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
         </div>
 
         {/* Content */}
-        <div className="p-6 md:p-8 min-h-[300px] flex flex-col">
+        <div className="p-6 md:p-8 flex-1 overflow-y-auto flex flex-col min-h-[300px]">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm flex gap-2 items-start">
               <AlertCircle className="size-5 shrink-0 text-red-500" />
@@ -176,17 +176,17 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
           )}
 
           {step === 'quiz' && questions.length > 0 && (
-            <div className="flex-1 flex flex-col animate-in slide-in-from-right-4">
-              <div className="flex items-center justify-between text-xs font-bold text-outline uppercase tracking-wider mb-6">
+            <div className="flex-1 flex flex-col animate-in slide-in-from-right-4 min-h-0">
+              <div className="flex items-center justify-between text-xs font-bold text-outline uppercase tracking-wider mb-6 shrink-0">
                 <span>Pregunta {currentQuestionIndex + 1} de {questions.length}</span>
                 <span className="text-primary">{Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%</span>
               </div>
 
-              <h2 className="text-lg font-bold text-on-surface mb-6 leading-relaxed">
+              <h2 className="text-lg font-bold text-on-surface mb-6 leading-relaxed shrink-0">
                 {questions[currentQuestionIndex].question}
               </h2>
 
-              <div className="flex flex-col gap-3 mb-8 flex-1">
+              <div className="flex flex-col gap-3 mb-6 flex-1 overflow-y-auto pr-1 min-h-0">
                 {questions[currentQuestionIndex].options.map((opt, idx) => (
                   <button
                     key={idx}
@@ -214,7 +214,7 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
               <button
                 onClick={handleNext}
                 disabled={selectedAnswers[currentQuestionIndex] === undefined || isPending}
-                className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 mt-auto flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 mt-2 shrink-0 flex items-center justify-center gap-2"
               >
                 {isPending ? <Loader2 className="size-5 animate-spin" /> : (
                   currentQuestionIndex === questions.length - 1 ? 'Enviar Respuestas' : 'Siguiente Pregunta'

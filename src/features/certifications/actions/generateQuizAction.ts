@@ -105,7 +105,7 @@ export async function generateQuizAction(
       },
     });
 
-    const text = response.text();
+    const text = response.text;
     if (!text) {
       return { success: false, error: 'El modelo no devolvió una respuesta válida.' };
     }
