@@ -71,11 +71,11 @@ export function useOnboardingTour() {
         },
       },
       {
-        element: '#tour-sidebar',
+        element: window.innerWidth < 768 ? '#tour-mobile-nav' : '#tour-sidebar',
         popover: {
           title: 'Explora más',
           description: 'Desde aquí puedes crear nuevos Proyectos, organizar tus Temas, o revisar la Analítica de tu estudio. ¡Estás listo para empezar!',
-          side: 'right',
+          side: window.innerWidth < 768 ? 'top' : 'right',
           align: 'start',
         },
       },

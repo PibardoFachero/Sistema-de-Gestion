@@ -40,6 +40,7 @@ import {
 } from '@/features/profile/data/learningOptions';
 import { updateProfileIdentity } from '@/features/profile/actions/updateProfileIdentityAction';
 import { updateLearningPreferences } from '@/features/profile/actions/updateLearningPreferencesAction';
+import { useProfileTour } from '@/hooks/useProfileTour';
 
 export type ProfileDashboardData = {
   userId?: string;
@@ -76,6 +77,8 @@ type EditableSection = 'identity' | 'learning' | null;
 export function ProfileDashboard({ profile }: { profile: ProfileDashboardData }) {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<EditableSection>(null);
+  
+  useProfileTour();
 
   // Estados de Contraseña y Seguridad
   const [hasPassword, setHasPassword] = useState(profile.hasPassword ?? true);
@@ -281,6 +284,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
       <div className="space-y-6">
         {/* SECCIÓN 1: Identidad y presencia */}
         <WideSection
+          id="tour-profile-identity"
           title="Identidad y presencia"
           description="La información con la que te reconocemos dentro de Komorebi y los datos principales de tu cuenta."
           icon={<Edit3 className="size-5" />}
@@ -715,6 +719,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
 
         {/* SECCIÓN 2: Perfil de aprendizaje e Información complementaria */}
         <WideSection
+          id="tour-profile-learning"
           title="Perfil de aprendizaje"
           description="Tus preferencias de estudio y la información complementaria para adaptar la planificación y tus ritmos."
           icon={<GraduationCap className="size-5" />}
@@ -1037,6 +1042,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
 
         {/* SECCIÓN 3: Términos y privacidad */}
         <WideSection
+          id="tour-profile-privacy"
           title="Términos y privacidad"
           description="Consulta las condiciones de uso de Komorebi y cómo cuidamos tu información."
           icon={<FileText className="size-5" />}
@@ -1102,6 +1108,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
 
         {/* SECCIÓN 4: Mi espacio de aprendizaje y Rachas */}
         <WideSection
+          id="tour-profile-stats"
           title="Mi espacio de aprendizaje"
           description="La conexión entre tu perfil, tus temas, proyectos y el contexto que autorizas para la IA."
           icon={<Sparkles className="size-5" />}
@@ -1275,6 +1282,7 @@ function WideSection({
   actionLabel,
   onAction,
   children,
+  id,
 }: {
   title: string;
   description: string;
@@ -1282,9 +1290,11 @@ function WideSection({
   actionLabel?: string;
   onAction?: () => void;
   children: React.ReactNode;
+  id?: string;
 }) {
   return (
     <motion.div
+      id={id}
       layout
       transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
       className="max-w-full rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/75 p-5 shadow-[0_10px_30px_-18px_rgba(74,53,37,0.3)] backdrop-blur-sm sm:p-6"
