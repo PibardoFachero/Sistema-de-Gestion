@@ -143,7 +143,7 @@ export default function ProjectDetailPage({
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Certifications
-  const [certStatus, setCertStatus] = useState<{ issued: boolean; hash?: string; hasFullName?: boolean }>({ issued: false });
+  const [certStatus, setCertStatus] = useState<{ issued: boolean; hash?: string; hasFullName?: boolean; fullName?: string }>({ issued: false });
   const [quizModalTaskId, setQuizModalTaskId] = useState<string | null>(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
@@ -482,7 +482,8 @@ export default function ProjectDetailPage({
         setCertStatus({
           issued: certRes.issued,
           hash: certRes.hash,
-          hasFullName: !!profileRes.data?.nombre_completo
+          hasFullName: !!profileRes.data?.nombre_completo,
+          fullName: profileRes.data?.nombre_completo || ''
         });
       });
     }
@@ -1046,6 +1047,14 @@ export default function ProjectDetailPage({
               style={{ width: certStatus.issued ? '100%' : `${project?.tasks.length ? Math.round((project.tasks.filter(t => t.quizAprobado).length / project.tasks.length) * 100) : 0}%` }}
             />
           </div>
+          {!certStatus.issued && (
+            <button
+              onClick={() => setIsCertModalOpen(true)}
+              className="text-xs font-bold text-[#845326] underline hover:text-[#433022] transition-colors mt-2"
+            >
+              Ver vista previa del Certificado
+            </button>
+          )}
         </div>
       </div>
 
@@ -1914,11 +1923,18 @@ export default function ProjectDetailPage({
         />
       )}
 
-      {certStatus.hash && (
+      {(certStatus.hash || isCertModalOpen) && (
         <CertificateModal
           hash={certStatus.hash}
           isOpen={isCertModalOpen}
           onClose={() => setIsCertModalOpen(false)}
+          isPreview={!certStatus.issued}
+          previewData={!certStatus.issued && project ? {
+            tituloProyecto: project.title,
+            horasInvertidas: project.tasks.filter(t => t.quizAprobado).reduce((acc, t) => acc + (typeof t.duration === 'number' ? t.duration / 60 : 1), 0),
+            tareasAprobadas: project.tasks.filter(t => t.quizAprobado).map(t => ({ titulo: t.title })),
+            nombreCompleto: certStatus.fullName || 'Estudiante Pendiente'
+          } : undefined}
         />
       )}
     </div>
