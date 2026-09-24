@@ -1396,7 +1396,19 @@ export default function ProjectDetailPage({
                 onToggleComplete={handleToggleTask}
                 onDeleteTask={handleDeleteTaskClick}
                 onEditTask={handleOpenEditModal}
-                onOpenQuiz={(taskId) => setQuizModalTaskId(taskId)}
+                onOpenQuiz={(taskId) => {
+                  const t = project.tasks.find((task) => task.id === taskId);
+                  if (t) {
+                    router.push(
+                      '/ia?quizTaskId=' +
+                        taskId +
+                        '&prompt=' +
+                        encodeURIComponent(
+                          `Quiero realizar el quiz de la tarea "${t.title}" del proyecto "${project.title}"`,
+                        ),
+                    );
+                  }
+                }}
               />
             ))}
           </div>
@@ -2187,6 +2199,8 @@ export default function ProjectDetailPage({
                       if (res.success && res.hash) {
                         setCertStatus((c) => ({ ...c, issued: true, hash: res.hash }));
                         setIsCertModalOpen(true);
+                      } else if (res.error) {
+                        setActionErrorMessage(res.error);
                       }
                     });
                   },
@@ -2209,12 +2223,15 @@ export default function ProjectDetailPage({
             !certStatus.issued && project
               ? {
                   tituloProyecto: project.title,
-                  horasInvertidas: Math.round(
-                    project.tasks.reduce((acc, t) => {
-                      if (typeof t.duration === 'number') return acc + t.duration / 60;
-                      const mins = parseInt(t.duration as string);
-                      return acc + (!isNaN(mins) ? mins / 60 : 1);
-                    }, 0),
+                  horasInvertidas: Math.max(
+                    1,
+                    Math.round(
+                      project.tasks.reduce((acc, t) => {
+                        if (typeof t.duration === 'number') return acc + t.duration / 60;
+                        const mins = parseInt(t.duration as string);
+                        return acc + (!isNaN(mins) ? mins / 60 : 1);
+                      }, 0),
+                    ),
                   ),
                   tareasAprobadas: project.tasks.map((t) => ({ titulo: t.title, id: t.id })),
                   nombreCompleto: certStatus.fullName || 'Estudiante Pendiente',

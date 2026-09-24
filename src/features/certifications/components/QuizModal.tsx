@@ -21,13 +21,14 @@ interface QuizModalProps {
 export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: QuizModalProps) {
   const supabase = createClient();
   const [isPending, startTransition] = useTransition();
-  const [step, setStep] = useState<'name' | 'loading' | 'quiz' | 'evaluating'>('loading');
+  const [step, setStep] = useState<'name' | 'loading' | 'quiz' | 'evaluating' | 'error'>('loading');
   const [fullNameInput, setFullNameInput] = useState('');
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
 
   // Render-time state reset when modal opens or taskId changes
   const [prevTaskId, setPrevTaskId] = useState<string | null>(null);
@@ -38,22 +39,30 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
     setError(null);
+    setIsFallback(false);
   } else if (!isOpen && prevTaskId !== null) {
     setPrevTaskId(null);
   }
 
-  const fetchQuiz = useCallback(() => {
-    if (!taskId) return;
-    startTransition(async () => {
-      const res = await generateQuizAction({ taskId });
-      if (res.success && res.questions) {
-        setQuestions(res.questions);
-        setStep('quiz');
-      } else {
-        setError(res.error || 'No se pudo generar el cuestionario.');
-      }
-    });
-  }, [taskId]);
+  const fetchQuiz = useCallback(
+    (forceFallback = false) => {
+      if (!taskId) return;
+      startTransition(async () => {
+        setError(null);
+        setStep('loading');
+        const res = await generateQuizAction({ taskId, forceFallback });
+        if (res.success && res.questions && res.questions.length > 0) {
+          setQuestions(res.questions);
+          setIsFallback(Boolean(res.isFallback));
+          setStep('quiz');
+        } else {
+          setError(res.error || 'No se pudo generar el cuestionario con IA.');
+          setStep('error');
+        }
+      });
+    },
+    [taskId],
+  );
 
   useEffect(() => {
     if (
@@ -199,19 +208,70 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
               <Loader2 className="size-10 animate-spin text-primary mb-4" />
               <h2 className="text-lg font-bold text-on-surface">
                 {step === 'loading'
-                  ? 'Generando evaluación con IA...'
+                  ? 'Generando evaluación personalizada...'
                   : 'Evaluando tus respuestas...'}
               </h2>
               <p className="text-sm text-on-surface-variant mt-2 max-w-sm">
                 {step === 'loading'
-                  ? 'Komorebi está analizando las tareas que realizaste para crear preguntas personalizadas.'
-                  : 'Emitiendo tu certificado criptográfico si apruebas el examen...'}
+                  ? 'Komorebi está estructurando las preguntas basadas en la tarea que realizaste.'
+                  : 'Validando tus respuestas para acreditar la tarea...'}
               </p>
+            </div>
+          )}
+
+          {step === 'error' && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center animate-in fade-in p-2">
+              <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center text-amber-700 mb-4">
+                <Brain className="size-7" />
+              </div>
+              <h2 className="text-lg font-bold text-on-surface mb-2">
+                Servicio de IA de Gemini Ocupado
+              </h2>
+              <p className="text-sm text-on-surface-variant max-w-md mb-6 leading-relaxed">
+                El modelo de Google Gemini se encuentra con alta demanda temporal o saturación de
+                cuota. Puedes reintentar la conexión con la IA o realizar de inmediato el
+                cuestionario de contingencia académica para no frenar tu avance.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => fetchQuiz(false)}
+                  disabled={isPending}
+                  className="flex-1 py-3 px-4 border border-outline-variant bg-white hover:bg-surface-container text-on-surface rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                >
+                  Reintentar con IA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fetchQuiz(true)}
+                  disabled={isPending}
+                  className="flex-1 py-3 px-4 bg-primary text-on-primary hover:bg-primary/90 rounded-xl font-bold text-sm transition-colors cursor-pointer shadow-sm"
+                >
+                  Cuestionario Rápido
+                </button>
+              </div>
             </div>
           )}
 
           {step === 'quiz' && questions.length > 0 && (
             <div className="flex-1 flex flex-col animate-in slide-in-from-right-4 min-h-0">
+              {isFallback && (
+                <div className="mb-4 px-3.5 py-2 bg-amber-50/80 border border-amber-200/70 rounded-xl text-amber-900 text-xs flex items-center justify-between gap-2 shrink-0">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <span className="size-2 rounded-full bg-amber-500 animate-pulse inline-block" />
+                    Modo contingencia activo: Evaluación estructurada sobre los objetivos del tema.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => fetchQuiz(false)}
+                    className="text-[11px] font-bold text-amber-800 underline hover:text-amber-950 shrink-0"
+                  >
+                    Usar IA
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-xs font-bold text-outline uppercase tracking-wider mb-6 shrink-0">
                 <span>
                   Pregunta {currentQuestionIndex + 1} de {questions.length}

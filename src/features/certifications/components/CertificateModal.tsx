@@ -81,40 +81,49 @@ export function CertificateModal({
     let isMounted = true;
 
     const fetchCert = async () => {
-      const { data: cert, error } = await supabase
-        .from('certificados_emitidos')
-        .select(
-          `
-          project_id,
-          hash_sha256,
-          fecha_emision,
-          horas_invertidas,
-          temas_aprobados,
-          proyectos ( titulo ),
-          profiles ( nombre_completo )
-        `,
-        )
-        .eq('hash_sha256', hash)
-        .single();
+      try {
+        const { data: cert, error } = await supabase
+          .from('certificados_emitidos')
+          .select('*')
+          .eq('hash_sha256', hash)
+          .maybeSingle();
 
-      if (cert && !error && isMounted) {
-        const { data: tareas } = await supabase
-          .from('tareas')
-          .select('titulo')
-          .eq('project_id', cert.project_id)
-          .eq('quiz_aprobado', true);
+        if (cert && !error && isMounted) {
+          // Obtener nombre del proyecto desde la tabla 'projects'
+          const { data: projectData } = await supabase
+            .from('projects')
+            .select('titulo')
+            .eq('id', cert.project_id)
+            .maybeSingle();
 
-        if (isMounted) {
-          setFetchedData({
-            hash_sha256: cert.hash_sha256,
-            fecha_emision: cert.fecha_emision,
-            horas_invertidas: Number(cert.horas_invertidas),
-            temas_aprobados: Number(cert.temas_aprobados),
-            proyectos: cert.proyectos as unknown as { titulo: string },
-            profiles: cert.profiles as unknown as { nombre_completo: string },
-            tareas: (tareas || []) as { titulo?: string }[],
-          });
+          // Obtener nombre del perfil desde 'profiles'
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('nombre_completo')
+            .eq('id', cert.profile_id)
+            .maybeSingle();
+
+          // Obtener tareas aprobadas con la clave foránea real 'id_proyecto'
+          const { data: tareas } = await supabase
+            .from('tareas')
+            .select('id, titulo')
+            .eq('id_proyecto', cert.project_id)
+            .eq('quiz_aprobado', true);
+
+          if (isMounted) {
+            setFetchedData({
+              hash_sha256: cert.hash_sha256,
+              fecha_emision: cert.fecha_emision,
+              horas_invertidas: Number(cert.horas_invertidas) || 1,
+              temas_aprobados: Number(cert.temas_aprobados) || (tareas?.length ?? 1),
+              proyectos: { titulo: projectData?.titulo || 'Proyecto Académico' },
+              profiles: { nombre_completo: profileData?.nombre_completo || 'Estudiante Komorebi' },
+              tareas: (tareas || []) as { titulo?: string; id?: string }[],
+            });
+          }
         }
+      } catch (err) {
+        console.error('Error fetching certificate details:', err);
       }
     };
     fetchCert();
@@ -144,8 +153,9 @@ export function CertificateModal({
         format: [canvas.width, canvas.height],
       });
 
+      const safeTitle = data.proyectos?.titulo || 'Komorebi';
       pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`Certificado_${data.proyectos.titulo.replace(/\s+/g, '_')}.pdf`);
+      pdf.save(`Certificado_${safeTitle.replace(/\s+/g, '_')}.pdf`);
     } catch (error) {
       console.error('Error downloading PDF', error);
       alert('Hubo un error al generar el PDF.');
@@ -166,8 +176,9 @@ export function CertificateModal({
         backgroundColor: '#FCF9F0',
       });
 
+      const safeTitle = data.proyectos?.titulo || 'Komorebi';
       const link = document.createElement('a');
-      link.download = `Certificado_${data.proyectos.titulo.replace(/\s+/g, '_')}.png`;
+      link.download = `Certificado_${safeTitle.replace(/\s+/g, '_')}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
@@ -175,6 +186,11 @@ export function CertificateModal({
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handlePrint = () => {
+    if (isPreview || !data) return;
+    window.print();
   };
 
   const handleCopyHash = () => {
@@ -420,8 +436,9 @@ export function CertificateModal({
               {/* Right Action Area */}
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 overflow-x-auto pb-1 sm:pb-0">
                 <button
+                  onClick={handlePrint}
                   disabled={isPreview}
-                  className={`flex items-center gap-2 px-4 py-2 border border-[#E8DCD1] rounded-xl font-bold text-xs sm:text-sm transition-colors whitespace-nowrap ${isPreview ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white hover:bg-[#F2EFE8] text-[#2C1F14]'}`}
+                  className={`flex items-center gap-2 px-4 py-2 border border-[#E8DCD1] rounded-xl font-bold text-xs sm:text-sm transition-colors whitespace-nowrap cursor-pointer ${isPreview ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white hover:bg-[#F2EFE8] text-[#2C1F14]'}`}
                 >
                   <Printer className="size-4 opacity-70" />
                   <span className="hidden md:inline">Imprimir</span>
