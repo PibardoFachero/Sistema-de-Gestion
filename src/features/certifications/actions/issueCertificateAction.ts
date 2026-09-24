@@ -26,29 +26,32 @@ export async function issueCertificateAction(
       return { success: false, error: 'No autorizado.' };
     }
 
-    // 1. Obtener proyecto y tareas
+    // 1. Obtener proyecto y tareas desde 'projects'
     const { data: project, error: projectError } = await supabase
-      .from('proyectos')
-      .select('titulo, completado')
+      .from('projects')
+      .select('id, titulo, completado')
       .eq('id', input.projectId)
-      .single();
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (projectError || !project) {
-      return { success: false, error: 'Proyecto no encontrado.' };
+      return { success: false, error: 'Proyecto no encontrado o no tienes permisos sobre él.' };
     }
 
     const { data: tasks, error: tasksError } = await supabase
       .from('tareas')
-      .select('quiz_aprobado, horas')
-      .eq('project_id', input.projectId);
+      .select('id, titulo, quiz_aprobado, duracion')
+      .eq('id_proyecto', input.projectId);
 
     if (tasksError) {
-      return { success: false, error: 'Error al verificar las tareas.' };
+      console.error('Error fetching tasks for certificate:', tasksError);
+      return { success: false, error: 'Error al verificar las tareas del proyecto.' };
     }
 
     // 2. Validar que todas las tareas tengan quiz_aprobado
-    const completedTasks = tasks.filter((t) => t.quiz_aprobado);
-    if (tasks.length === 0 || completedTasks.length < tasks.length) {
+    const allTasks = tasks || [];
+    const completedTasks = allTasks.filter((t) => t.quiz_aprobado);
+    if (allTasks.length === 0 || completedTasks.length < allTasks.length) {
       return {
         success: false,
         error:
@@ -56,8 +59,9 @@ export async function issueCertificateAction(
       };
     }
 
-    // 3. Calcular horas invertidas
-    const horasTotales = completedTasks.reduce((acc, t) => acc + (t.horas || 1), 0); // Asumimos 1 hora por defecto si no hay
+    // 3. Calcular horas invertidas (la duración de tareas se guarda en minutos)
+    const totalMinutes = completedTasks.reduce((acc, t) => acc + (Number(t.duracion) || 60), 0);
+    const horasTotales = Math.max(1, Math.round(totalMinutes / 60));
 
     // 4. Verificar si ya existe el certificado
     const { data: existingCert } = await supabase
@@ -65,7 +69,7 @@ export async function issueCertificateAction(
       .select('hash_sha256')
       .eq('profile_id', user.id)
       .eq('project_id', input.projectId)
-      .single();
+      .maybeSingle();
 
     if (existingCert) {
       return { success: true, hash: existingCert.hash_sha256 };
@@ -85,8 +89,12 @@ export async function issueCertificateAction(
     });
 
     if (insertError) {
-      console.error('Insert error:', insertError);
-      return { success: false, error: 'No se pudo emitir el certificado en la base de datos.' };
+      console.error('Insert error in certificados_emitidos:', insertError);
+      return {
+        success: false,
+        error:
+          'No se pudo registrar el certificado en la base de datos. Asegúrate de haber ejecutado la migración de certificados en Supabase.',
+      };
     }
 
     return {
@@ -100,22 +108,30 @@ export async function issueCertificateAction(
 }
 
 export async function checkCertificateStatus(projectId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return { issued: false };
+    if (!user) return { issued: false };
 
-  const { data: existingCert } = await supabase
-    .from('certificados_emitidos')
-    .select('hash_sha256')
-    .eq('profile_id', user.id)
-    .eq('project_id', projectId)
-    .single();
+    const { data: existingCert, error } = await supabase
+      .from('certificados_emitidos')
+      .select('hash_sha256')
+      .eq('profile_id', user.id)
+      .eq('project_id', projectId)
+      .maybeSingle();
 
-  return {
-    issued: !!existingCert,
-    hash: existingCert?.hash_sha256,
-  };
+    if (error || !existingCert) {
+      return { issued: false };
+    }
+
+    return {
+      issued: true,
+      hash: existingCert.hash_sha256,
+    };
+  } catch {
+    return { issued: false };
+  }
 }
