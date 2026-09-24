@@ -981,15 +981,19 @@ export default function CalendarioPage() {
 
         if (mappedAvails.length > 0) {
           const keys = new Set(mappedAvails.map((m) => `${m.date}_${m.startTime}`));
+          let mergedList: Availability[] = [];
           setAvailabilities((prev) => {
             const filtered = prev.filter((p) => !keys.has(`${p.date}_${p.startTime}`));
-            const merged = [...filtered, ...mappedAvails];
-            const consolidated = consolidateAvailabilitySlots(merged);
-            syncAvailabilityBlocksAction(consolidated).catch((err) =>
+            mergedList = [...filtered, ...mappedAvails];
+            return mergedList;
+          });
+
+          if (mergedList.length > 0) {
+            const consolidated = consolidateAvailabilitySlots(mergedList);
+            await syncAvailabilityBlocksAction(consolidated).catch((err) =>
               console.warn('Error sincronizando bloques tras extracción:', err),
             );
-            return merged;
-          });
+          }
         }
 
         // Recargar eventos de Supabase para reflejar de inmediato tareas reagendadas por IA
