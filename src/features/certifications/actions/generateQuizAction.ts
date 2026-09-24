@@ -168,11 +168,7 @@ export async function generateQuizAction(input: GenerateQuizInput): Promise<Gene
     `;
 
     // Cascada de modelos compatibles con fallback gradual
-    const modelsCascade = [
-      GEMINI_DEFAULT_MODEL,
-      GEMINI_FALLBACK_MODEL,
-      GEMINI_LITE_MODEL,
-    ];
+    const modelsCascade = [GEMINI_DEFAULT_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_LITE_MODEL];
 
     let lastError: unknown = null;
     let validatedQuestions: QuizQuestion[] | null = null;

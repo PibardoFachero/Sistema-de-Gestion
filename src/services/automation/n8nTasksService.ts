@@ -551,7 +551,9 @@ export async function generateProjectTasksFromN8n(project: ProjectForTaskGenerat
       geminiApiKey: process.env.GEMINI_API_KEY || null,
       geminiApiKey2: process.env.GEMINI_API_KEY_2 || null,
       geminiApiKey3: process.env.GEMINI_API_KEY_3 || null,
-      geminiApiKeys: Array.from({ length: 10 }, (_, i) => i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`]).filter(Boolean) as string[],
+      geminiApiKeys: Array.from({ length: 10 }, (_, i) =>
+        i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`],
+      ).filter(Boolean) as string[],
     };
 
     // 2. Llamada HTTP al Webhook de n8n con timeout de 60 segundos (permite procesar videos y temarios extensos)
@@ -1036,7 +1038,9 @@ Devuelve un JSON con la estructura:
     geminiApiKey: process.env.GEMINI_API_KEY || null,
     geminiApiKey2: process.env.GEMINI_API_KEY_2 || null,
     geminiApiKey3: process.env.GEMINI_API_KEY_3 || null,
-    geminiApiKeys: Array.from({ length: 10 }, (_, i) => i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`]).filter(Boolean) as string[],
+    geminiApiKeys: Array.from({ length: 10 }, (_, i) =>
+      i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`],
+    ).filter(Boolean) as string[],
   };
 
   const controller = new AbortController();

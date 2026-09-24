@@ -1399,7 +1399,14 @@ export default function ProjectDetailPage({
                 onOpenQuiz={(taskId) => {
                   const t = project.tasks.find((task) => task.id === taskId);
                   if (t) {
-                    router.push('/ia?quizTaskId=' + taskId + '&prompt=' + encodeURIComponent(`Quiero realizar el quiz de la tarea "${t.title}" del proyecto "${project.title}"`));
+                    router.push(
+                      '/ia?quizTaskId=' +
+                        taskId +
+                        '&prompt=' +
+                        encodeURIComponent(
+                          `Quiero realizar el quiz de la tarea "${t.title}" del proyecto "${project.title}"`,
+                        ),
+                    );
                   }
                 }}
               />

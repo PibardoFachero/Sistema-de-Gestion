@@ -44,22 +44,25 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
     setPrevTaskId(null);
   }
 
-  const fetchQuiz = useCallback((forceFallback = false) => {
-    if (!taskId) return;
-    startTransition(async () => {
-      setError(null);
-      setStep('loading');
-      const res = await generateQuizAction({ taskId, forceFallback });
-      if (res.success && res.questions && res.questions.length > 0) {
-        setQuestions(res.questions);
-        setIsFallback(Boolean(res.isFallback));
-        setStep('quiz');
-      } else {
-        setError(res.error || 'No se pudo generar el cuestionario con IA.');
-        setStep('error');
-      }
-    });
-  }, [taskId]);
+  const fetchQuiz = useCallback(
+    (forceFallback = false) => {
+      if (!taskId) return;
+      startTransition(async () => {
+        setError(null);
+        setStep('loading');
+        const res = await generateQuizAction({ taskId, forceFallback });
+        if (res.success && res.questions && res.questions.length > 0) {
+          setQuestions(res.questions);
+          setIsFallback(Boolean(res.isFallback));
+          setStep('quiz');
+        } else {
+          setError(res.error || 'No se pudo generar el cuestionario con IA.');
+          setStep('error');
+        }
+      });
+    },
+    [taskId],
+  );
 
   useEffect(() => {
     if (
@@ -225,8 +228,9 @@ export function QuizModal({ taskId, isOpen, onClose, onSuccess, hasFullName }: Q
                 Servicio de IA de Gemini Ocupado
               </h2>
               <p className="text-sm text-on-surface-variant max-w-md mb-6 leading-relaxed">
-                El modelo de Google Gemini se encuentra con alta demanda temporal o saturación de cuota. 
-                Puedes reintentar la conexión con la IA o realizar de inmediato el cuestionario de contingencia académica para no frenar tu avance.
+                El modelo de Google Gemini se encuentra con alta demanda temporal o saturación de
+                cuota. Puedes reintentar la conexión con la IA o realizar de inmediato el
+                cuestionario de contingencia académica para no frenar tu avance.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">

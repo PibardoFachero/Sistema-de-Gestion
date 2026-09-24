@@ -36,7 +36,9 @@ export default function IAPage() {
   const [isGeneralMode, setIsGeneralMode] = useState(false);
   const context = isGeneralMode
     ? GENERAL_ASSISTANT_CONTEXT
-    : (getAnalyticsContext(searchParams) ?? getQuizContext(searchParams) ?? GENERAL_ASSISTANT_CONTEXT);
+    : (getAnalyticsContext(searchParams) ??
+      getQuizContext(searchParams) ??
+      GENERAL_ASSISTANT_CONTEXT);
 
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [userProjects, setUserProjects] = useState<UserProjectItem[]>([]);
@@ -464,7 +466,8 @@ function getQuizContext(params: URLSearchParams): AssistantContext | null {
     scope: 'project',
     title: 'Evaluación de Conocimiento',
     label: 'Quiz de Certificación',
-    description: 'Komo actuará como tu evaluador para asegurar que dominas el tema de la tarea y te otorgará progreso en tu certificación.',
+    description:
+      'Komo actuará como tu evaluador para asegurar que dominas el tema de la tarea y te otorgará progreso en tu certificación.',
     quizContext: { taskId },
   };
 }

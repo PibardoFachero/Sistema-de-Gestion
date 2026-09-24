@@ -14,17 +14,19 @@ const requestSchema = z.object({
       contenido: z.string().optional(),
     })
     .optional(),
-  contexto: z.union([
-    z.object({
-      origen: z.literal('analytics'),
-      view: z.enum(['workload', 'progress', 'priorities', 'deadlines']),
-      period: z.literal('week'),
-    }),
-    z.object({
-      origen: z.literal('quiz'),
-      taskId: z.string(),
-    })
-  ]).optional(),
+  contexto: z
+    .union([
+      z.object({
+        origen: z.literal('analytics'),
+        view: z.enum(['workload', 'progress', 'priorities', 'deadlines']),
+        period: z.literal('week'),
+      }),
+      z.object({
+        origen: z.literal('quiz'),
+        taskId: z.string(),
+      }),
+    ])
+    .optional(),
 });
 
 export async function POST(request: Request) {
@@ -120,7 +122,8 @@ export async function POST(request: Request) {
 
   let quizRules = '';
   if (parsed.data.contexto?.origen === 'quiz') {
-    quizRules = `\n[REGLAS MUY IMPORTANTES DE EVALUACIÓN (QUIZ)]:\n` +
+    quizRules =
+      `\n[REGLAS MUY IMPORTANTES DE EVALUACIÓN (QUIZ)]:\n` +
       `Estás evaluando el conocimiento del usuario sobre una tarea específica. Hazle 2 a 4 preguntas sobre el tema de la tarea.\n` +
       `Si el usuario demuestra que domina el tema y sus respuestas son correctas, felicítalo y DEBES agregar EXACTAMENTE la siguiente etiqueta oculta al final de tu mensaje: [QUIZ_APROBADO_${parsed.data.contexto.taskId}]\n` +
       `¡NUNCA olvides escribir esa etiqueta si el usuario aprueba, ya que es el comando interno del sistema para actualizar la base de datos y otorgarle el certificado!\n\n`;
@@ -151,7 +154,9 @@ export async function POST(request: Request) {
         geminiApiKey: process.env.GEMINI_API_KEY || null,
         geminiApiKey2: process.env.GEMINI_API_KEY_2 || null,
         geminiApiKey3: process.env.GEMINI_API_KEY_3 || null,
-        geminiApiKeys: Array.from({ length: 10 }, (_, i) => i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`]).filter(Boolean) as string[],
+        geminiApiKeys: Array.from({ length: 10 }, (_, i) =>
+          i === 0 ? process.env.GEMINI_API_KEY : process.env[`GEMINI_API_KEY_${i + 1}`],
+        ).filter(Boolean) as string[],
       }),
     });
 
