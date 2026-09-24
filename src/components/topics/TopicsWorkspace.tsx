@@ -44,6 +44,7 @@ import { unlinkProjectAction } from '@/features/topics/actions/projectsActions';
 import { TopicModal } from './TopicModal';
 import { NoteModal } from './NoteModal';
 import { LinkProjectModal } from './LinkProjectModal';
+import { useTopicsTour } from '@/hooks/useTopicsTour';
 
 const statusCopy: Record<SourceStatus, { label: string; className: string }> = {
   ready: { label: 'Lista para IA', className: 'bg-status-success-bg text-status-success' },
@@ -72,6 +73,8 @@ export function TopicsWorkspace() {
   const [openSourceMenuId, setOpenSourceMenuId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useTopicsTour(topics.length === 0);
 
   useEffect(() => {
     let isMounted = true;
@@ -457,7 +460,7 @@ export function TopicsWorkspace() {
       </header>
 
       {topics.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-outline-variant bg-surface-container-low/40 p-12 text-center">
+        <div id="tour-topics-empty" className="rounded-3xl border border-dashed border-outline-variant bg-surface-container-low/40 p-12 text-center">
           <BookOpen className="mx-auto size-12 text-outline mb-4" />
           <h2 className="text-xl font-bold text-on-surface">Tu biblioteca está vacía</h2>
           <p className="mt-2 text-sm text-on-surface-variant max-w-md mx-auto">
@@ -479,7 +482,7 @@ export function TopicsWorkspace() {
       ) : (
         <div className="grid min-w-0 max-w-full gap-4 xl:grid-cols-[15rem_minmax(0,1fr)]">
           {/* Barra lateral de temas */}
-          <aside className="min-w-0 max-w-full space-y-3">
+          <aside id="tour-topics-sidebar" className="min-w-0 max-w-full space-y-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-outline" />
               <input
@@ -583,7 +586,7 @@ export function TopicsWorkspace() {
                 </div>
 
                 {/* Nota principal y panel de IA */}
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_15rem]">
+                <div id="tour-topics-note" className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_15rem]">
                   <div className="p-5">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
@@ -665,7 +668,7 @@ export function TopicsWorkspace() {
               </Card>
 
               {/* Fuentes */}
-              <Card className="max-w-full border-outline-variant/60 p-5 shadow-[0_6px_22px_-8px_rgba(74,53,37,0.16)]">
+              <Card id="tour-topics-sources" className="max-w-full border-outline-variant/60 p-5 shadow-[0_6px_22px_-8px_rgba(74,53,37,0.16)]">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold">Fuentes</h3>
@@ -779,7 +782,7 @@ export function TopicsWorkspace() {
               </Card>
 
               {/* Proyectos Vinculados */}
-              <Card className="max-w-full border-outline-variant/60 p-5 shadow-[0_6px_22px_-8px_rgba(74,53,37,0.16)]">
+              <Card id="tour-topics-projects" className="max-w-full border-outline-variant/60 p-5 shadow-[0_6px_22px_-8px_rgba(74,53,37,0.16)]">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold">Proyectos vinculados</h3>

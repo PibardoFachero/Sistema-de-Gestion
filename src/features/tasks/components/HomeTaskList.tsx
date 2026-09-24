@@ -14,9 +14,11 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
+  Play,
 } from 'lucide-react';
 import { toggleTaskStatusAction } from '@/features/proyectos/actions/proyectoActions';
 import { getTaskTimeStatus } from '@/features/gamification/services/streakService';
+import { TechniqueSelectionModal } from '@/components/study/TechniqueSelectionModal';
 
 export interface HomeTaskItem {
   id: string;
@@ -47,6 +49,7 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
 
   const [isPending, startTransition] = useTransition();
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
+  const [focusModalTask, setFocusModalTask] = useState<{ id: string; title: string } | null>(null);
 
   const handleToggle = async (task: HomeTaskItem) => {
     const newStatus = !task.completado;
@@ -282,11 +285,20 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
                     </div>
                   </div>
 
-                  {/* Acceso directo al proyecto */}
-                  <div className="hidden sm:flex items-center shrink-0 self-center pl-2">
+                  {/* Acciones: Proyecto y Enfocar */}
+                  <div className="hidden sm:flex flex-col items-end shrink-0 self-center pl-2 gap-2">
+                    {!task.completado && (
+                      <button
+                        onClick={() => setFocusModalTask({ id: task.id, title: task.titulo })}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-surface bg-on-surface hover:bg-[#333] transition-transform hover:scale-105 active:scale-95 px-3 py-1.5 rounded-xl shadow-xs cursor-pointer"
+                      >
+                        <Play className="size-3.5" fill="currentColor" />
+                        <span>Enfocar</span>
+                      </button>
+                    )}
                     <Link
                       href={`/proyectos/${task.id_proyecto}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors p-2 rounded-xl hover:bg-surface-container"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-xl hover:bg-surface-container"
                       title="Ver proyecto completo"
                     >
                       <span>Proyecto</span>
@@ -299,6 +311,13 @@ export function HomeTaskList({ initialTasks, onTaskToggled }: HomeTaskListProps)
           );
         })}
       </div>
+
+      <TechniqueSelectionModal 
+        isOpen={!!focusModalTask}
+        onClose={() => setFocusModalTask(null)}
+        taskId={focusModalTask?.id}
+        taskTitle={focusModalTask?.title}
+      />
     </div>
   );
 }

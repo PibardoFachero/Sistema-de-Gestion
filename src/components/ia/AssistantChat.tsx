@@ -36,6 +36,7 @@ import {
 } from '@/components/ia/types';
 import { extractTextFromFile } from '@/features/ai-assistant/utils/fileTextExtractor';
 import { cn } from '@/lib/utils';
+import { useIATour } from '@/hooks/useIATour';
 
 type AssistantChatProps = {
   context?: AssistantContext;
@@ -87,6 +88,8 @@ export function AssistantChat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useIATour();
 
   const isConnected = Boolean(onSend);
 
@@ -300,6 +303,7 @@ export function AssistantChat({
               </div>
             </div>
             <button
+              id="tour-ia-new-chat"
               type="button"
               onClick={handleStartNewChat}
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
@@ -354,6 +358,7 @@ export function AssistantChat({
 
           {/* Formulario de entrada */}
           <form
+            id="tour-ia-input"
             onSubmit={submitMessage}
             className="shrink-0 border-t border-outline-variant/30 bg-surface-container-lowest p-3 sm:p-4"
           >
@@ -472,7 +477,7 @@ export function AssistantChat({
         </Card>
 
         {/* Columna lateral con scroll interno adaptado */}
-        <aside className="space-y-4 lg:h-[calc(100vh-13.5rem)] lg:min-h-[32rem] lg:max-h-[46rem] lg:overflow-y-auto lg:pr-1">
+        <aside id="tour-ia-history" className="space-y-4 lg:h-[calc(100vh-13.5rem)] lg:min-h-[32rem] lg:max-h-[46rem] lg:overflow-y-auto lg:pr-1">
           {/* Card de Historial de Chats (sin botón de nuevo a la derecha) */}
           <div className="hidden lg:block">
             <ChatHistoryCard

@@ -8,6 +8,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
 import { ToastProvider } from '@/components/ui/Toast';
+import { FocusSessionProvider } from '@/contexts/FocusSessionContext';
+import { TourProvider } from '@/contexts/TourContext';
+import { GlobalFocusBar } from '@/components/study/GlobalFocusBar';
+import { GlobalHelpButton } from '@/components/layout/GlobalHelpButton';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let user = null;
@@ -40,14 +44,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <ToastProvider>
-      <div className="flex min-h-screen">
+    <TourProvider>
+      <ToastProvider>
+        <FocusSessionProvider>
+        <div className="flex min-h-screen">
         <Sidebar initialUser={user} />
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Barra superior visible únicamente en móviles */}
           <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-outline-variant/30 bg-surface sticky top-0 z-40">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className="bg-primary/10 p-1.5 rounded-lg text-primary">
                 <FolderKanban className="size-4" />
               </div>
@@ -60,8 +66,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </p>
               </div>
             </div>
-            <UserProfileButton initialUser={user} compact />
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 justify-end">
+              <GlobalHelpButton />
+              <div className="min-w-0">
+                <UserProfileButton initialUser={user} compact />
+              </div>
+            </div>
           </header>
+
+          {/* Barra Global de Modo Enfoque en la parte superior */}
+          <div className="sticky top-0 z-40">
+            <GlobalFocusBar />
+          </div>
 
           <main id="contenido" className="flex-1 pb-20 md:pb-0 max-w-full overflow-x-hidden">
             <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-10">{children}</div>
@@ -73,6 +89,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {/* Asistente de Telegram disponible en todas las vistas */}
         <TelegramBotWidget username={username} />
       </div>
+      </FocusSessionProvider>
     </ToastProvider>
+    </TourProvider>
   );
 }

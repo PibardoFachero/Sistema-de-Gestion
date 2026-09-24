@@ -42,6 +42,11 @@ export default async function HomePage() {
     .select('id, titulo')
     .eq('user_id', user.id);
 
+  // Determinar si es un usuario nuevo (creado hace menos de 24 horas)
+  const isNewUser =
+    Boolean(user.created_at) &&
+    new Date().getTime() - new Date(user.created_at as string).getTime() < 24 * 60 * 60 * 1000;
+
   let upcomingTasks: import('./HomeDashboardClient').UpcomingTask[] = [];
   let totalPendingTasks = 0;
 
@@ -168,6 +173,7 @@ export default async function HomePage() {
       upcomingTasks={upcomingTasks}
       totalPendingTasks={totalPendingTasks}
       metrics={metrics}
+      isNewUser={isNewUser}
     />
   );
 }

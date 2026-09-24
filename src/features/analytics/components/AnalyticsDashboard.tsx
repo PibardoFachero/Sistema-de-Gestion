@@ -12,6 +12,7 @@ import { ProgressChart } from './charts/ProgressChart';
 import { PrioritiesChart } from './charts/PrioritiesChart';
 import { DeadlinesTimeline } from './charts/DeadlinesTimeline';
 import { ExportMenu } from './ExportMenu';
+import { useAnalyticsTour } from '@/hooks/useAnalyticsTour';
 
 type Metric = {
   label: string;
@@ -51,6 +52,9 @@ const metricIds = Object.keys(metrics) as AnalyticsMetricId[];
 
 export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
   const [activeMetric, setActiveMetric] = useState<AnalyticsMetricId>('workload');
+  
+  useAnalyticsTour();
+
   const active = metrics[activeMetric];
   const availability = data.availability[activeMetric];
   const presentation = getMetricPresentation(activeMetric, data);
@@ -72,7 +76,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
             Una lectura privada de tus proyectos y tareas para ayudarte a decidir qué hacer después.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div id="tour-analytics-actions" className="flex items-center gap-3">
           <ExportMenu data={data} activeMetric={activeMetric} />
           <span className="hidden sm:flex w-fit items-center gap-2 rounded-xl border border-status-success/25 bg-status-success-bg px-3 py-2 text-xs font-semibold text-status-success">
             <Info className="size-4" />
@@ -95,6 +99,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
             </p>
           </div>
           <div
+            id="tour-analytics-tabs"
             className="mt-5 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
             role="tablist"
             aria-label="Medidas disponibles"
@@ -184,7 +189,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsDashboardData }) {
         </div>
       </Card>
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <section id="tour-analytics-ai" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="rounded-2xl border border-primary/10 bg-primary/[0.025] p-5 sm:p-6">
           <div className="flex gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-on-primary">

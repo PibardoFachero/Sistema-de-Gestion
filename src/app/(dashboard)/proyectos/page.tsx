@@ -10,12 +10,16 @@ import {
   deleteProjectAction,
   ProjectRecord,
 } from '@/features/proyectos/actions/proyectoActions';
+import { useProjectsTour } from '@/hooks/useProjectsTour';
 
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Registrar el tour contextual
+  useProjectsTour(proyectos.length === 0);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,6 +139,7 @@ export default function ProyectosPage() {
           </p>
           <Link
             href="/proyectos/nuevo"
+            id="tour-empty-create"
             className="mt-8 flex items-center justify-center gap-2 rounded-full bg-[#f5e5d9] px-6 py-3 text-[15px] font-bold text-[#845326] shadow-sm transition-all hover:-translate-y-[2px] hover:bg-[#E8DCD1] hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="size-5" />
@@ -148,17 +153,19 @@ export default function ProyectosPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
           {/* Tarjetas de Proyectos Creados */}
           {proyectos.map((proyecto, index) => (
-            <ProjectCard
-              key={proyecto.id}
-              project={proyecto}
-              index={index}
-              onDelete={handleDeleteClick}
-            />
+            <div key={proyecto.id} id={index === 0 ? "tour-project-card" : undefined}>
+              <ProjectCard
+                project={proyecto}
+                index={index}
+                onDelete={handleDeleteClick}
+              />
+            </div>
           ))}
 
           {/* Tarjeta de Agregar Proyecto Rápido */}
           <Link
             href="/proyectos/nuevo"
+            id="tour-project-create"
             className="group flex flex-col items-center justify-center bg-transparent rounded-[20px] border-2 border-dashed border-[#d2c4bb] hover:border-[#845326] hover:bg-[#FDFBF9] transition-all min-h-[250px] cursor-pointer"
           >
             <div className="w-14 h-14 rounded-full bg-[#f5e5d9] group-hover:bg-[#E8DCD1] text-[#845326] flex items-center justify-center mb-4 transition-colors">

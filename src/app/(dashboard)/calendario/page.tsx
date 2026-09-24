@@ -48,6 +48,7 @@ import {
   updateCalendarEventDetailsAction,
 } from '@/features/schedule/actions/calendarActions';
 import { createClient } from '@/lib/supabase/client';
+import { useCalendarTour } from '@/hooks/useCalendarTour';
 
 interface Availability {
   date: string;
@@ -235,6 +236,9 @@ function consolidateAvailabilitySlots(slots: Availability[]) {
 export default function CalendarioPage() {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  useCalendarTour(view);
+
   const [availabilities, setAvailabilities] = useState<Availability[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -695,7 +699,7 @@ export default function CalendarioPage() {
             </p>
           </div>
 
-          <div className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto min-h-[42px] flex items-center justify-end">
+          <div id="tour-calendar-integrations" className="relative z-10 sm:ml-auto mt-4 sm:mt-0 w-full sm:w-auto min-h-[42px] flex items-center justify-end">
             {!isMounted ? null : !isGoogleConnected ? (
               <button
                 type="button"
@@ -760,7 +764,7 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div id="tour-calendar-month-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {months.map((month) => {
             const isCurrentMonth = isSameMonth(new Date(), month);
             const isPastMonth =
@@ -1730,6 +1734,7 @@ export default function CalendarioPage() {
 
               <div className="flex items-center gap-2">
                 <button
+                  id="tour-calendar-ai-upload"
                   onClick={() => {
                     setUploadFile(null);
                     setUploadError(null);
@@ -1743,7 +1748,7 @@ export default function CalendarioPage() {
                   <span>Subir Horario (IA)</span>
                 </button>
 
-                <div className="relative">
+                <div id="tour-calendar-replicate" className="relative">
                   <button
                     onClick={() => {
                       generateFutureWeeks(start);
@@ -2126,7 +2131,7 @@ export default function CalendarioPage() {
           )}
 
           {/* 3. GRID DE HORAS (Contenido Desplazable) */}
-          <div className="flex relative pt-4 pb-4">
+          <div id="tour-calendar-week-grid" className="flex relative pt-4 pb-4">
             <div className="sticky left-0 z-10 w-[100px] min-w-[100px] bg-white border-r border-[#EAE3DC] flex flex-col">
               {visibleTimeSlots.map((time) => {
                 const isHourStart = time.endsWith(':00');
@@ -2487,7 +2492,7 @@ export default function CalendarioPage() {
         </div>
 
         {/* LEYENDA VISUAL DE COLORES */}
-        <div className="flex-shrink-0 py-4 flex justify-center flex-wrap gap-x-6 gap-y-4 px-4">
+        <div id="tour-calendar-legend" className="flex-shrink-0 py-4 flex justify-center flex-wrap gap-x-6 gap-y-4 px-4">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-4 h-4 rounded bg-[#C8D6AF] border border-[#3A4A28]/20"></div>
             <span className="text-xs font-bold text-[#845326]">Tareas</span>
