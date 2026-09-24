@@ -1396,7 +1396,12 @@ export default function ProjectDetailPage({
                 onToggleComplete={handleToggleTask}
                 onDeleteTask={handleDeleteTaskClick}
                 onEditTask={handleOpenEditModal}
-                onOpenQuiz={(taskId) => setQuizModalTaskId(taskId)}
+                onOpenQuiz={(taskId) => {
+                  const t = project.tasks.find((task) => task.id === taskId);
+                  if (t) {
+                    router.push('/ia?quizTaskId=' + taskId + '&prompt=' + encodeURIComponent(`Quiero realizar el quiz de la tarea "${t.title}" del proyecto "${project.title}"`));
+                  }
+                }}
               />
             ))}
           </div>
