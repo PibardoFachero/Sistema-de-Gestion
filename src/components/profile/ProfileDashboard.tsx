@@ -1132,7 +1132,8 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
               {[
                 {
                   title: 'Abre el bot',
-                  description: 'Usa el acceso de Komo disponible en la plataforma para iniciar Telegram.',
+                  description:
+                    'Usa el acceso de Komo disponible en la plataforma para iniciar Telegram.',
                 },
                 {
                   title: 'Vinculación automática',
