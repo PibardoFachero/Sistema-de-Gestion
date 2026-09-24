@@ -39,9 +39,10 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
     cycleCount: 0,
     activeTaskId: null,
     activeTaskTitle: null,
+    technique: null,
   });
 
-  const { toast } = useToast();
+  const { success, info } = useToast();
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -82,7 +83,7 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
       }));
       
       playBeep();
-      toast.success(
+      success(
         isLongBreak 
           ? '¡Tiempo de enfoque terminado! Toma un descanso largo bien merecido.' 
           : '¡Tiempo de enfoque terminado! Tómate un breve respiro.'
@@ -99,9 +100,9 @@ export function FocusSessionProvider({ children }: { children: React.ReactNode }
       }));
       
       playBeep();
-      toast.info('El descanso ha terminado. ¡Hora de volver al enfoque!');
+      info('El descanso ha terminado. ¡Hora de volver al enfoque!');
     }
-  }, [toast]);
+  }, [success, info]);
 
   const startSession = useCallback((techniqueId: string, taskId?: string, taskTitle?: string) => {
     const tech = STUDY_TECHNIQUES.find((t) => t.id === techniqueId);

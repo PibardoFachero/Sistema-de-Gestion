@@ -87,7 +87,7 @@ export function TechniqueSelectionModal({ isOpen, onClose, taskId, taskTitle }: 
 
                   <Button 
                     className="w-full gap-2 mt-auto" 
-                    variant="outline"
+                    variant="secondary"
                   >
                     <Play className="size-4" /> Iniciar Sesión
                   </Button>

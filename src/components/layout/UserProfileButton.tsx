@@ -172,7 +172,7 @@ export function UserProfileButton({ initialUser, compact = false }: UserProfileB
             )}
           </div>
           <span
-            className="text-xs font-semibold text-on-surface max-w-[110px] truncate"
+            className="text-xs font-semibold text-on-surface max-w-[60px] xs:max-w-[80px] sm:max-w-[110px] truncate"
             title={username}
           >
             {username}

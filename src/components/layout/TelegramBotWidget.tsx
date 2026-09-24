@@ -96,6 +96,7 @@ export function TelegramBotWidget({ username, botUrl }: TelegramBotWidgetProps) 
   return (
     <motion.aside
       ref={widgetRef}
+      id="tour-bot"
       aria-label="Asistente de Telegram"
       className="fixed bottom-20 md:bottom-8 right-5 md:right-8 z-50 flex flex-col items-end"
       initial={false}

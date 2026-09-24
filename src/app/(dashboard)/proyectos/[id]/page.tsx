@@ -32,6 +32,7 @@ import {
   generateTasksWithN8nAction,
   TaskRecord,
 } from '@/features/proyectos/actions/proyectoActions';
+import { useProjectDetailTour } from '@/hooks/useProjectDetailTour';
 
 interface ProjectDetailState {
   id: string;
@@ -136,6 +137,10 @@ export default function ProjectDetailPage({
   const searchParams = useSearchParams();
   const [project, setProject] = useState<ProjectDetailState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Registrar el tour contextual
+  useProjectDetailTour(project?.tasks.length === 0);
+
   const [isDeletingProject, setIsDeletingProject] = useState<boolean>(false);
   const isAiOfflineParam = searchParams?.get('aiOffline') === 'true';
   const [isAiOfflineDismissed, setIsAiOfflineDismissed] = useState<boolean>(false);
@@ -931,7 +936,7 @@ export default function ProjectDetailPage({
         </div>
 
         {/* Fila Informativa de Métricas */}
-        <div className="p-6 sm:p-8">
+        <div id="tour-project-header" className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
             <div className="flex-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-on-surface mb-2">
@@ -1030,7 +1035,7 @@ export default function ProjectDetailPage({
             Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de
             forma manual.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div id="tour-project-add-task-empty" className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -1061,7 +1066,7 @@ export default function ProjectDetailPage({
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-4">
+          <div id="tour-project-task-list" className="flex flex-col gap-4">
             {sortedTasks.map((task) => (
               <TaskItemCard
                 key={task.id}
@@ -1098,7 +1103,7 @@ export default function ProjectDetailPage({
           )}
 
           {/* Botones de acción: Agregar Tarea y Generar Tarea con IA */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div id="tour-project-add-task" className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {

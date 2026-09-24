@@ -91,7 +91,7 @@ export function ExportMenu({ data, activeMetric }: ExportMenuProps) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-outline-variant/40 bg-surface p-1 shadow-lg animate-in fade-in slide-in-from-top-2">
+          <div className="absolute left-0 sm:left-auto sm:right-0 top-full z-50 mt-2 w-56 rounded-xl border border-outline-variant/40 bg-surface p-1 shadow-lg animate-in fade-in slide-in-from-top-2">
             <button
               onClick={() => handleExport('pdf')}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-on-surface hover:bg-surface-container"

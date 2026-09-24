@@ -3,14 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LibraryBig, Timer } from 'lucide-react';
+import { Home, FolderKanban, Calendar, BarChart2, Sparkles, LibraryBig, HelpCircle } from 'lucide-react';
 import {
   getProjectsAction,
   type ProjectRecord,
 } from '@/features/proyectos/actions/proyectoActions';
+import { useTourContext } from '@/contexts/TourContext';
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { hasTour, startCurrentTour } = useTourContext();
 
   const navItems = [
     { href: '/', icon: Home, label: 'Inicio' },
@@ -115,6 +117,18 @@ export function SidebarNav() {
           </div>
         );
       })}
+
+      {hasTour && (
+        <button
+          onClick={startCurrentTour}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-on-surface hover:bg-surface-container mt-2"
+        >
+          <div className="text-outline">
+            <HelpCircle className="size-5" />
+          </div>
+          Ayuda de esta página
+        </button>
+      )}
     </nav>
   );
 }

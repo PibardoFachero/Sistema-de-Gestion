@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 
 export interface UpcomingTask {
   id: string;
@@ -35,6 +36,7 @@ interface HomeDashboardClientProps {
   upcomingTasks: UpcomingTask[];
   totalPendingTasks: number;
   metrics: DashboardMetrics;
+  isNewUser: boolean;
 }
 
 function MetricTooltip({ children, text }: { children: React.ReactNode; text: string }) {
@@ -57,9 +59,19 @@ export function HomeDashboardClient({
   upcomingTasks,
   totalPendingTasks,
   metrics,
+  isNewUser,
 }: HomeDashboardClientProps) {
   const [greeting, setGreeting] = useState('¡Buenos días');
   const [currentDate, setCurrentDate] = useState('');
+  
+  const { startTour } = useOnboardingTour();
+
+  useEffect(() => {
+    // Launch tour automatically if first time AND user is new
+    if (isNewUser) {
+      startTour(false);
+    }
+  }, [startTour, isNewUser]);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -102,32 +114,35 @@ export function HomeDashboardClient({
       animate="visible"
       className="space-y-8"
     >
-      <motion.header variants={itemVariants}>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            {greeting}, {displayName}!
-          </h1>
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
-          >
-            <Coffee className="size-8 text-outline" />
-          </motion.div>
-        </div>
-        <p className="mt-2 text-on-surface-variant max-w-2xl">
-          <span className="capitalize">{currentDate}</span>
-          {' · '}
-          {totalPendingTasks === 0
+      <motion.header variants={itemVariants} id="tour-greeting" className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              {greeting}, {displayName}!
+            </h1>
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
+            >
+              <Coffee className="size-8 text-outline" />
+            </motion.div>
+          </div>
+          <p className="mt-2 text-on-surface-variant max-w-2xl">
+            <span className="capitalize">{currentDate}</span>
+            {' · '}
+            {totalPendingTasks === 0
             ? 'No tienes tareas pendientes próximas. Disfruta tu tiempo libre o explora nuevos temas.'
             : totalPendingTasks === 1
               ? 'Tienes 1 tarea pendiente en tu lista. Concéntrate y avanza a tu ritmo.'
               : `Tienes ${totalPendingTasks} tareas pendientes en tu lista. Respeta tus ritmos y tiempos de descanso.`}
-        </p>
+          </p>
+        </div>
       </motion.header>
 
       {/* Banner Interactivo */}
       <motion.section
         variants={itemVariants}
+        id="tour-calendar"
         whileHover={{ scale: 1.01 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-surface-container-lowest to-primary/5 p-6 shadow-sm"
@@ -169,6 +184,7 @@ export function HomeDashboardClient({
       <motion.section
         variants={containerVariants}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        id="tour-metrics"
       >
         <motion.div variants={itemVariants} whileHover={{ y: -5 }}>
           <MetricTooltip text="Días consecutivos marcando tareas como completadas">
@@ -250,7 +266,7 @@ export function HomeDashboardClient({
       </motion.section>
 
       {/* Tareas */}
-      <motion.section variants={itemVariants}>
+      <motion.section variants={itemVariants} id="tour-tasks">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold">Tareas de hoy</h2>
@@ -341,7 +357,7 @@ export function HomeDashboardClient({
           })}
 
           {upcomingTasks.length === 0 && (
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} id="tour-calendar">
               <Card className="p-8 text-center border-dashed flex flex-col items-center justify-center text-on-surface-variant gap-3">
                 <CheckCircle2 className="size-8 text-status-success/50" />
                 <p>¡Todo al día! Has completado tus tareas o no tienes nada programado para hoy.</p>
