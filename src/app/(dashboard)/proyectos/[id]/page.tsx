@@ -302,6 +302,7 @@ export default function ProjectDetailPage({
   const [isGeneratingWithAI, setIsGeneratingWithAI] = useState(false);
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   // Estados para modal de generar tarea con IA
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -618,9 +619,14 @@ export default function ProjectDetailPage({
     };
   }, [params]);
 
-  // Manejador para marcar/desmarcar tarea completada
+  // Manejador para marcar/desmarcar tarea completada con reversión optimista ante fallos
   const handleToggleTask = async (taskId: string, newStatus: boolean) => {
     if (!project) return;
+    setActionErrorMessage(null);
+
+    const previousTasks = [...project.tasks];
+    const previousProgress = project.progress;
+    const previousCompleted = project.completado;
 
     // Actualización optimista en interfaz
     const updatedTasks = project.tasks.map((t) =>
@@ -636,22 +642,53 @@ export default function ProjectDetailPage({
 
     try {
       const res = await toggleTaskStatusAction(taskId, newStatus, project.id);
-      if (res.success && typeof res.progreso === 'number') {
+      if (res.success) {
+        if (typeof res.progreso === 'number') {
+          setProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  progress: res.progreso,
+                  completado:
+                    typeof res.completado === 'boolean' ? res.completado : prev.completado,
+                }
+              : null,
+          );
+        }
+
+        window.dispatchEvent(new Event('projects_updated'));
+        window.dispatchEvent(new Event('tasks_updated'));
+      } else {
+        // Revertir optimismo si el servidor no pudo guardar
+        console.error('Error al actualizar tarea en Supabase:', res.error);
         setProject((prev) =>
           prev
             ? {
                 ...prev,
-                progress: res.progreso,
-                completado: typeof res.completado === 'boolean' ? res.completado : prev.completado,
+                progress: previousProgress,
+                completado: previousCompleted,
+                tasks: previousTasks,
               }
             : null,
         );
-
-        window.dispatchEvent(new Event('projects_updated'));
-        window.dispatchEvent(new Event('tasks_updated'));
+        setActionErrorMessage(
+          res.error ||
+            'No se pudo guardar el estado de la tarea en la base de datos. Por favor verifica tus permisos o la conexión.',
+        );
       }
     } catch (error) {
-      console.error('Error actualizando estado de tarea en Supabase:', error);
+      console.error('Error inesperado actualizando estado de tarea:', error);
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: previousProgress,
+              completado: previousCompleted,
+              tasks: previousTasks,
+            }
+          : null,
+      );
+      setActionErrorMessage('Error de conexión al intentar actualizar el estado de la tarea.');
     }
   };
 
@@ -1206,6 +1243,23 @@ export default function ProjectDetailPage({
         </div>
       )}
 
+      {actionErrorMessage && (
+        <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 shrink-0 text-red-600" />
+            <span>{actionErrorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionErrorMessage(null)}
+            className="p-1 text-red-600 hover:text-red-800 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
+            title="Cerrar aviso"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       {project.tasks.length === 0 ? (
         <div className="bg-white border border-[#E8DCD1] rounded-2xl p-8 text-center">
           <p className="text-sm font-semibold text-on-surface mb-2">
@@ -1215,7 +1269,10 @@ export default function ProjectDetailPage({
             Puedes generar tu plan de estudio automáticamente con la IA de n8n o agregar tareas de
             forma manual.
           </p>
-          <div id="tour-project-add-task-empty" className="flex flex-wrap items-center justify-center gap-3">
+          <div
+            id="tour-project-add-task-empty"
+            className="flex flex-wrap items-center justify-center gap-3"
+          >
             <button
               type="button"
               onClick={() => {
@@ -1283,7 +1340,10 @@ export default function ProjectDetailPage({
           )}
 
           {/* Botones de acción: Agregar Tarea y Generar Tarea con IA */}
-          <div id="tour-project-add-task" className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div
+            id="tour-project-add-task"
+            className="mt-6 flex flex-wrap items-center justify-center gap-3"
+          >
             <button
               type="button"
               onClick={() => {

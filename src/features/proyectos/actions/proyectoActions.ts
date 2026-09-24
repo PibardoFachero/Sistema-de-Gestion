@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { generateProjectTasksFromN8n } from '@/services/automation/n8nTasksService';
 import {
@@ -600,9 +601,12 @@ export async function toggleTaskStatusAction(
       return { success: false, error: 'No se encontró una sesión activa.' };
     }
 
+    const adminDb = getAdminClient();
+    const db = adminDb || supabase;
+
     let targetProjectId = projectId;
     if (!targetProjectId) {
-      const { data: tRecord } = await supabase
+      const { data: tRecord } = await db
         .from('tareas')
         .select('id_proyecto')
         .eq('id', taskId)
@@ -624,18 +628,25 @@ export async function toggleTaskStatusAction(
     }
 
     // 1. Obtener la tarea antes de modificar para conocer su estado previo y tiempo
-    const { data: existingTask } = await supabase
+    const { data: existingTask, error: existingTaskErr } = await db
       .from('tareas')
       .select('id, completado, fecha_inicio, duracion')
       .eq('id', taskId)
       .eq('id_proyecto', targetProjectId)
       .maybeSingle();
 
+    if (existingTaskErr) {
+      console.warn('Aviso consultando existingTask en toggleTaskStatusAction:', existingTaskErr);
+    }
+
     const wasCompleted = Boolean(existingTask?.completado);
 
     // 2. Actualizar la tarea en la tabla 'tareas'
     const nowIso = new Date().toISOString();
-    const { error: updateError } = await supabase
+    let updateError: { message: string } | null = null;
+
+    // Intento 1: Actualizar completado y completed_at
+    const res1 = await db
       .from('tareas')
       .update({
         completado: isCompleted,
@@ -644,15 +655,47 @@ export async function toggleTaskStatusAction(
       .eq('id', taskId)
       .eq('id_proyecto', targetProjectId);
 
+    if (res1.error) {
+      console.warn(
+        'Aviso al actualizar con completed_at en tareas, intentando fallback solo con completado:',
+        res1.error.message,
+      );
+      // Intento 2 (Fallback): Si falló el trigger o columna completed_at, actualizar solo completado
+      const res2 = await db
+        .from('tareas')
+        .update({
+          completado: isCompleted,
+        })
+        .eq('id', taskId)
+        .eq('id_proyecto', targetProjectId);
+
+      if (res2.error) {
+        updateError = res2.error;
+      }
+    }
+
     if (updateError) {
+      console.error('Error definitivo en Supabase al actualizar tarea:', updateError);
       return { success: false, error: updateError.message };
+    }
+
+    // Sincronizar estado en eventos_calendario si la tarea está agendada
+    try {
+      await db
+        .from('eventos_calendario')
+        .update({
+          estado: isCompleted ? 'completada' : 'pendiente',
+        })
+        .eq('tarea_id', taskId);
+    } catch (calSyncErr) {
+      console.warn('Aviso sincronizando estado en eventos_calendario:', calSyncErr);
     }
 
     // 3. Gestionar racha del usuario en la tabla 'profiles'
     let updatedRacha: number;
     let updatedRachaMaxima: number;
 
-    const { data: profile } = await supabase
+    const { data: profile } = await db
       .from('profiles')
       .select('racha_activa, racha_maxima')
       .eq('id', user.id)
@@ -666,7 +709,7 @@ export async function toggleTaskStatusAction(
       updatedRacha = currentStreak + 1;
       updatedRachaMaxima = Math.max(currentMax, updatedRacha);
 
-      await supabase
+      await db
         .from('profiles')
         .update({
           racha_activa: updatedRacha,
@@ -678,7 +721,7 @@ export async function toggleTaskStatusAction(
       updatedRacha = Math.max(0, currentStreak - 1);
       updatedRachaMaxima = currentMax;
 
-      await supabase
+      await db
         .from('profiles')
         .update({
           racha_activa: updatedRacha,
@@ -690,7 +733,7 @@ export async function toggleTaskStatusAction(
     }
 
     // 4. Obtener todas las tareas del proyecto para recalcular el porcentaje de progreso
-    const { data: allTasks, error: fetchError } = await supabase
+    const { data: allTasks, error: fetchError } = await db
       .from('tareas')
       .select('completado')
       .eq('id_proyecto', targetProjectId);
@@ -705,21 +748,21 @@ export async function toggleTaskStatusAction(
 
     // 5. Guardar el nuevo progreso y completado en la tabla 'projects'
     try {
-      const { error: projError } = await supabase
+      const { error: projError } = await db
         .from('projects')
         .update({ progreso: newProgreso, completado: isProjectCompleted })
         .eq('id', targetProjectId)
         .eq('user_id', user.id);
 
       if (projError && projError.message.includes('completado')) {
-        await supabase
+        await db
           .from('projects')
           .update({ progreso: newProgreso })
           .eq('id', targetProjectId)
           .eq('user_id', user.id);
       }
     } catch {
-      await supabase
+      await db
         .from('projects')
         .update({ progreso: newProgreso })
         .eq('id', targetProjectId)
@@ -728,6 +771,7 @@ export async function toggleTaskStatusAction(
 
     revalidatePath(`/proyectos/${targetProjectId}`);
     revalidatePath('/proyectos');
+    revalidatePath('/calendario');
     revalidatePath('/');
     revalidatePath('/perfil');
     revalidatePath('/analitica');
