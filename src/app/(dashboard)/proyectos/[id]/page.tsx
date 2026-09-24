@@ -16,6 +16,7 @@ import {
   Paperclip,
   Calendar,
   Pencil,
+  Award,
 } from 'lucide-react';
 import { extractTextFromFile } from '@/features/ai-assistant/utils/fileTextExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
