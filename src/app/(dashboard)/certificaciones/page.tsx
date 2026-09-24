@@ -151,6 +151,8 @@ export default async function CertificacionesPage() {
                 >
                   <Award className="size-4" /> Ver Detalles
                 </Link>
+                {/* Nota: La descarga y visualización del PDF se maneja preferiblemente desde el Proyecto para reutilizar el modal,
+                    pero aquí podríamos mostrar botones si estuviera abstraído */}
               </div>
             </div>
           </div>
