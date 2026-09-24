@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
+  Bot,
   BookOpen,
   CalendarClock,
   CheckCircle2,
@@ -1107,7 +1108,68 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           </div>
         </WideSection>
 
-        {/* SECCIÓN 4: Mi espacio de aprendizaje y Rachas */}
+        {/* SECCIÓN 4: Guía rápida del bot */}
+        <WideSection
+          id="tour-profile-bot-guide"
+          title="Cómo usar el bot Komo"
+          description="Una guía breve para consultar tu organización desde Telegram."
+          icon={<Bot className="size-5" />}
+        >
+          <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5">
+            <div className="flex items-start gap-3 border-b border-outline-variant/40 pb-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-lowest text-primary">
+                <Bot className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-on-surface">Guía rápida</h3>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
+                  Komo te ayuda a consultar proyectos y vencimientos sin salir de Telegram.
+                </p>
+              </div>
+            </div>
+
+            <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  title: 'Abre el bot',
+                  description: 'Usa el acceso de Komo disponible en la plataforma para iniciar Telegram.',
+                },
+                {
+                  title: 'Vinculación automática',
+                  description: 'El enlace identifica tu cuenta para que el bot pueda reconocerte.',
+                },
+                {
+                  title: 'Consulta tu organización',
+                  description: 'Revisa tus proyectos activos y sus fechas de vencimiento.',
+                },
+                {
+                  title: 'Navega con botones',
+                  description: 'No necesitas memorizar comandos: selecciona los botones del bot.',
+                },
+              ].map((step, index) => (
+                <li
+                  key={step.title}
+                  className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest/80 p-4"
+                >
+                  <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                    {index + 1}
+                  </span>
+                  <h4 className="mt-4 text-sm font-bold text-on-surface">{step.title}</h4>
+                  <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                    {step.description}
+                  </p>
+                </li>
+              ))}
+            </ol>
+
+            <p className="mt-4 rounded-xl bg-surface-container-low px-3 py-2.5 text-xs leading-relaxed text-on-surface-variant">
+              Si el bot no reconoce tu cuenta, vuelve a abrirlo desde la plataforma para generar el
+              enlace correcto.
+            </p>
+          </div>
+        </WideSection>
+
+        {/* SECCIÓN 5: Mi espacio de aprendizaje y Rachas */}
         <WideSection
           id="tour-profile-stats"
           title="Mi espacio de aprendizaje"
