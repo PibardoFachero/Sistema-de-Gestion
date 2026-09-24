@@ -37,7 +37,7 @@ function initializeKeyPool(): void {
 
   if (uniqueKeys.length === 0) {
     throw new Error(
-      'No hay ninguna GEMINI_API_KEY configurada en las variables de entorno (.env.local).',
+      'No hay ninguna GEMINI_API_KEY configurada en las variables de entorno.',
     );
   }
 
