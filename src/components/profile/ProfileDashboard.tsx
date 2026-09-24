@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  Award,
 } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/profile/ChangePasswordModal';
 import { AddPasswordModal } from '@/components/profile/AddPasswordModal';
@@ -1113,7 +1114,7 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
           description="La conexión entre tu perfil, tus temas, proyectos y el contexto que autorizas para la IA."
           icon={<Sparkles className="size-5" />}
         >
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_15rem]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_15rem]">
             <Link
               href="/temas"
               className="group rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/80 p-4 shadow-sm transition-colors hover:border-primary/35 hover:bg-surface-container-low"
@@ -1143,6 +1144,22 @@ export function ProfileDashboard({ profile }: { profile: ProfileDashboardData })
               <h3 className="mt-5 font-bold">Proyectos</h3>
               <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">
                 Mantén una vista clara de lo que estás construyendo.
+              </p>
+            </Link>
+
+            <Link
+              href="/certificaciones"
+              className="group rounded-2xl border border-outline-variant/60 bg-surface-container-lowest/80 p-4 shadow-sm transition-colors hover:border-primary/35 hover:bg-surface-container-low"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Award className="size-5" />
+                </div>
+                <ArrowUpRight className="size-4 text-outline transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+              </div>
+              <h3 className="mt-5 font-bold">Certificaciones</h3>
+              <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">
+                Tus logros e inversión de tiempo validados.
               </p>
             </Link>
 

@@ -16,12 +16,17 @@ import {
   Paperclip,
   Calendar,
   Pencil,
+  Award,
 } from 'lucide-react';
 import { extractTextFromFile } from '@/features/ai-assistant/utils/fileTextExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Task, TaskItemCard } from '@/features/proyectos/components/TaskItemCard';
 import { DeleteConfirmModal } from '@/features/proyectos/components/DeleteConfirmModal';
 import { EditProjectModal } from '@/features/proyectos/components/EditProjectModal';
+import { QuizModal } from '@/features/certifications/components/QuizModal';
+import { CertificateModal } from '@/features/certifications/components/CertificateModal';
+import { checkCertificateStatus } from '@/features/certifications/actions/issueCertificateAction';
+import { createClient } from '@/lib/supabase/client';
 import {
   getCalendarDataAction,
   CalendarEventItem,
@@ -281,6 +286,16 @@ export default function ProjectDetailPage({
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
   const [calendarAvailabilities, setCalendarAvailabilities] = useState<AvailabilityBlockItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Certifications
+  const [certStatus, setCertStatus] = useState<{
+    issued: boolean;
+    hash?: string;
+    hasFullName?: boolean;
+    fullName?: string;
+  }>({ issued: false });
+  const [quizModalTaskId, setQuizModalTaskId] = useState<string | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   // Registrar el tour contextual
   useProjectDetailTour(project?.tasks.length === 0);
@@ -568,6 +583,7 @@ export default function ProjectDetailPage({
               startDate: t.fecha_inicio || null,
               resourceUrl: t.resources || t.recurso_url || t.material_url || null,
               isCompleted: Boolean(t.completado),
+              quizAprobado: Boolean(t.quiz_aprobado),
             }));
 
             const charCodeSum = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -618,6 +634,22 @@ export default function ProjectDetailPage({
       isMounted = false;
     };
   }, [params]);
+
+  useEffect(() => {
+    if (project?.id) {
+      Promise.all([
+        checkCertificateStatus(project.id),
+        createClient().from('profiles').select('nombre_completo').single(),
+      ]).then(([certRes, profileRes]) => {
+        setCertStatus({
+          issued: certRes.issued,
+          hash: certRes.hash,
+          hasFullName: !!profileRes.data?.nombre_completo,
+          fullName: profileRes.data?.nombre_completo || '',
+        });
+      });
+    }
+  }, [project?.id]);
 
   // Manejador para marcar/desmarcar tarea completada con reversión optimista ante fallos
   const handleToggleTask = async (taskId: string, newStatus: boolean) => {
@@ -1220,12 +1252,62 @@ export default function ProjectDetailPage({
               style={{ width: `${project.progress}%` }}
             />
           </div>
+
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-3 mt-6">
+            <div>
+              <p className="text-sm font-bold text-on-surface-variant">Progreso de Certificación</p>
+              <div className="text-xs text-on-surface-variant mt-1 max-w-xs">
+                {certStatus.issued
+                  ? '¡Certificado emitido!'
+                  : 'Aprueba los micro-quizzes de cada tarea para certificarte.'}
+              </div>
+            </div>
+            <div className="text-2xl font-black text-status-success">
+              {certStatus.issued
+                ? '100'
+                : project?.tasks.length
+                  ? Math.round(
+                      (project.tasks.filter((t) => t.quizAprobado).length / project.tasks.length) *
+                        100,
+                    )
+                  : 0}
+              %
+            </div>
+          </div>
+          <div className="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden mb-2">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ease-out ${certStatus.issued ? 'bg-status-success' : 'bg-status-success/60'}`}
+              style={{
+                width: certStatus.issued
+                  ? '100%'
+                  : `${project?.tasks.length ? Math.round((project.tasks.filter((t) => t.quizAprobado).length / project.tasks.length) * 100) : 0}%`,
+              }}
+            />
+          </div>
+          {!certStatus.issued && (
+            <button
+              onClick={() => setIsCertModalOpen(true)}
+              className="text-xs font-bold text-[#845326] underline hover:text-[#433022] transition-colors mt-2"
+            >
+              Ver vista previa del Certificado
+            </button>
+          )}
         </div>
       </div>
 
       {/* 2. LISTA DE TAREAS */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-on-surface">Plan de Acción</h2>
+
+        {certStatus.issued && (
+          <button
+            onClick={() => setIsCertModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-status-success-bg text-status-success border border-status-success/20 rounded-xl font-bold text-sm hover:bg-status-success/10 transition-colors shadow-sm"
+          >
+            <Award className="size-4" />
+            Ver Certificado
+          </button>
+        )}
       </div>
 
       {/* Mensajes de retroalimentación de la IA */}
@@ -1314,6 +1396,7 @@ export default function ProjectDetailPage({
                 onToggleComplete={handleToggleTask}
                 onDeleteTask={handleDeleteTaskClick}
                 onEditTask={handleOpenEditModal}
+                onOpenQuiz={(taskId) => setQuizModalTaskId(taskId)}
               />
             ))}
           </div>
@@ -2074,6 +2157,70 @@ export default function ProjectDetailPage({
                 : null,
             );
           }}
+        />
+      )}
+
+      {project && (
+        <QuizModal
+          taskId={quizModalTaskId}
+          isOpen={!!quizModalTaskId}
+          onClose={() => setQuizModalTaskId(null)}
+          hasFullName={!!certStatus.hasFullName}
+          onSuccess={(taskId) => {
+            setQuizModalTaskId(null);
+
+            // Update local state and check if 100%
+            setProject((prev) => {
+              if (!prev) return prev;
+              const newTasks = prev.tasks.map((t) =>
+                t.id === taskId ? { ...t, quizAprobado: true } : t,
+              );
+
+              const total = newTasks.length;
+              const approved = newTasks.filter((t) => t.quizAprobado).length;
+
+              if (total > 0 && approved === total) {
+                // Auto trigger issue certificate
+                import('@/features/certifications/actions/issueCertificateAction').then(
+                  ({ issueCertificateAction }) => {
+                    issueCertificateAction({ projectId: project.id }).then((res) => {
+                      if (res.success && res.hash) {
+                        setCertStatus((c) => ({ ...c, issued: true, hash: res.hash }));
+                        setIsCertModalOpen(true);
+                      }
+                    });
+                  },
+                );
+              }
+
+              return { ...prev, tasks: newTasks };
+            });
+          }}
+        />
+      )}
+
+      {(certStatus.hash || isCertModalOpen) && (
+        <CertificateModal
+          hash={certStatus.hash}
+          isOpen={isCertModalOpen}
+          onClose={() => setIsCertModalOpen(false)}
+          isPreview={!certStatus.issued}
+          previewData={
+            !certStatus.issued && project
+              ? {
+                  tituloProyecto: project.title,
+                  horasInvertidas: Math.round(
+                    project.tasks.reduce((acc, t) => {
+                      if (typeof t.duration === 'number') return acc + t.duration / 60;
+                      const mins = parseInt(t.duration as string);
+                      return acc + (!isNaN(mins) ? mins / 60 : 1);
+                    }, 0),
+                  ),
+                  tareasAprobadas: project.tasks.map((t) => ({ titulo: t.title, id: t.id })),
+                  nombreCompleto: certStatus.fullName || 'Estudiante Pendiente',
+                }
+              : undefined
+          }
         />
       )}
     </div>

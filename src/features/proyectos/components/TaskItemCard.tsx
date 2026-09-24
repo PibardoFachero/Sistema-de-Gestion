@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, ExternalLink, Play, Check, Trash2, Calendar, Pencil } from 'lucide-react';
+import { Clock, ExternalLink, Play, Check, Trash2, Calendar, Pencil, Award } from 'lucide-react';
 import { TechniqueSelectionModal } from '@/components/study/TechniqueSelectionModal';
 
 export interface Task {
@@ -14,6 +14,7 @@ export interface Task {
   resourceUrl?: string | null;
   resourceName?: string;
   isCompleted: boolean;
+  quizAprobado?: boolean;
 }
 
 interface TaskItemCardProps {
@@ -24,6 +25,7 @@ interface TaskItemCardProps {
   onToggleComplete: (id: string, newStatus: boolean) => void;
   onDeleteTask?: (id: string) => void;
   onEditTask?: (task: Task) => void;
+  onOpenQuiz?: (taskId: string) => void;
 }
 
 function formatStartDate(dateStr?: string | null): string {
@@ -77,6 +79,7 @@ export function TaskItemCard({
   onToggleComplete,
   onDeleteTask,
   onEditTask,
+  onOpenQuiz,
 }: TaskItemCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showFocusModal, setShowFocusModal] = useState(false);
@@ -213,6 +216,39 @@ export function TaskItemCard({
                 </a>
               );
             })}
+          </div>
+        )}
+
+        {/* Botón de Micro-Quiz por tarea */}
+        {onOpenQuiz && (
+          <div className="mt-3 flex items-center">
+            <button
+              type="button"
+              onClick={() => {
+                if (!task.quizAprobado) onOpenQuiz(task.id);
+              }}
+              disabled={task.quizAprobado}
+              className={`
+                inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs border
+                ${
+                  task.quizAprobado
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 opacity-80 cursor-not-allowed'
+                    : 'bg-[#FBE6DD]/60 border-[#FBE6DD] text-[#845326] hover:bg-[#FBE6DD] cursor-pointer'
+                }
+              `}
+            >
+              {task.quizAprobado ? (
+                <>
+                  <Check className="size-3.5" strokeWidth={3} />
+                  Quiz Aprobado
+                </>
+              ) : (
+                <>
+                  <Award className="size-3.5" />
+                  Realizar Quiz
+                </>
+              )}
+            </button>
           </div>
         )}
       </div>

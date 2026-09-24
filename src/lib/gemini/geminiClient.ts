@@ -36,9 +36,7 @@ function initializeKeyPool(): void {
   const uniqueKeys = Array.from(new Set(rawKeys.filter(Boolean)));
 
   if (uniqueKeys.length === 0) {
-    throw new Error(
-      'No hay ninguna GEMINI_API_KEY configurada en las variables de entorno (.env.local).',
-    );
+    throw new Error('No hay ninguna GEMINI_API_KEY configurada en las variables de entorno.');
   }
 
   // Si las keys cambiaron o se inicializa por primera vez
