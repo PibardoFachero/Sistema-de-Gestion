@@ -201,7 +201,7 @@ export function CertificateModal({ hash, isOpen, onClose, isPreview = false, pre
 
                 {isPreview && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                    <span className="transform -rotate-45 text-7xl font-black text-black/5 opacity-10">VISTA PREVIA</span>
+                    <span className="transform -rotate-45 text-7xl font-black text-gray-400 opacity-10">VISTA PREVIA</span>
                   </div>
                 )}
 
@@ -254,10 +254,10 @@ export function CertificateModal({ hash, isOpen, onClose, isPreview = false, pre
                   </p>
 
                   {/* Grid de tareas */}
-                  <div className="w-full max-w-3xl grid grid-cols-2 gap-3 mt-4 mb-auto">
+                  <div className="w-full max-w-3xl grid grid-cols-2 gap-4 mt-6 mb-auto relative z-10">
                     {data.tareas?.slice(0, 8).map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-white/70 border border-[#E8DCD1] px-4 py-2.5 rounded-xl text-left shadow-sm">
-                        <CheckCircle className="size-4 text-[#845326] shrink-0" />
+                      <div key={idx} className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg text-left shadow-sm">
+                        <span className="text-[#845326] font-bold text-xs shrink-0">✓</span>
                         <span className="text-sm text-[#2C1F14] truncate font-medium">{t.titulo}</span>
                       </div>
                     ))}

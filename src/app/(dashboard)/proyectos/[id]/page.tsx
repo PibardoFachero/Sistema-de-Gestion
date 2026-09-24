@@ -1931,7 +1931,11 @@ export default function ProjectDetailPage({
           isPreview={!certStatus.issued}
           previewData={!certStatus.issued && project ? {
             tituloProyecto: project.title,
-            horasInvertidas: project.tasks.filter(t => t.quizAprobado).reduce((acc, t) => acc + (typeof t.duration === 'number' ? t.duration / 60 : 1), 0),
+            horasInvertidas: Math.round(project.tasks.filter(t => t.quizAprobado).reduce((acc, t) => {
+              if (typeof t.duration === 'number') return acc + t.duration / 60;
+              const mins = parseInt(t.duration as string);
+              return acc + (!isNaN(mins) ? mins / 60 : 1);
+            }, 0)),
             tareasAprobadas: project.tasks.filter(t => t.quizAprobado).map(t => ({ titulo: t.title })),
             nombreCompleto: certStatus.fullName || 'Estudiante Pendiente'
           } : undefined}
