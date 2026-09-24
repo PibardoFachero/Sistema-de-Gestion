@@ -477,7 +477,10 @@ export function AssistantChat({
         </Card>
 
         {/* Columna lateral con scroll interno adaptado */}
-        <aside id="tour-ia-history" className="space-y-4 lg:h-[calc(100vh-13.5rem)] lg:min-h-[32rem] lg:max-h-[46rem] lg:overflow-y-auto lg:pr-1">
+        <aside
+          id="tour-ia-history"
+          className="space-y-4 lg:h-[calc(100vh-13.5rem)] lg:min-h-[32rem] lg:max-h-[46rem] lg:overflow-y-auto lg:pr-1"
+        >
           {/* Card de Historial de Chats (sin botón de nuevo a la derecha) */}
           <div className="hidden lg:block">
             <ChatHistoryCard

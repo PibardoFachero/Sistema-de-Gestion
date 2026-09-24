@@ -77,7 +77,7 @@ type EditableSection = 'identity' | 'learning' | null;
 export function ProfileDashboard({ profile }: { profile: ProfileDashboardData }) {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<EditableSection>(null);
-  
+
   useProfileTour();
 
   // Estados de Contraseña y Seguridad

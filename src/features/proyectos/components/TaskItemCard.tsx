@@ -244,7 +244,7 @@ export function TaskItemCard({
         </div>
 
         <div className="flex justify-end w-full mt-auto pt-2">
-          <button 
+          <button
             onClick={() => {
               if (!isCompleted) setShowFocusModal(true);
             }}
@@ -255,8 +255,8 @@ export function TaskItemCard({
           </button>
         </div>
       </div>
-      
-      <TechniqueSelectionModal 
+
+      <TechniqueSelectionModal
         isOpen={showFocusModal}
         onClose={() => setShowFocusModal(false)}
         taskId={task.id}
