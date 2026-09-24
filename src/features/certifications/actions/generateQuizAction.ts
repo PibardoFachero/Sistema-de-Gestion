@@ -1,7 +1,12 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { getGeminiClient, GEMINI_DEFAULT_MODEL } from '@/lib/gemini/geminiClient';
+import {
+  getGeminiClient,
+  GEMINI_DEFAULT_MODEL,
+  markActiveKeyExhaustedAndRotate,
+  getGeminiKeyCount,
+} from '@/lib/gemini/geminiClient';
 import { z } from 'zod';
 
 export interface QuizQuestion {
@@ -77,35 +82,73 @@ export async function generateQuizAction(input: GenerateQuizInput): Promise<Gene
       }
     `;
 
-    const gemini = getGeminiClient();
-    const response = await gemini.models.generateContent({
-      model: GEMINI_DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            questions: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  question: { type: 'STRING' },
-                  options: {
-                    type: 'ARRAY',
-                    items: { type: 'STRING' },
+    let response;
+    let attempt = 0;
+    const maxAttempts = Math.max(3, getGeminiKeyCount());
+
+    while (attempt < maxAttempts) {
+      try {
+        const gemini = getGeminiClient();
+        response = await gemini.models.generateContent({
+          model: GEMINI_DEFAULT_MODEL,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'OBJECT',
+              properties: {
+                questions: {
+                  type: 'ARRAY',
+                  items: {
+                    type: 'OBJECT',
+                    properties: {
+                      question: { type: 'STRING' },
+                      options: {
+                        type: 'ARRAY',
+                        items: { type: 'STRING' },
+                      },
+                      correctAnswerIndex: { type: 'INTEGER' },
+                    },
+                    required: ['question', 'options', 'correctAnswerIndex'],
                   },
-                  correctAnswerIndex: { type: 'INTEGER' },
                 },
-                required: ['question', 'options', 'correctAnswerIndex'],
               },
+              required: ['questions'],
             },
           },
-          required: ['questions'],
-        },
-      },
-    });
+        });
+        break; // Si tiene éxito, salimos del bucle
+      } catch (err: unknown) {
+        const geminiErr = err as {
+          status?: number;
+          response?: { status?: number };
+          message?: string;
+        };
+        console.error(`Error en intento ${attempt + 1}:`, geminiErr?.message || err);
+        const status = geminiErr?.status || geminiErr?.response?.status;
+        const msg = geminiErr?.message || '';
+
+        // Si el servidor de google está saturado (503) o superamos la cuota (429)
+        if (status === 429 || status === 503 || msg.includes('429') || msg.includes('503')) {
+          markActiveKeyExhaustedAndRotate(5000); // 5 segundos de cooldown por intento
+          attempt++;
+          if (attempt >= maxAttempts) {
+            throw new Error(
+              'Todas las claves están ocupadas o el servicio está saturado. Intenta en un minuto.',
+            );
+          }
+        } else {
+          throw err; // Otro error diferente, abortar
+        }
+      }
+    }
+
+    if (!response) {
+      return {
+        success: false,
+        error: 'No se obtuvo respuesta del modelo de IA tras varios intentos.',
+      };
+    }
 
     const text = response.text;
     if (!text) {
