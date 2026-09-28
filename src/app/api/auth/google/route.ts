@@ -34,7 +34,7 @@ function getSafeReturnPath(state: string | null): string {
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
-  const baseUrl = getAppBaseUrl(origin);
+  const baseUrl = getAppBaseUrl();
   const action = searchParams.get('action');
   const code = searchParams.get('code');
   const error = searchParams.get('error');
@@ -99,14 +99,7 @@ export async function GET(request: NextRequest) {
     const safePath = getSafeReturnPath(state);
 
     try {
-      let tokens: GoogleCalendarTokens;
-      try {
-        // Primero intentamos intercambiar usando esta misma ruta como redirect_uri
-        tokens = await exchangeCodeForTokens(code, `${baseUrl}/api/auth/google`);
-      } catch {
-        // Fallback al redirect_uri por defecto configurado (/api/calendar/callback)
-        tokens = await exchangeCodeForTokens(code);
-      }
+      const tokens = await exchangeCodeForTokens(code);
 
       // Cifrado AES-256-GCM para almacenamiento seguro de tokens en cookie
       const encryptedTokens = encryptTokens(tokens);
@@ -174,7 +167,7 @@ export async function GET(request: NextRequest) {
     const customRedirect = searchParams.get('redirect_uri') || undefined;
 
     // Generar la URL de Google OAuth2 con los permisos requeridos
-    const authUrl = getGoogleAuthUrl(returnTo, customRedirect);
+    const authUrl = getGoogleAuthUrl(returnTo);
 
     if (isJsonRequest) {
       return NextResponse.json({
@@ -252,7 +245,7 @@ export async function POST(request: NextRequest) {
 
     // Intercambiar código por tokens directamente
     if (code) {
-      const tokens = await exchangeCodeForTokens(code, redirect_uri);
+      const tokens = await exchangeCodeForTokens(code);
       const encryptedTokens = encryptTokens(tokens);
 
       const response = NextResponse.json({
@@ -275,7 +268,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener URL de consentimiento
-    const authUrl = getGoogleAuthUrl(returnTo || '/calendario', redirect_uri);
+    const authUrl = getGoogleAuthUrl(returnTo || '/calendario');
     return NextResponse.json({
       success: true,
       url: authUrl,

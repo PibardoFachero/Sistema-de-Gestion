@@ -8,7 +8,7 @@ import {
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
-  const baseUrl = getAppBaseUrl(origin);
+  const baseUrl = getAppBaseUrl();
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const state = searchParams.get('state') || '/calendario';
