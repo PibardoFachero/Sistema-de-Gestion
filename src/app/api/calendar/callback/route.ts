@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
   // 1. Validar sesión del usuario actual para garantizar que no se pierda
   // Esto invoca la lectura y posible actualización de cookies de Supabase
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !data?.user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('error', 'Sesión expirada o inválida durante la autorización.');
     return NextResponse.redirect(loginUrl.toString());
