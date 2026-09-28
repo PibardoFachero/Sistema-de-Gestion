@@ -124,7 +124,8 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
-      const redirectUrl = new URL(`${baseUrl}${safePath}`);
+      // Forzamos siempre a /calendario para evitar ser desviados a /login si el state era de login
+      const redirectUrl = new URL(`${baseUrl}/calendario`);
       redirectUrl.searchParams.set('gcal_success', 'true');
       redirectUrl.searchParams.set('calendar_connected', 'true');
 
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const redirectUrl = new URL(`${baseUrl}${safePath}`);
+      const redirectUrl = new URL(`${baseUrl}/calendario`);
       redirectUrl.searchParams.set('gcal_error', 'true');
       redirectUrl.searchParams.set('calendar_error', encodeURIComponent(message));
       return NextResponse.redirect(redirectUrl.toString());
