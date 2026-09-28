@@ -11,11 +11,9 @@ export async function GET(request: NextRequest) {
   const baseUrl = getAppBaseUrl();
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const state = searchParams.get('state') || '/calendario';
 
-  // Sanitizar ruta de redirección relativa para evitar Open Redirects
-  const safeReturnPath = state.startsWith('/') ? state : '/calendario';
-  const redirectTarget = `${baseUrl}${safeReturnPath}`;
+  // Forzamos la redirección a /calendario para evitar que un estado previo (ej. /login) desvíe el flujo
+  const redirectTarget = `${baseUrl}/calendario`;
 
   if (error) {
     const errorUrl = new URL(redirectTarget);
