@@ -5,12 +5,24 @@ import {
   getAppBaseUrl,
   GCAL_COOKIE_NAME,
 } from '@/lib/google-calendar';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const baseUrl = getAppBaseUrl();
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+
+  // 1. Validar sesión del usuario actual para garantizar que no se pierda
+  // Esto invoca la lectura y posible actualización de cookies de Supabase
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'Sesión expirada o inválida durante la autorización.');
+    return NextResponse.redirect(loginUrl.toString());
+  }
 
   // Forzamos la redirección a /calendario para evitar que un estado previo (ej. /login) desvíe el flujo
   const redirectTarget = `${baseUrl}/calendario`;
