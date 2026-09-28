@@ -26,44 +26,26 @@ export const GCAL_COOKIE_NAME = 'gcal_tokens';
 /**
  * Obtiene la URL base de la aplicación (producción en Vercel o entorno local).
  */
-export function getAppBaseUrl(requestOrigin?: string): string {
-  if (process.env.APP_URL) {
-    return process.env.APP_URL.replace(/\/$/, '');
+export function getAppBaseUrl(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (baseUrl) {
+    return baseUrl.replace(/\/$/, '');
   }
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
-  }
-  if (
-    requestOrigin &&
-    !requestOrigin.includes('localhost') &&
-    !requestOrigin.includes('127.0.0.1')
-  ) {
-    return requestOrigin.replace(/\/$/, '');
-  }
-  return requestOrigin ? requestOrigin.replace(/\/$/, '') : 'http://localhost:3000';
+  return 'http://localhost:3000';
 }
 
 /**
  * Obtiene la URL de redirección configurada para OAuth2.
  */
-export function getRedirectUri(customRedirectUri?: string): string {
-  if (customRedirectUri) {
-    return customRedirectUri;
-  }
-  if (process.env.GOOGLE_REDIRECT_URI) {
-    return process.env.GOOGLE_REDIRECT_URI;
-  }
-  const appUrl = getAppBaseUrl();
-  return `${appUrl}/api/calendar/callback`;
+export function getRedirectUri(): string {
+  const baseUrl = getAppBaseUrl();
+  return `${baseUrl}/api/calendar/callback`;
 }
 
 /**
  * Genera la URL de consentimiento para que el usuario autorice el acceso a Google Calendar.
  */
-export function getGoogleAuthUrl(state?: string, customRedirectUri?: string): string {
+export function getGoogleAuthUrl(state?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     throw new Error('Falta la variable de entorno GOOGLE_CLIENT_ID.');
@@ -71,7 +53,7 @@ export function getGoogleAuthUrl(state?: string, customRedirectUri?: string): st
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: getRedirectUri(customRedirectUri),
+    redirect_uri: getRedirectUri(),
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
     access_type: 'offline',
@@ -91,7 +73,6 @@ export function getGoogleAuthUrl(state?: string, customRedirectUri?: string): st
  */
 export async function exchangeCodeForTokens(
   code: string,
-  customRedirectUri?: string,
 ): Promise<GoogleCalendarTokens> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -107,7 +88,7 @@ export async function exchangeCodeForTokens(
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: getRedirectUri(customRedirectUri),
+      redirect_uri: getRedirectUri(),
       grant_type: 'authorization_code',
     }),
   });
