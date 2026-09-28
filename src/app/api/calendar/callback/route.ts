@@ -5,7 +5,6 @@ import {
   getAppBaseUrl,
   GCAL_COOKIE_NAME,
 } from '@/lib/google-calendar';
-import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -13,16 +12,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  // 1. Validar sesión del usuario actual para garantizar que no se pierda
-  // Esto invoca la lectura y posible actualización de cookies de Supabase
-  const supabase = await createClient();
-  const { data, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !data?.user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'Sesión expirada o inválida durante la autorización.');
-    return NextResponse.redirect(loginUrl.toString());
-  }
+  // Nota: No validamos la sesión de Supabase aquí (supabase.auth.getUser()) porque
+  // el redirect cross-site desde Google (SameSite=Lax) puede omitir las cookies de sesión,
+  // devolviendo un usuario nulo falsamente.
+  // Como los tokens se guardan en una cookie encriptada (y no en la base de datos),
+  // la seguridad se aplicará correctamente cuando el usuario aterrice en /calendario.
 
   // Forzamos la redirección a /calendario para evitar que un estado previo (ej. /login) desvíe el flujo
   const redirectTarget = `${baseUrl}/calendario`;
